@@ -1,0 +1,176 @@
+/* Markdown 预览的 Light 主题。qlitehtml 自绘，读不到应用级 QSS，这里是它
+   唯一的外观来源：排版规则 + 代码高亮的类名（与 code_highlighter.h 的契约
+   一致，完整映射表见 highlight_entry.js 的 CLASS_MAP）。三套主题各一份，
+   改配色只动对应文件 */
+
+html { background-color: #ffffff; }
+
+body {
+  background-color: #ffffff;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+/* 阅读列：限宽居中 + 内边距。挂在 div 上而不是 body——qlitehtml 里 body
+   尺寸恒等于视口，body 上的限宽与自动边距不可靠 */
+.md-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 48px;
+}
+
+h1 { font-size: 28px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+h2 { font-size: 22px; }
+h3 { font-size: 18px; }
+h4, h5, h6 { font-size: 16px; }
+
+p { margin: 12px 0; }
+ul, ol { margin: 12px 0; padding-left: 24px; }
+
+code {
+  background: #f2f2f2;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+pre {
+  background: #f6f8fa;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  /* 长行折行：不折的话 qlitehtml 会把超出容器的部分直接裁掉（右侧看不到），
+     页面还会出横向滚动条 */
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  /* 定死行高：中文 glyph 比拉丁高，行高跟着字体走时注释块会互相压住、
+     底部被裁；断词让超长 token（长标识符/URL）也能折 */
+  line-height: 20px;
+  color: #24292e;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+blockquote {
+  border-left: 4px solid #d0d0d0;
+  margin: 8px 0;
+  padding: 0 12px;
+  color: #666666;
+}
+
+table { border-collapse: collapse; margin: 10px 0; }
+th, td { border: 1px solid #dddddd; padding: 6px 10px; }
+th { background: #f6f8fa; }
+
+img { max-width: 100%; }
+hr { border: 0; border-top: 1px solid #e0e0e0; margin: 16px 0; }
+a { color: #5b21b6; }
+
+/* 打不开文件、解析失败之类的提示 */
+.error { color: #b91c1c; }
+
+/* 代码块外框：header（语言标签 + 复制链接）+ 代码本体 */
+.code-wrap {
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.code-header {
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #57606a;
+  line-height: 20px;
+}
+.code-lang { font-family: Consolas, "Courier New", monospace; }
+a.copy-btn {
+  float: right;
+  padding: 1px 10px;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  color: #57606a;
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 18px;
+}
+.code-wrap pre {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* 行号模式：每行一个 <tr>；关闭行号时仍是 <pre><code>。
+   悬挂缩进让折行续行右移 2em，明确"这是续行" */
+.md-code {
+  width: 100%;
+  padding: 10px 0;
+  background: #f6f8fa;
+  border-collapse: collapse;
+}
+.md-code td {
+  border: none;
+  padding: 0;
+  vertical-align: top;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: #24292e;
+}
+.md-code .md-code-ln {
+  width: 1%;
+  padding: 0 10px 0 12px;
+  text-align: right;
+  color: #8c959f;
+  white-space: nowrap;
+}
+.md-code .md-code-line {
+  padding: 0 12px 0 4px;
+  padding-left: 2em;
+  text-indent: -2em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 公式：行内的随文排；独立的居中成块。公式是 QuickJS 里 MathJax 渲出来的图，
+   宽高按 1x 摆、位图按 2x 画，所以边缘是锐的 */
+.math-display { display: block; margin: 10px auto; }
+/* 公式渲染失败时退回显示的原文 */
+.math-src { color: #b91c1c; }
+
+/* mermaid：图已内联为 PNG，居中、别撑破预览宽度 */
+.mermaid-wrap { text-align: center; margin: 12px 0; }
+img.mermaid { max-width: 100%; height: auto; }
+
+/* 代码高亮配色：GitHub Light 2023 色板，类别按 highlight_entry.js 的
+   CLASS_MAP 拆细。改配色只动这里 */
+.kw  { color: #cf222e; }                     /* if/for/return… */
+.ty  { color: #cf222e; }                     /* int/char… */
+.bi  { color: #8250df; }                     /* 函数调用、内建类型名 */
+.fn  { color: #8250df; }                     /* 函数定义名 */
+.tt  { color: #8250df; }                     /* 类名/标题 */
+.lit { color: #0550ae; }                     /* true/false/nullptr */
+.var { color: #953800; }                     /* 变量、参数 */
+.str { color: #0a3069; }                     /* 字符串 */
+.re  { color: #0a3069; }                     /* 正则 */
+.num { color: #0550ae; }                     /* 数字 */
+/* 注释不设 italic：CJK 没有真斜体，Qt 会做合成 oblique，中文被剪切得又歪又扁 */
+.cmt { color: #6e7781; } /* 注释 */
+.meta{ color: #0550ae; }                     /* #include 等 */
+.attr{ color: #0550ae; }                     /* 属性/键 */
+.tag { color: #116329; }                     /* HTML 标签 */
+.sel { color: #0550ae; }                     /* CSS 选择器 */
+.sym { color: #953800; }                     /* 符号 */
+.op  { color: #24292f; }                     /* 操作符/标点，跟正文一档，不抢眼 */

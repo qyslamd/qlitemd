@@ -1,0 +1,36 @@
+qlitehtml: expose anchorY(name) so callers can query a heading document Y
+coordinate without scrolling. Returns -1 when the anchor is missing, matching
+DocumentContainer::anchorY().
+
+diff --git a/src/qlitehtmlwidget.cpp b/src/qlitehtmlwidget.cpp
+index e17ab36..90aadfd 100644
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -557,6 +557,13 @@ void QLiteHtmlWidget::scrollToAnchor(const QString &name)
+         verticalScrollBar()->setValue(std::min(y, verticalScrollBar()->maximum()));
+ }
+ 
++int QLiteHtmlWidget::anchorY(const QString &name) const
++{
++    if (!d->documentContainer.hasDocument())
++        return -1;
++    return d->documentContainer.anchorY(name);
++}
++
+ void QLiteHtmlWidget::setResourceHandler(const QLiteHtmlWidget::ResourceHandler &handler)
+ {
+     d->documentContainer.setDataCallback(handler);
+diff --git a/src/qlitehtmlwidget.h b/src/qlitehtmlwidget.h
+index e60098a..569cfa4 100644
+--- a/src/qlitehtmlwidget.h
++++ b/src/qlitehtmlwidget.h
+@@ -43,6 +43,9 @@ public:
+     void setAntialias(bool on);
+ 
+     void scrollToAnchor(const QString &name);
++    // Document Y coordinate of the named anchor, or -1 if not found.
++    // Same semantics as DocumentContainer::anchorY().
++    int anchorY(const QString &name) const;
+ 
+     using ResourceHandler = std::function<QByteArray(QUrl)>;
+     void setResourceHandler(const ResourceHandler &handler);

@@ -1,0 +1,29 @@
+Third-Party Notices
+
+qlitemd own source code is licensed under the MIT License (see LICENSE).
+
+This distribution includes or links against the following third-party
+components. Their licenses remain in effect for those components.
+
+- qlitehtml: BSD-3-Clause
+- litehtml: BSD-3-Clause
+- md4c: MIT
+- QuickJS: MIT
+- QWindowKit: Apache-2.0
+- qmsetup: MIT
+- FluentUIStyle: MIT
+- spdlog: MIT
+- GoogleTest: BSD-3-Clause
+- MathJax: Apache-2.0
+- Mermaid: MIT
+- highlight.js: BSD-3-Clause
+
+Qt is an external dependency and is not vendored. Qt 5.15 is available
+under the LGPLv3/GPLv3/commercial licenses; users must comply with the
+Qt license that applies to their Qt installation.
+
+The Microsoft Segoe Fluent Icons font is not distributed with qlitemd.
+FluentUIStyle falls back to a system-installed font when present.
+
+Full license texts are kept alongside the vendored sources under
+3rdparty/*/LICENSE or 3rdparty/*/LICENSES.

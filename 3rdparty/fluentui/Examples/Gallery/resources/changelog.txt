@@ -1,0 +1,107 @@
+【更新内容2026-9-18】
+1. 新增 ExFontIcon 字体图标组件，提供完整的 Windows 11 Segoe Fluent Icons 枚举（1403项）与单例支持
+2. 全面消除 ExWidgets 各控件内部字体图标硬编码，统一规范为 ExFontIcon 接口体系
+3. ExTour 漫游引导控件关闭按钮改用原生矢量文字渲染，解决高分屏（DPI 缩放）下图标模糊问题并自动跟随主题调色板
+4. ExTour 优化按键交互（避免聚焦卡片按钮时被顶层遮罩截胡）、小三角内外边距联动与卡片尺寸自适应
+5. ExBreadcrumbBar 面包屑导航增加 setItems(const QStringList&) 数据源便捷接口，修复溢出菜单动作动态分配时的内存累积隐患
+6. ExExpander 展开箭头接入 FluentUI3Colors 标准配色，修复浅色主题下悬停与按下背景不明显的问题
+
+【更新内容2026-9-11】
+1. 新增 ExBreadcrumbBar 面包屑导航与 ExTeachingTip 教学引导提示控件
+2. ExTeachingTip 支持多方位自适应停靠、多层柔和阴影、尾巴绘制与打开缩放动画
+3. Gallery 新增面包屑与向导提示演示页（PageNavigationHint），支持分步操作引导（Tour）演示
+4. 新增 Qt Creator IDE 扩展插件构建选项（BUILD_QTCREATOR_PLUGIN）
+
+【更新内容2026-8-17】
+1. 新增 ExInfoBar 消息通知条控件，支持多种消息类型与自定义目标挂载
+2. 新增 ExExpander 折叠/展开面板控件，支持多内容组合
+3. 新增基于 PySide6 的 Gallery 演示项目（位于 PyExamples），还原 C++ 版本动态交互特性
+4. 新增对 Qt 5.12 版本的编译与高 DPI 适配支持
+5. 优化 QWindowKit 为本地源码引入，并在各支持的 Qt 版本中默认启用无边框组件
+
+【更新内容2026-8-10】
+1.新增 ExBorderBeam / ExBorderBeamButton 动态渐变边框控件，支持 Light / Dark 主题、方向、光束数量与颜色配置
+2.新增 ExAudioLevelMeter 音频电平表控件，支持多声道、dBFS 刻度、峰值保持与衰减动画
+3.Gallery 新增 ExAudioLevelMeter 展示页，支持本地音乐播放、进度调节和音量控制
+4.使用解码后的实时 PCM 电平联动单声道、立体声及实时属性预览
+5.ExAudioLevelMeter 新增 Light / Dark 两套默认配色并支持主题自动切换
+6.ExAudioLevelMeter 实时属性编辑器改为基础、刻度、动画、颜色四个 Tab 页
+7.修复 Qt 6.8+ 菜单与下拉弹窗外阴影显示问题
+
+【更新内容2026-8-6】
+1.新增支持水平/垂直布局的 ExTimeline 时间轴控件
+2.扩展 ExRadialGauge 仪表盘功能
+3.新增多数据仪表盘与进度环控件
+4.新增 ExLiquidGauge 水波图控件
+5.ExTimerDial 改为继承 QProgressBar
+6.Gallery 新增控件展示、更新日志与系统监视页
+7.示例工程统一迁移到 Examples 目录
+8.完善 ExWidgets 无边框组件与安装配置
+9.修复弹窗定位及页面切换问题
+
+【更新内容2026-7-29】
+1.新增 ExComboBox 控件（自带下拉展开/收起动画，不受 Style 全局 ComboBox 动画属性控制）
+2.QComboBox 新增下拉展开动画（comboBoxPopupDropDownAnimationEnabled，支持 qApp 总开关与单控件局部控制）
+3.QMenu 新增弹出动画（menuPopupAnimationEnabled，规则同 ComboBox）
+4.修复 QComboBox 下拉面板透明度问题（背景填充）
+5.新增 ExSpectrumWidget 频谱控件；Qt 5 Gallery 以模拟 PCM 数据演示
+6.调整全局二级圆角（secondLevelRoundingRadius）及 QComboBox 填充色；统一左侧蓝色指示条尺寸与圆角
+7.修复 QTreeView 选中/悬浮背景未绘制到缩进区域
+8.修复 Qt 6.8+ QProgressBar Ring 矩形错误、QScrollBar 箭头尺寸错误
+9.QWindowKit 改为 Git 子模块引入；明确 CMake 为唯一维护的构建方式；按 Qt 版本条件启用无边框窗口
+
+【更新内容2026-7-1】
+1.集成 QWindowKit 无边框窗口，新增 FluentTitleBar / FluentWindowFrame 自定义标题栏
+2.窗口背景支持 DWM Blur、Acrylic、Mica、Mica Alt 四种 backdrop 模式
+3.Gallery 新增标题栏搜索框示例
+4.新增 ExRangeSlider 双滑块范围选择控件（WinUI3 风格）
+5.QSlider 与 ExRangeSlider 拖动时显示数值 tooltip（可经 showValueTip 关闭）
+6.QDial 新增 WinUI3 风格样式：DialDots / DialRing / DialThumb（经 dialStyle 属性切换，可选 dialDrawValue 显示当前值）
+7.新增 ExColorPicker / ExColorPickerButton（WinUI3 CommunityToolkit 风格取色控件）
+8.新增 ExMessageBox（基于 QMessageBox 的 WinUI3 风格消息弹窗）
+9.Gallery 集成 Audiomatic Mini Player（本地播放、频谱可视化、Jamendo 在线音乐）
+
+【更新内容2026-5-9】
+1.新增WinUI3导航控件
+2.SwtichButton完善动画效果
+3.TabBar新增Segmented_WinUI3样式
+4.TabBar(Segmented)可自定义圆角和背景、选中等属性
+5.Gallery新增图片背景模式
+6.QScrollBar增加鼠标进入动画
+7.TableView重构样式
+8.按钮增加淡入淡出
+9.优化其他显示效果
+
+【更新内容2026-4-10】
+1.新增ProgressBar样式(Ring和Thick)
+2.QComboBox弹窗位置与WinUI3一致
+3.修复Qt5.15.2无AccentColor问题
+4.新增Teams配色
+5.部分控件边框优化
+6.全局部分控件右键菜单新增图标
+7.优化项目结构，CMake和QMake引入工程更方便
+
+【更新内容2026-4-2】
+1.QComboBox修改下拉黑框，新增阴影和箭头动画
+2.QTreeView新增FluentUI导航控件样式
+3.QTabBar新增多种 Pivot FluentUI导航样式
+4.QListView新增选中指示器动画
+5.QLineEdit底边线新增动画
+6.其他特性和修复问题
+
+【更新内容2026-3-20】
+1. 菜单新增阴影
+2. SpinBox新增多种按钮布局
+3. 新增SwitchButton按钮(QCheckBox设置属性)
+4. TabBar 浏览器标签样式
+5  QToolButton菜单箭头新增动画
+
+【更新内容2026-03-10】
+1. 优化代码
+2. 优化显示
+3. 修复其他问题
+
+【更新内容2026-03-06】
+1. 新增主题切换（亮色和暗色）
+2. 适配Qt5.15.2
+3. 修复其他问题

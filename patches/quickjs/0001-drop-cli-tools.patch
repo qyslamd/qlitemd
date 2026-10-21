@@ -1,0 +1,56 @@
+Drop the six command line tools from the default build.
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -364,7 +364,7 @@
+ # QuickJS bytecode compiler
+ #
+ 
+-add_executable(qjsc
++add_executable(qjsc EXCLUDE_FROM_ALL
+     qjsc.c
+ )
+ add_qjs_libc_if_needed(qjsc)
+@@ -376,7 +376,7 @@
+ # QuickJS CLI
+ #
+ 
+-add_executable(qjs_exe
++add_executable(qjs_exe EXCLUDE_FROM_ALL
+     gen/repl.c
+     gen/standalone.c
+     qjs.c
+@@ -438,7 +438,7 @@
+ #
+ 
+ if(NOT EMSCRIPTEN)
+-    add_executable(run-test262
++    add_executable(run-test262 EXCLUDE_FROM_ALL
+         run-test262.c
+     )
+     add_qjs_libc_if_needed(run-test262)
+@@ -449,14 +449,14 @@
+ # C API tests
+ #
+ 
+-add_executable(api-test
++add_executable(api-test EXCLUDE_FROM_ALL
+     api-test.c
+ )
+ target_compile_definitions(api-test PRIVATE ${qjs_defines})
+ target_link_libraries(api-test PRIVATE qjs)
+ add_qjs_libc_if_needed(api-test)
+ 
+-add_executable(lre-test
++add_executable(lre-test EXCLUDE_FROM_ALL
+     lre-test.c
+     libregexp.c
+     libunicode.c
+@@ -473,7 +473,7 @@
+ )
+ target_compile_definitions(unicode_gen PRIVATE ${qjs_defines})
+ 
+-add_executable(function_source
++add_executable(function_source EXCLUDE_FROM_ALL
+     gen/function_source.c
+ )
+ add_qjs_libc_if_needed(function_source)

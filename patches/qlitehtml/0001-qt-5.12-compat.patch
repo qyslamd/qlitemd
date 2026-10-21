@@ -1,0 +1,30 @@
+Qt 5.12 compatibility: upstream calls Qt 5.14's Qt::SkipEmptyParts and
+Qt 5.13's QFont::setFamilies without a version guard. Ubuntu 20.04 ships
+Qt 5.12.8, which is exactly what the Linux build guide tells people to use.
+--- a/src/container_qpainter.cpp
++++ b/src/container_qpainter.cpp
+@@ -496,7 +496,11 @@
+                                                          litehtml::font_metrics *fm)
+ {
+     Q_UNUSED(doc)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+     const QStringList splitNames = QString::fromStdString(descr.family).split(',', Qt::SkipEmptyParts);
++#else
++    const QStringList splitNames = QString::fromStdString(descr.family).split(',', QString::SkipEmptyParts);
++#endif
+     QStringList familyNames;
+     std::transform(splitNames.cbegin(),
+                    splitNames.cend(),
+@@ -518,7 +522,12 @@
+                        return name;
+                    });
+     auto font = new QFont();
++#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
+     font->setFamilies(familyNames);
++#else
++    if (!familyNames.isEmpty())
++        font->setFamily(familyNames.first());
++#endif
+     font->setPixelSize(descr.size);
+     font->setWeight(cssWeightToQtWeight(descr.weight));
+     font->setStyle(toQFontStyle(descr.style));

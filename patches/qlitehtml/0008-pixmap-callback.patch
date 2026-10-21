@@ -1,0 +1,204 @@
+qlitehtml: add a QPixmap provider for document images.
+
+load_image() currently always asks the data callback for bytes and decodes
+them with QPixmap::loadFromData(). Hosts that already hold decoded pixmaps
+(e.g. Markdown formula/diagram images generated as QImages) pay an
+unnecessary PNG/base64 round trip on every setDocument().
+
+Let the host install a pixmap callback. It is consulted before the data
+callback; a null pixmap falls back to the existing byte path. The callback
+is copied into the temporary container used by print(), so token-based
+images survive PDF export.
+
+Images served by the callback are static: loadAnimation() is skipped by
+design. Animated images must keep using the data callback.
+
+--- a/src/container_qpainter.h
++++ b/src/container_qpainter.h
+@@ -8,6 +8,7 @@
+ #include <QByteArray>
+ #include <QPaintDevice>
+ #include <QPainter>
++#include <QPixmap>
+ #include <QPoint>
+ #include <QRect>
+ #include <QString>
+@@ -111,6 +112,10 @@
+     void setDataCallback(const DataCallback &callback);
+     DataCallback dataCallback() const;
+ 
++    using PixmapCallBack = std::function<QPixmap(const QUrl &)>;
++    void setPixmapCallBack(const PixmapCallBack &callback);
++    PixmapCallBack pixmapCallBack() const;
++
+     using CursorCallback = std::function<void(QCursor)>;
+     void setCursorCallback(const CursorCallback &callback);
+ 
+--- a/src/container_qpainter_p.h
++++ b/src/container_qpainter_p.h
+@@ -188,6 +188,7 @@
+     QObject m_animationContext;
+     Selection m_selection;
+     DocumentContainer::DataCallback m_dataCallback;
++    DocumentContainer::PixmapCallBack pixmap_callback_;
+     DocumentContainer::CursorCallback m_cursorCallback;
+     DocumentContainer::LinkCallback m_linkCallback;
+     DocumentContainer::PaletteCallback m_paletteCallback;
+--- a/src/container_qpainter.cpp
++++ b/src/container_qpainter.cpp
+@@ -496,11 +496,11 @@
+                                                          litehtml::font_metrics *fm)
+ {
+     Q_UNUSED(doc)
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+     const QStringList splitNames = QString::fromStdString(descr.family).split(',', Qt::SkipEmptyParts);
+-#else
+-    const QStringList splitNames = QString::fromStdString(descr.family).split(',', QString::SkipEmptyParts);
+-#endif
++#else
++    const QStringList splitNames = QString::fromStdString(descr.family).split(',', QString::SkipEmptyParts);
++#endif
+     QStringList familyNames;
+     std::transform(splitNames.cbegin(),
+                    splitNames.cend(),
+@@ -522,12 +522,12 @@
+                        return name;
+                    });
+     auto font = new QFont();
+-#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
++#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
+     font->setFamilies(familyNames);
+-#else
+-    if (!familyNames.isEmpty())
+-        font->setFamily(familyNames.first());
+-#endif
++#else
++    if (!familyNames.isEmpty())
++        font->setFamily(familyNames.first());
++#endif
+     font->setPixelSize(descr.size);
+     font->setWeight(cssWeightToQtWeight(descr.weight));
+     font->setStyle(toQFontStyle(descr.style));
+@@ -637,6 +637,14 @@
+     if (m_pixmaps.contains(url))
+         return;
+ 
++    if (pixmap_callback_) {
++        const QPixmap pixmap = pixmap_callback_(url);
++        if (!pixmap.isNull()) {
++            m_pixmaps.insert(url, pixmap);
++            return;
++        }
++    }
++
+     const QByteArray data = m_dataCallback(url);
+     QPixmap pixmap;
+     pixmap.loadFromData(data);
+@@ -1568,6 +1576,16 @@
+     return d->m_dataCallback;
+ }
+ 
++void DocumentContainer::setPixmapCallBack(const DocumentContainer::PixmapCallBack &callback)
++{
++    d->pixmap_callback_ = callback;
++}
++
++DocumentContainer::PixmapCallBack DocumentContainer::pixmapCallBack() const
++{
++    return d->pixmap_callback_;
++}
++
+ void DocumentContainer::setCursorCallback(const DocumentContainer::CursorCallback &callback)
+ {
+     d->m_cursorCallback = callback;
+--- a/src/qlitehtmlwidget.h
++++ b/src/qlitehtmlwidget.h
+@@ -6,6 +6,7 @@
+ #include "qlitehtml_global.h"
+ 
+ #include <QAbstractScrollArea>
++#include <QPixmap>
+ #include <QTextDocument>
+ 
+ QT_FORWARD_DECLARE_CLASS(QPrinter)
+@@ -32,16 +33,16 @@
+ 
+     void setZoomFactor(qreal scale);
+     qreal zoomFactor() const;
+-    // Changes the zoom factor without rendering. The next setHtml() lays out
+-    // with the new factor, so swapping documents costs no extra layout.
+-    void setZoomFactorWithoutRender(qreal scale);
+-
+-    // Number of full litehtml layouts performed so far; used by tests and by
+-    // clients that need to know whether cached document geometry is stale.
+-    Q_INVOKABLE int layoutCount() const;
+-    // Document height in virtual (unzoomed) pixels; 0 when there is no
+-    // document.
+-    Q_INVOKABLE int documentHeight() const;
++    // Changes the zoom factor without rendering. The next setHtml() lays out
++    // with the new factor, so swapping documents costs no extra layout.
++    void setZoomFactorWithoutRender(qreal scale);
++
++    // Number of full litehtml layouts performed so far; used by tests and by
++    // clients that need to know whether cached document geometry is stale.
++    Q_INVOKABLE int layoutCount() const;
++    // Document height in virtual (unzoomed) pixels; 0 when there is no
++    // document.
++    Q_INVOKABLE int documentHeight() const;
+ 
+     bool findText(const QString &text,
+                   QTextDocument::FindFlags flags,
+@@ -53,13 +54,16 @@
+     void setAntialias(bool on);
+ 
+     void scrollToAnchor(const QString &name);
+-    // Document Y coordinate of the named anchor, or -1 if not found.
+-    // Same semantics as DocumentContainer::anchorY().
+-    int anchorY(const QString &name) const;
++    // Document Y coordinate of the named anchor, or -1 if not found.
++    // Same semantics as DocumentContainer::anchorY().
++    int anchorY(const QString &name) const;
+ 
+     using ResourceHandler = std::function<QByteArray(QUrl)>;
+     void setResourceHandler(const ResourceHandler &handler);
+ 
++    using PixmapCallBack = std::function<QPixmap(const QUrl &)>;
++    void setPixmapCallBack(const PixmapCallBack &callback);
++
+     // declaring this Q_INVOKABLE to make it Squish-testable
+     Q_INVOKABLE QString selectedText() const;
+ 
+@@ -88,8 +92,8 @@
+     void setHightlightedLink(const QUrl &url);
+     void withFixedTextPosition(const std::function<void()> &action);
+     void render();
+-    int layoutWidth() const;
+-    void updateScrollBars();
++    int layoutWidth() const;
++    void updateScrollBars();
+     QPoint scrollPosition() const;
+     void htmlPos(const QPoint &pos, QPoint *viewportPos, QPoint *htmlPos) const;
+     QPoint toVirtual(const QPoint &p) const;
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -643,6 +643,11 @@
+     d->documentContainer.setDataCallback(handler);
+ }
+ 
++void QLiteHtmlWidget::setPixmapCallBack(const QLiteHtmlWidget::PixmapCallBack &callback)
++{
++    d->documentContainer.setPixmapCallBack(callback);
++}
++
+ QString QLiteHtmlWidget::selectedText() const
+ {
+     return d->documentContainer.selectedText();
+@@ -658,6 +663,7 @@
+     DocumentContainer dc;
+     dc.setDataCallback(d->documentContainer.dataCallback());
+     dc.setPaletteCallback(d->documentContainer.paletteCallback());
++    dc.setPixmapCallBack(d->documentContainer.pixmapCallBack());
+     dc.setDefaultFont(d->documentContainer.defaultFont());
+     dc.setPaintDevice(printer);
+     dc.setBaseUrl(d->documentContainer.baseUrl());

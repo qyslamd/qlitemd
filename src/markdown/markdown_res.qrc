@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/markdown">
+        <!-- 主题样式表。markdown_default.css 是旧别名，指向 Light，保持既有
+             调用点（测试、诊断脚本）可读 -->
+        <file alias="markdown_default.css">../../resources/themes/light.css</file>
+        <file alias="themes/light.css">../../resources/themes/light.css</file>
+        <file alias="themes/dark.css">../../resources/themes/dark.css</file>
+        <!-- 五份 JS 载荷已改由 qjsc 在构建期预编译成字节码 C 数组（见
+             CMakeLists.txt 的 qjsc 段与 markdown_bytecode.h），不再进 qrc。
+             评估数据见 docs/eval/Markdown渲染qjsc预编译评估.md -->
+    </qresource>
+</RCC>

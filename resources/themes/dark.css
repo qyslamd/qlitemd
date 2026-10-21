@@ -1,0 +1,162 @@
+/* Markdown 预览的 Dark 主题。配色对齐 GitHub Dark：
+   正文 #e6edf3，背景 #0d1117，代码块 #161b22。结构与 light.css 一致，
+   只改颜色；类名契约见 code_highlighter.h 与 highlight_entry.js */
+
+html { background-color: #0d1117; }
+
+body {
+  background-color: #0d1117;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #e6edf3;
+  margin: 0;
+}
+
+/* 阅读列：限宽居中 + 内边距。挂在 div 上而不是 body——qlitehtml 里 body
+   尺寸恒等于视口，body 上的限宽与自动边距不可靠 */
+.md-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 48px;
+}
+
+h1 { font-size: 28px; border-bottom: 1px solid #30363d; padding-bottom: 6px; }
+h2 { font-size: 22px; }
+h3 { font-size: 18px; }
+h4, h5, h6 { font-size: 16px; }
+
+p { margin: 12px 0; }
+ul, ol { margin: 12px 0; padding-left: 24px; }
+
+code {
+  background: #2d333b;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: Consolas, "Courier New", monospace;
+  color: #e6edf3;
+}
+
+pre {
+  background: #161b22;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: #e6edf3;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+blockquote {
+  border-left: 4px solid #3d444d;
+  margin: 8px 0;
+  padding: 0 12px;
+  color: #9198a1;
+}
+
+table { border-collapse: collapse; margin: 10px 0; }
+th, td { border: 1px solid #3d444d; padding: 6px 10px; }
+th { background: #161b22; }
+
+img { max-width: 100%; }
+hr { border: 0; border-top: 1px solid #30363d; margin: 16px 0; }
+a { color: #4493f8; }
+
+.error { color: #f85149; }
+
+.code-wrap {
+  border: 1px solid #3d444d;
+  border-radius: 6px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.code-header {
+  background: #161b22;
+  border-bottom: 1px solid #3d444d;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #9198a1;
+  line-height: 20px;
+}
+.code-lang { font-family: Consolas, "Courier New", monospace; }
+a.copy-btn {
+  float: right;
+  padding: 1px 10px;
+  background: #21262d;
+  border: 1px solid #3d444d;
+  border-radius: 4px;
+  color: #e6edf3;
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 18px;
+}
+.code-wrap pre {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+
+.md-code {
+  width: 100%;
+  padding: 10px 0;
+  background: #161b22;
+  border-collapse: collapse;
+}
+.md-code td {
+  border: none;
+  padding: 0;
+  vertical-align: top;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 20px;
+  color: #e6edf3;
+}
+.md-code .md-code-ln {
+  width: 1%;
+  padding: 0 10px 0 12px;
+  text-align: right;
+  color: #6e7681;
+  white-space: nowrap;
+}
+.md-code .md-code-line {
+  padding: 0 12px 0 4px;
+  padding-left: 2em;
+  text-indent: -2em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.math-display { display: block; margin: 10px auto; }
+.math-src { color: #f85149; }
+
+.mermaid-wrap { text-align: center; margin: 12px 0; }
+img.mermaid { max-width: 100%; height: auto; }
+
+/* 代码高亮：GitHub Dark 色板 */
+.kw  { color: #ff7b72; }
+.ty  { color: #ff7b72; }
+.bi  { color: #d2a8ff; }
+.fn  { color: #d2a8ff; }
+.tt  { color: #d2a8ff; }
+.lit { color: #79c0ff; }
+.var { color: #ffa657; }
+.str { color: #a5d6ff; }
+.re  { color: #a5d6ff; }
+.num { color: #79c0ff; }
+.cmt { color: #8b949e; }
+.meta{ color: #79c0ff; }
+.attr{ color: #79c0ff; }
+.tag { color: #7ee787; }
+.sel { color: #79c0ff; }
+.sym { color: #ffa657; }
+.op  { color: #e6edf3; }

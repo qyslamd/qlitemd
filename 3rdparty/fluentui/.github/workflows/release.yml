@@ -1,0 +1,230 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+*'
+      - 'v[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. 4.0)'
+        required: false
+        default: '4.0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / Qt 6.8.3 / MSVC
+            os: windows-2022
+            qt-version: 6.8.3
+            qt-arch: win64_msvc2022_64
+            qt-modules: qtmultimedia
+            generator: Visual Studio 17 2022
+            configure-args: -A x64
+            package-suffix: Windows-Qt6.8.3-x64
+
+          - name: Windows / Qt 5.15.2 / MSVC
+            os: windows-2022
+            qt-version: 5.15.2
+            qt-arch: win64_msvc2019_64
+            qt-modules: ""
+            generator: Visual Studio 17 2022
+            configure-args: -A x64
+            package-suffix: Windows-Qt5.15.2-x64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Determine Release Tag
+        id: tag_info
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.tag_name }}" -ne "") {
+              $tag = "${{ inputs.tag_name }}"
+          }
+          Write-Host "Release Tag: $tag"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: ${{ matrix.qt-version }}
+          arch: ${{ matrix.qt-arch }}
+          modules: ${{ matrix.qt-modules }}
+          cache: true
+          cache-key-prefix: qt-${{ matrix.os }}-${{ matrix.qt-version }}-${{ matrix.qt-arch }}
+          setup-python: false
+
+      - name: Configure CMake
+        run: >-
+          cmake -S . -B build
+          -G "${{ matrix.generator }}"
+          ${{ matrix.configure-args }}
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_LIBRARY=ON
+          -DBUILD_PLUGIN=ON
+          -DBUILD_EXAMPLES=ON
+          -DBUILD_FRAMELESS=ON
+          -DBUILD_QTCREATOR_PLUGIN=OFF
+          -DEXWIDGETS_BUILD_TESTS=OFF
+          -DFLUENTUI3STYLE_COPY_TO_QT_DIR=OFF
+          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/stage"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Install to Stage
+        run: cmake --install build --config Release --prefix "${{ github.workspace }}/stage"
+
+      - name: Package SDK
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.tag_info.outputs.tag }}"
+          $sdkZipName = "FluentUI3-SDK-$tag-${{ matrix.package-suffix }}.zip"
+          Compress-Archive -Path "${{ github.workspace }}/stage/*" -DestinationPath "${{ github.workspace }}/$sdkZipName"
+          Write-Host "Created SDK Package: $sdkZipName"
+
+      - name: Package Gallery Portable
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.tag_info.outputs.tag }}"
+          $galleryDir = "${{ github.workspace }}/package_gallery"
+          New-Item -ItemType Directory -Path $galleryDir -Force | Out-Null
+
+          # 定位生成二进制目录（处理 Visual Studio 默认按配置输出子目录的情况）
+          $binDir = "${{ github.workspace }}/build/bin"
+          if (Test-Path "$binDir/Release/Gallery.exe") {
+              $binDir = "$binDir/Release"
+          }
+
+          Write-Host "Copying runtime binaries from: $binDir"
+          # 复制主要可执行程序与依赖 DLL
+          Copy-Item "$binDir/*.exe" -Destination $galleryDir -Force
+          Copy-Item "$binDir/*.dll" -Destination $galleryDir -Force
+
+          # 复制样式插件目录
+          $stylesSourceDir = "$binDir/plugins/styles"
+          if (-not (Test-Path $stylesSourceDir)) {
+              $stylesSourceDir = "$binDir/styles"
+          }
+          if (Test-Path $stylesSourceDir) {
+              $targetStyles = "$galleryDir/styles"
+              New-Item -ItemType Directory -Path $targetStyles -Force | Out-Null
+              Copy-Item "$stylesSourceDir/*.dll" -Destination $targetStyles -Force
+              
+              # 同时备用 plugins/styles 目录，确保各种加载方式都能找到插件
+              $targetPluginsStyles = "$galleryDir/plugins/styles"
+              New-Item -ItemType Directory -Path $targetPluginsStyles -Force | Out-Null
+              Copy-Item "$stylesSourceDir/*.dll" -Destination $targetPluginsStyles -Force
+          }
+
+          # 运行 windeployqt 自动补全所有 Qt 运行环境
+          $galleryExe = "$galleryDir/Gallery.exe"
+          Write-Host "Running windeployqt on $galleryExe..."
+          $windeployCmd = Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $windeployCmd) {
+              $windeployCmd = (Get-ChildItem -Path "$env:RUNNER_TEMP", "C:/Qt", "D:/a" -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          }
+          if ($windeployCmd) {
+              Write-Host "Found windeployqt: $windeployCmd"
+              & $windeployCmd --release --no-translations --compiler-runtime "$galleryExe"
+          } else {
+              windeployqt.exe --release --no-translations --compiler-runtime "$galleryExe"
+          }
+
+          # 压缩为 Portable 绿色包
+          $galleryZipName = "FluentUI3-Gallery-$tag-${{ matrix.package-suffix }}.zip"
+          Compress-Archive -Path "$galleryDir/*" -DestinationPath "${{ github.workspace }}/$galleryZipName"
+          Write-Host "Created Gallery Portable Package: $galleryZipName"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.package-suffix }}
+          path: "${{ github.workspace }}/*.zip"
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Determine Release Tag
+        id: tag_info
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Extract Release Notes from changelog.txt
+        id: release_notes
+        shell: pwsh
+        run: |
+          $changelogFile = "Examples/Gallery/resources/changelog.txt"
+          if (Test-Path $changelogFile) {
+              $content = Get-Content $changelogFile -Raw -Encoding UTF8
+              if ($content -match '(?s)(【更新内容[^】]+】.*?)(?=\r?\n【更新内容|\z)') {
+                  $notes = $matches[1].Trim()
+              } else {
+                  $notes = "FluentUI3Style & ExWidgets Release ${{ steps.tag_info.outputs.tag }}"
+              }
+          } else {
+              $notes = "FluentUI3Style & ExWidgets Release ${{ steps.tag_info.outputs.tag }}"
+          }
+          Set-Content -Path "release_notes.md" -Value $notes -Encoding UTF8
+          Write-Host "Extracted Release Notes:"
+          Write-Host $notes
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+          merge-multiple: true
+
+      - name: List Release Assets
+        shell: bash
+        run: |
+          ls -la release_assets/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "FluentUI3Style ${{ steps.tag_info.outputs.tag }}"
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          body_path: release_notes.md
+          files: release_assets/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

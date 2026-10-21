@@ -1,0 +1,13 @@
+build/
+build-*/
+install/
+dist/
+temp/
+*.user
+*.user.*
+*.suo
+*.VC.db
+*.VC.VC.opendb
+.vs/
+.vscode/
+CMakeUserPresets.json

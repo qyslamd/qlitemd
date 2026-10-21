@@ -1,0 +1,39 @@
+qlitehtml: print with CSS-pixel layout and a scaled painter.
+
+print() passed QPrinter device pixels to DocumentContainer::render(), which
+expects CSS pixels (96 dpi). Under HighResolution (1200 dpi) text became
+microscopic and the pagination loop compared a device-pixel page height with
+a logical document height, producing a single page. Convert the page size to
+logical pixels and scale the painter by device/logical pixel ratio.
+
+diff --git a/src/qlitehtmlwidget.cpp b/src/qlitehtmlwidget.cpp
+index f8af12c..9f70751 100644
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -675,11 +675,22 @@ void QLiteHtmlWidget::print(QPrinter *printer)
+     dc.setDocument(d->html.toUtf8(), &d->context);
+ 
+     const QRect pageRect = printer->pageRect(QPrinter::DevicePixel).toRect();
+-    dc.render(pageRect.width(), pageRect.height());
+-
+-    QRect drawRect = pageRect;
+-    drawRect.moveTo(0, 0);
++    // qlitehtml lays out in CSS pixels (96 dpi), while the printer's device
++    // pixels can be much finer (HighResolution uses 1200 dpi). Lay out using
++    // the logical page size and scale the painter by device/logical pixels;
++    // passing device pixels to render() would make text microscopic and break
++    // pagination (device page height vs logical document height).
++    const qreal deviceToLogical =
++        printer->resolution() > 0 ? 96.0 / printer->resolution() : 1.0;
++    const QSize logicalPage(
++        qMax(1, qRound(pageRect.width() * deviceToLogical)),
++        qMax(1, qRound(pageRect.height() * deviceToLogical)));
++    dc.render(logicalPage.width(), logicalPage.height());
++
++    QRect drawRect(QPoint(0, 0), logicalPage);
+     painter.setClipping(true);
++    painter.scale(printer->resolution() / 96.0,
++                  printer->resolution() / 96.0);
+     painter.setClipRect(drawRect);
+ 
+     QPoint scrollPosition(0, 0);

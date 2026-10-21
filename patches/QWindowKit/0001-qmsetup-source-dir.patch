@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7776f4f..3a0ff8d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -109,7 +109,9 @@ find_package(qmsetup QUIET)
+ 
+ if(NOT TARGET qmsetup::library)
+     # Modify this variable according to your project structure
+-    set(_source_dir ${CMAKE_CURRENT_SOURCE_DIR}/qmsetup)
++    # 上游把 qmsetup 作为自带子模块（源码包里没有该目录），本仓把它当独立的
++    # 3rdparty 依赖解压，故指向解压出来的那份
++    set(_source_dir ${CMAKE_SOURCE_DIR}/3rdparty/qmsetup-4a3ff82)
+ 
+     # Import install function
+     include("${_source_dir}/cmake/modules/private/InstallPackage.cmake")

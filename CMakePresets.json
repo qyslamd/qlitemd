@@ -1,0 +1,62 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 19,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "qt5",
+      "displayName": "Qt 5 (library, tests, md_viewer)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "QLITEMD_QT_MAJOR": "5",
+        "QLITEMD_BUILD_MD_VIEWER": "ON",
+        "QLITEMD_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "qt6-library",
+      "displayName": "Qt 6 (library and tests only)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-qt6",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "QLITEMD_QT_MAJOR": "6",
+        "QLITEMD_BUILD_MD_VIEWER": "OFF",
+        "QLITEMD_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "qt5",
+      "configurePreset": "qt5"
+    },
+    {
+      "name": "qt6-library",
+      "configurePreset": "qt6-library"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "qt5",
+      "configurePreset": "qt5",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "qt6-library",
+      "configurePreset": "qt6-library",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

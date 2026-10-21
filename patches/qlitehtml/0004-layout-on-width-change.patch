@@ -1,0 +1,229 @@
+qlitehtml: skip the full re-layout when only the viewport height changes.
+
+Adds layoutCount()/documentHeight()/setZoomFactorWithoutRender() and splits
+resizeEvent: when the layout width is unchanged and the document does not
+depend on the viewport height (percentage heights, percentage top/bottom,
+CSS variables, fixed positioning), only scroll bar ranges are refreshed.
+setHtml() rescans the document every time, so the guard cannot go stale.
+
+diff --git a/src/qlitehtmlwidget.cpp b/src/qlitehtmlwidget.cpp
+index 90aadfd..f8af12c 100644
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -9,6 +9,7 @@
+ #include <QHelpEvent>
+ #include <QPaintEvent>
+ #include <QPainter>
++#include <QRegularExpression>
+ #include <QScrollBar>
+ #include <QStyle>
+ #include <QToolTip>
+@@ -21,6 +22,60 @@ QT_BEGIN_NAMESPACE
+ 
+ const int kScrollBarStep = 40;
+ 
++namespace {
++
++// Layout depends on the viewport height when the document uses percentage
++// heights, percentage top/bottom offsets, CSS variables holding either, or
++// fixed positioning. Strip code samples first: documentation often shows these
++// declarations as text and must not disable the fast path.
++bool ScanViewportDependent(const QString &html)
++{
++    static const QRegularExpression kPre(
++        QStringLiteral("<pre\\b[^>]*>.*?</pre>"),
++        QRegularExpression::CaseInsensitiveOption
++            | QRegularExpression::DotMatchesEverythingOption);
++    static const QRegularExpression kLineNumberCode(
++        QStringLiteral("<table\\b[^>]*class=\"md-code\"[^>]*>.*?</table>"),
++        QRegularExpression::CaseInsensitiveOption
++            | QRegularExpression::DotMatchesEverythingOption);
++    static const QRegularExpression kInlineCode(
++        QStringLiteral("<code\\b[^>]*>.*?</code>"),
++        QRegularExpression::CaseInsensitiveOption
++            | QRegularExpression::DotMatchesEverythingOption);
++    static const QRegularExpression kCssComment(
++        QStringLiteral("/\\*.*?\\*/"),
++        QRegularExpression::DotMatchesEverythingOption);
++    static const QRegularExpression kHtmlComment(
++        QStringLiteral("<!--.*?-->"),
++        QRegularExpression::DotMatchesEverythingOption);
++    static const QRegularExpression kHeightPercentage(
++        QStringLiteral("(?<![\\w-])(?:min-|max-)?height\\s*[:=]\\s*[\"']?\\s*[0-9.]+%"),
++        QRegularExpression::CaseInsensitiveOption);
++    static const QRegularExpression kTopBottomPercentage(
++        QStringLiteral("(?<![\\w-])(?:top|bottom)\\s*:\\s*[+-]?[0-9.]+%"),
++        QRegularExpression::CaseInsensitiveOption);
++    static const QRegularExpression kVar(
++        QStringLiteral("var\\s*\\("),
++        QRegularExpression::CaseInsensitiveOption);
++    static const QRegularExpression kFixed(
++        QStringLiteral("position\\s*:\\s*fixed"),
++        QRegularExpression::CaseInsensitiveOption);
++
++    QString text = html;
++    text.remove(kPre);
++    text.remove(kLineNumberCode);
++    text.remove(kInlineCode);
++    text.remove(kCssComment);
++    text.remove(kHtmlComment);
++    return text.contains(kHeightPercentage)
++        || text.contains(kTopBottomPercentage)
++        || text.contains(kVar)
++        || text.contains(kFixed);
++}
++
++} // namespace
++
++
+ // copied from include/litehtml/master_css.h
+ const char master_css[] = R"##(
+ html {
+@@ -403,6 +458,13 @@ public:
+     DocumentContainer documentContainer;
+     qreal zoomFactor = 1;
+     QUrl lastHighlightedLink;
++    // Width used by the last full layout. -1 means "not laid out yet": a
++    // computed width can legitimately be small, so 0 is not a safe sentinel.
++    int lastLayoutWidth = -1;
++    // Whether viewport height participates in layout (percentage heights,
++    // percentage top/bottom, CSS variables, fixed positioning).
++    bool heightAffectsLayout = false;
++    int layoutCount = 0;
+ };
+ 
+ QLiteHtmlWidget::QLiteHtmlWidget(QWidget *parent)
+@@ -461,6 +523,10 @@ QUrl QLiteHtmlWidget::url() const
+ void QLiteHtmlWidget::setHtml(const QString &content)
+ {
+     d->html = content;
++    // Recompute on every setHtml so the flag never goes stale; reset the
++    // width cache so an empty/failed document cannot take the fast path.
++    d->heightAffectsLayout = ScanViewportDependent(content);
++    d->lastLayoutWidth = -1;
+     d->documentContainer.setPaintDevice(viewport());
+     d->documentContainer.setDocument(content.toUtf8(), &d->context);
+     verticalScrollBar()->setValue(0);
+@@ -487,6 +553,24 @@ void QLiteHtmlWidget::setZoomFactor(qreal scale)
+     withFixedTextPosition([this] { render(); });
+ }
+ 
++void QLiteHtmlWidget::setZoomFactorWithoutRender(qreal scale)
++{
++    Q_ASSERT(scale != 0);
++    d->zoomFactor = scale;
++}
++
++int QLiteHtmlWidget::layoutCount() const
++{
++    return d->layoutCount;
++}
++
++int QLiteHtmlWidget::documentHeight() const
++{
++    if (!d->documentContainer.hasDocument())
++        return 0;
++    return d->documentContainer.documentHeight();
++}
++
+ qreal QLiteHtmlWidget::zoomFactor() const
+ {
+     return d->zoomFactor;
+@@ -629,6 +713,21 @@ void QLiteHtmlWidget::paintEvent(QPaintEvent *event)
+ 
+ void QLiteHtmlWidget::resizeEvent(QResizeEvent *event)
+ {
++    const int w = layoutWidth();
++    const bool canTakeFastPath = w > 0 && !d->heightAffectsLayout
++        && d->lastLayoutWidth >= 0 && d->documentContainer.hasDocument();
++    if (canTakeFastPath && w == d->lastLayoutWidth) {
++        // Height-only change: layout input did not change. The viewport must
++        // still follow the new geometry, then refresh scroll bar ranges and
++        // repaint. Do not use withFixedTextPosition(): it would align the
++        // view to a block and clamp, a pure side effect when nothing was
++        // laid out again.
++        QAbstractScrollArea::resizeEvent(event);
++        updateScrollBars();
++        return;
++    }
++    // Full path: identical to the original behavior, including position
++    // preservation around the base class resize.
+     withFixedTextPosition([this, event] {
+         QAbstractScrollArea::resizeEvent(event);
+         render();
+@@ -767,15 +866,19 @@ void QLiteHtmlWidget::withFixedTextPosition(const std::function<void()> &action)
+         verticalScrollBar()->setValue(std::min(y, verticalScrollBar()->maximum()));
+ }
+ 
+-void QLiteHtmlWidget::render()
++int QLiteHtmlWidget::layoutWidth() const
++{
++    const int fullWidth = width() / d->zoomFactor;
++    const int scrollbarWidth = style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this);
++    return fullWidth - scrollbarWidth - 2;
++}
++
++void QLiteHtmlWidget::updateScrollBars()
+ {
+     if (!d->documentContainer.hasDocument())
+         return;
+-    const int fullWidth = width() / d->zoomFactor;
+     const QSize vViewportSize = toVirtual(viewport()->size());
+-    const int scrollbarWidth = style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this);
+-    const int w = fullWidth - scrollbarWidth - 2;
+-    d->documentContainer.render(w, vViewportSize.height());
++    const int w = layoutWidth();
+     // scroll bars reflect virtual/scaled size of html document
+     horizontalScrollBar()->setPageStep(vViewportSize.width());
+     horizontalScrollBar()->setRange(0, std::max(0, d->documentContainer.documentWidth() - w));
+@@ -785,6 +888,20 @@ void QLiteHtmlWidget::render()
+     viewport()->update();
+ }
+ 
++void QLiteHtmlWidget::render()
++{
++    if (!d->documentContainer.hasDocument())
++        return;
++    const int w = layoutWidth();
++    const QSize vViewportSize = toVirtual(viewport()->size());
++    d->documentContainer.render(w, vViewportSize.height());
++    ++d->layoutCount;
++    // Publish the new width before updating scroll bars: their visibility can
++    // trigger a nested resize, and that resize must see the fresh value.
++    d->lastLayoutWidth = w;
++    updateScrollBars();
++}
++
+ QPoint QLiteHtmlWidget::scrollPosition() const
+ {
+     return {horizontalScrollBar()->value(), verticalScrollBar()->value()};
+diff --git a/src/qlitehtmlwidget.h b/src/qlitehtmlwidget.h
+index 569cfa4..579e987 100644
+--- a/src/qlitehtmlwidget.h
++++ b/src/qlitehtmlwidget.h
+@@ -32,6 +32,16 @@ public:
+ 
+     void setZoomFactor(qreal scale);
+     qreal zoomFactor() const;
++    // Changes the zoom factor without rendering. The next setHtml() lays out
++    // with the new factor, so swapping documents costs no extra layout.
++    void setZoomFactorWithoutRender(qreal scale);
++
++    // Number of full litehtml layouts performed so far; used by tests and by
++    // clients that need to know whether cached document geometry is stale.
++    Q_INVOKABLE int layoutCount() const;
++    // Document height in virtual (unzoomed) pixels; 0 when there is no
++    // document.
++    Q_INVOKABLE int documentHeight() const;
+ 
+     bool findText(const QString &text,
+                   QTextDocument::FindFlags flags,
+@@ -78,6 +88,8 @@ private:
+     void setHightlightedLink(const QUrl &url);
+     void withFixedTextPosition(const std::function<void()> &action);
+     void render();
++    int layoutWidth() const;
++    void updateScrollBars();
+     QPoint scrollPosition() const;
+     void htmlPos(const QPoint &pos, QPoint *viewportPos, QPoint *htmlPos) const;
+     QPoint toVirtual(const QPoint &p) const;

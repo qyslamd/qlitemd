@@ -1,0 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0a72e8d..25250d6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -25,7 +25,10 @@ if(MSVC)
+     message(STATUS "MSVC Release symbols    : enabled (/Z7, /DEBUG:FULL)")
+ endif()
+ 
+-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Svg)
++# 本仓只用 Qt5：上游这里做的是版本无关查找（包名 QT，认 QT_DIR），与本仓
++# local.cmake 只提供 Qt5_DIR 的写法对不上，配置阶段直接失败。直接看 Qt5，
++# 宿主已经解析过它，Qt5_DIR 就在缓存里
++find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Svg)
+ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
+     Core
+     Gui

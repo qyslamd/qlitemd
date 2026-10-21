@@ -1,0 +1,216 @@
+--- a/src/container_qpainter.h
++++ b/src/container_qpainter.h
+@@ -91,9 +91,11 @@
+     QVector<QRect> leaveEvent();
+ 
+     QUrl linkAt(const QPoint &documentPos, const QPoint &viewportPos);
++    QUrl imageAt(const QPoint &documentPos, const QPoint &viewportPos) const;
+ 
+     QString caption() const;
+     QString selectedText() const;
++    void clearSelection();
+ 
+     void findText(const QString &text,
+                   QTextDocument::FindFlags flags,
+--- a/src/container_qpainter.cpp
++++ b/src/container_qpainter.cpp
+@@ -1415,11 +1415,13 @@
+                            documentPos,
+                            viewportPos,
+                            [&href](const litehtml::element::ptr &e) {
+-                               const litehtml::element::ptr parent = e->parent();
+-                               if (parent && parent->tag() == litehtml::_a_) {
+-                                   href = parent->get_attr("href");
+-                                   if (href)
+-                                       return true;
++                               for (litehtml::element::ptr current = e; current;
++                                    current = current->parent()) {
++                                   if (current->tag() == litehtml::_a_) {
++                                       href = current->get_attr("href");
++                                       if (href)
++                                           return true;
++                                   }
+                                }
+                                return false; /*continue*/
+                            });
+@@ -1428,6 +1430,26 @@
+     return {};
+ }
+ 
++QUrl DocumentContainer::imageAt(const QPoint &documentPos,
++                                const QPoint &viewportPos) const
++{
++    if (!d->m_document)
++        return {};
++    const char *src = nullptr;
++    deepest_child_at_point(d->m_document->root(),
++                           documentPos,
++                           viewportPos,
++                           [&src](const litehtml::element::ptr &e) {
++                               if (e->tag() != litehtml::_img_)
++                                   return false;
++                               src = e->get_attr("src");
++                               return src != nullptr;
++                           });
++    if (src)
++        return d->resolveUrl(QString::fromUtf8(src), d->m_baseUrl);
++    return {};
++}
++
+ QString DocumentContainer::caption() const
+ {
+     return d->m_caption;
+@@ -1436,6 +1458,11 @@
+ QString DocumentContainer::selectedText() const
+ {
+     return d->m_selection.text;
++}
++
++void DocumentContainer::clearSelection()
++{
++    d->clearSelection();
+ }
+ 
+ void DocumentContainer::findText(const QString &text,
+--- a/src/qlitehtmlwidget.h
++++ b/src/qlitehtmlwidget.h
+@@ -6,8 +6,11 @@
+ #include "qlitehtml_global.h"
+ 
+ #include <QAbstractScrollArea>
++#include <QElapsedTimer>
++#include <QPoint>
+ #include <QPixmap>
+ #include <QTextDocument>
++#include <QUrl>
+ 
+ QT_FORWARD_DECLARE_CLASS(QPrinter)
+ 
+@@ -66,6 +69,11 @@
+ 
+     // declaring this Q_INVOKABLE to make it Squish-testable
+     Q_INVOKABLE QString selectedText() const;
++    void clearSelection();
++
++    // Hit test in viewport coordinates. Returns an empty QUrl when the point
++    // does not land on an image.
++    QUrl imageAt(const QPoint &viewportPos) const;
+ 
+     void print(QPrinter *printer);
+ 
+@@ -74,6 +82,8 @@
+     void linkHighlighted(const QUrl &url);
+     void copyAvailable(bool available);
+     void contextMenuRequested(const QPoint &pos, const QUrl &url);
++    void imageClicked(const QUrl &url);
++    void imageContextMenuRequested(const QPoint &globalPos, const QUrl &url);
+ 
+ protected:
+     void paintEvent(QPaintEvent *event) override;
+@@ -102,6 +112,10 @@
+     QRect fromVirtual(const QRect &r) const;
+ 
+     QLiteHtmlWidgetPrivate *d;
++    QPoint m_imagePressPos;
++    QUrl m_imagePressUrl;
++    QElapsedTimer m_lastImageClick;
++    QUrl m_lastImageClickUrl;
+ };
+ 
+ QT_END_NAMESPACE
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -5,6 +5,7 @@
+ 
+ #include "container_qpainter.h"
+ 
++#include <QApplication>
+ #include <QDebug>
+ #include <QHelpEvent>
+ #include <QPaintEvent>
+@@ -663,6 +654,23 @@
+     return d->documentContainer.selectedText();
+ }
+ 
++void QLiteHtmlWidget::clearSelection()
++{
++    d->documentContainer.clearSelection();
++    viewport()->update();
++}
++
++QUrl QLiteHtmlWidget::imageAt(const QPoint &viewportPos) const
++{
++    if (!d->documentContainer.hasDocument())
++        return {};
++    QPoint virtualViewportPos;
++    QPoint documentPos;
++    htmlPos(viewport()->mapToParent(viewportPos), &virtualViewportPos,
++            &documentPos);
++    return d->documentContainer.imageAt(documentPos, virtualViewportPos);
++}
++
+ void QLiteHtmlWidget::print(QPrinter *printer)
+ {
+ #if QLITEHTML_HAS_QPRINTER
+@@ -765,10 +770,14 @@
+ 
+ void QLiteHtmlWidget::mousePressEvent(QMouseEvent *event)
+ {
++    m_imagePressPos = event->pos();
++    m_imagePressUrl = imageAt(viewport()->mapFromParent(event->pos()));
+     QPoint viewportPos;
+     QPoint pos;
+     htmlPos(event->pos(), &viewportPos, &pos);
+-    const QVector<QRect> areas = d->documentContainer.mousePressEvent(pos, viewportPos, event->button());
++    const QVector<QRect> areas = d->documentContainer.mousePressEvent(pos,
++                                                                      viewportPos,
++                                                                      event->button());
+     for (const QRect &r : areas)
+         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
+ }
+@@ -778,9 +787,32 @@
+     QPoint viewportPos;
+     QPoint pos;
+     htmlPos(event->pos(), &viewportPos, &pos);
+-    const QVector<QRect> areas = d->documentContainer.mouseReleaseEvent(pos, viewportPos, event->button());
++    const QVector<QRect> areas = d->documentContainer.mouseReleaseEvent(pos,
++                                                                        viewportPos,
++                                                                        event->button());
+     for (const QRect &r : areas)
+         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
++
++    if (event->button() == Qt::LeftButton && !m_imagePressUrl.isEmpty()) {
++        const QUrl releaseUrl = imageAt(viewport()->mapFromParent(event->pos()));
++        const bool sameImage = releaseUrl == m_imagePressUrl;
++        const bool moved =
++            (event->pos() - m_imagePressPos).manhattanLength() >
++            QApplication::startDragDistance();
++        if (sameImage && !moved &&
++            d->documentContainer.linkAt(pos, viewportPos).isEmpty()) {
++            const bool duplicate =
++                m_lastImageClick.isValid() && m_lastImageClick.elapsed() < 300 &&
++                m_lastImageClickUrl == releaseUrl;
++            if (!duplicate) {
++                m_lastImageClick.restart();
++                m_lastImageClickUrl = releaseUrl;
++                emit imageClicked(releaseUrl);
++            }
++        }
++    }
++    m_imagePressUrl.clear();
++    m_imagePressPos = QPoint();
+ }
+ 
+ void QLiteHtmlWidget::mouseDoubleClickEvent(QMouseEvent *event)
+@@ -826,6 +862,11 @@
+     QPoint viewportPos;
+     QPoint pos;
+     htmlPos(event->pos(), &viewportPos, &pos);
++    const QUrl imageUrl = imageAt(viewport()->mapFromParent(event->pos()));
++    if (!imageUrl.isEmpty()) {
++        emit imageContextMenuRequested(event->globalPos(), imageUrl);
++        return;
++    }
+     emit contextMenuRequested(event->pos(), d->documentContainer.linkAt(pos, viewportPos));
+ }
+ 

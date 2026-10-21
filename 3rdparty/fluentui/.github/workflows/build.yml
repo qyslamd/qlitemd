@@ -1,0 +1,122 @@
+name: Platform build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / Qt 5.15.2 / MSVC
+            os: windows-2022
+            qt-version: 5.15.2
+            qt-arch: win64_msvc2019_64
+            qt-modules: ""
+            generator: Visual Studio 17 2022
+            configure-args: -A x64
+            build-plugin: ON
+
+          - name: Windows / Qt 6.8.3 / MSVC
+            os: windows-2022
+            qt-version: 6.8.3
+            qt-arch: win64_msvc2022_64
+            qt-modules: qtmultimedia
+            generator: Visual Studio 17 2022
+            configure-args: -A x64
+            build-plugin: ON
+
+          - name: Linux / Qt 5.15.2 / GCC
+            os: ubuntu-22.04
+            qt-version: 5.15.2
+            qt-arch: gcc_64
+            qt-modules: ""
+            generator: Ninja
+            configure-args: -DCMAKE_BUILD_TYPE=Release
+            build-plugin: OFF
+
+          - name: Linux / Qt 6.8.3 / GCC
+            os: ubuntu-24.04
+            qt-version: 6.8.3
+            qt-arch: linux_gcc_64
+            qt-modules: qtmultimedia
+            generator: Ninja
+            configure-args: -DCMAKE_BUILD_TYPE=Release
+            build-plugin: OFF
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      # install-qt-action uses Python internally. Pinning it prevents runner
+      # image updates from unexpectedly changing the aqtinstall environment.
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: ${{ matrix.qt-version }}
+          arch: ${{ matrix.qt-arch }}
+          modules: ${{ matrix.qt-modules }}
+          cache: true
+          cache-key-prefix: qt-${{ matrix.os }}-${{ matrix.qt-version }}-${{ matrix.qt-arch }}
+          setup-python: false
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -G "${{ matrix.generator }}"
+          ${{ matrix.configure-args }}
+          -DBUILD_LIBRARY=ON
+          -DBUILD_PLUGIN=${{ matrix.build-plugin }}
+          -DBUILD_EXAMPLES=ON
+          -DBUILD_QTCREATOR_PLUGIN=OFF
+          -DBUILD_FRAMELESS=OFF
+          -DEXWIDGETS_BUILD_TESTS=ON
+          -DFLUENTUI3STYLE_COPY_TO_QT_DIR=OFF
+          -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/stage"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Run tests
+        run: >-
+          cmake -E env QT_QPA_PLATFORM=offscreen
+          ctest --test-dir build
+          -C Release
+          --output-on-failure
+
+      - name: Validate installation
+        run: >-
+          cmake --install build
+          --config Release
+          --prefix "${{ github.workspace }}/stage"
+
+  required:
+    name: Platform build passed
+    if: always()
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check build matrix result
+        run: test "${{ needs.build.result }}" = "success"

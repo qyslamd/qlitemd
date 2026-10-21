@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+    <defs>
+        <!-- 背景：蓝紫渐变 -->
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6" />
+            <stop offset="100%" stop-color="#1e3a8a" />
+        </linearGradient>
+
+        <!-- 纸张：白到浅灰的微渐变，避免纯白死板 -->
+        <linearGradient id="page" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="100%" stop-color="#f1f5f9" />
+        </linearGradient>
+
+        <!-- 纸张投影 -->
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+            <feOffset dx="0" dy="4" result="offsetblur" />
+            <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3" />
+            </feComponentTransfer>
+            <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+            </feMerge>
+        </filter>
+    </defs>
+
+    <!-- 圆角方形底 -->
+    <rect width="256" height="256" rx="56" fill="url(#bg)" />
+
+    <!-- 文档页面（右上折角） -->
+    <g filter="url(#shadow)">
+        <path d="M 66 44 L 152 44 L 196 88 L 196 212 L 66 212 Z" fill="url(#page)" />
+        <path d="M 152 44 L 196 88 L 152 88 Z" fill="#94a3b8" />
+    </g>
+
+    <!-- Markdown 经典符号 M↓ -->
+    <g fill="none" stroke="#2563eb" stroke-width="12"
+        stroke-linejoin="round" stroke-linecap="round">
+        <path d="M 86 100 L 86 166 L 110 134 L 134 166 L 134 100" />
+        <path d="M 166 100 L 166 162 M 148 144 L 166 164 L 184 144" />
+    </g>
+</svg>

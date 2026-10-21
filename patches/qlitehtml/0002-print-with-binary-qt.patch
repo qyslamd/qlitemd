@@ -1,0 +1,24 @@
+Print support: upstream gates it on "TARGET Qt5::PrintSupport AND
+QT_FEATURE_printer", but QT_FEATURE_printer only exists for a Qt that was
+configured from source -- a binary Qt (the official installer, which is what
+this repo builds against) does not define it. The whole condition is then
+always false, QLITEHTML_HAS_QPRINTER stays 0 and QLiteHtmlWidget::print() is
+compiled into a silent no-op: printing looks wired up but does nothing.
+Drop the variable and judge by the imported target alone.
+
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -99,7 +99,12 @@
+   else()
+     target_compile_definitions(qlitehtml PUBLIC QLITEHTML_STATIC_LIBRARY)
+   endif()
+-  if(TARGET Qt${QT_VERSION_MAJOR}::PrintSupport AND QT_FEATURE_printer)
++  # 本仓改动：去掉原条件里的 AND QT_FEATURE_printer。那个变量只有"自己
++  # configure 出来的 Qt"才有，官方二进制包不带它——整条判据于是恒假，
++  # QLITEHTML_HAS_QPRINTER 永远是 0，QLiteHtmlWidget::print() 被编成空操作
++  # 且不报任何错（本仓就这么静默废掉过打印）。Qt5::PrintSupport 目标在，
++  # 打印支持就该编上
++  if(TARGET Qt${QT_VERSION_MAJOR}::PrintSupport)
+     target_link_libraries(qlitehtml PRIVATE Qt${QT_VERSION_MAJOR}::PrintSupport)
+     target_compile_definitions(qlitehtml PRIVATE QLITEHTML_HAS_QPRINTER=1)
+   else()

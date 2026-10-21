@@ -1,0 +1,20 @@
+qlitehtml: stop double-encoding the base URL path.
+
+QLiteHtmlWidget::setUrl() took path(FullyEncoded) and fed it to
+QUrl::setPath(), which treats its input as decoded and percent-encodes
+it again. A base directory containing a space or non-ASCII characters
+therefore reached resolveUrl() as %2520 / %25E4..., and every relative
+image failed to resolve. Use the decoded path for both the split and
+the setPath() input so the URL is encoded exactly once.
+
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -506,7 +506,7 @@
+     d->url = url;
+     QUrl baseUrl = url;
+     baseUrl.setFragment({});
+-    const QString path = baseUrl.path(QUrl::FullyEncoded);
++    const QString path = baseUrl.path(QUrl::FullyDecoded);
+     const int lastSlash = path.lastIndexOf('/');
+     const QString basePath = lastSlash >= 0 ? path.left(lastSlash) : QString();
+     baseUrl.setPath(basePath);

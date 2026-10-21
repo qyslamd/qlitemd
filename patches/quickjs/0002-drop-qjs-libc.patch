@@ -1,0 +1,14 @@
+Keep qjs-libc out of the default build. Explicit targets (qjsc, qjs CLI)
+still pull it in as a dependency; 0003 makes it buildable with MSVC.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -337,7 +337,7 @@
+ endif()
+ 
+ if(NOT QJS_BUILD_LIBC)
+-    add_library(qjs-libc STATIC quickjs-libc.c)
++    add_library(qjs-libc STATIC EXCLUDE_FROM_ALL quickjs-libc.c)
+     target_compile_definitions(qjs-libc PRIVATE ${qjs_defines})
+     target_link_libraries(qjs-libc PRIVATE ${qjs_libs} qjs)
+ endif()
