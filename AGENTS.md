@@ -13,6 +13,8 @@
 | [docs/rendering.md](docs/rendering.md) | Markdown 到 HTML、公式与 Mermaid |
 | [docs/diagnostics.md](docs/diagnostics.md) | 诊断计数、日志与产物落盘 |
 | [docs/eval/Markdown渲染qjsc预编译评估.md](docs/eval/Markdown渲染qjsc预编译评估.md) | qjsc 字节码评估数据 |
+| [CHANGELOG.md](CHANGELOG.md) | 发布说明 |
+| [installer/md_viewer.iss](installer/md_viewer.iss) | Windows 安装包脚本 |
 | [NOTICE](NOTICE) | 第三方许可证 |
 
 ## 快速约束

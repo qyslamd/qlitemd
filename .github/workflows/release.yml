@@ -1,0 +1,124 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-x64:
+    name: Windows Qt5 x64 installer
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'
+          arch: win64_msvc2019_64
+          cache: true
+          cache-key-prefix: qlitemd-release-qt
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+          -DQLITEMD_QT_MAJOR=5
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -L MARKDOWN
+
+      - name: Check version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $content = Get-Content CMakeLists.txt -Raw
+          if ($content -notmatch 'project\(qlitemd VERSION ([0-9]+\.[0-9]+\.[0-9]+)') {
+            throw "Cannot read qlitemd version from CMakeLists.txt"
+          }
+          $cmake_version = $Matches[1]
+          Write-Output "tag=$version cmake=$cmake_version"
+          if ($version -ne $cmake_version) {
+            throw "Tag version $version does not match CMake version $cmake_version"
+          }
+
+      - name: Install runtime and licenses
+        shell: pwsh
+        run: |
+          cmake --install build --prefix stage --component Runtime
+          cmake --install build --prefix stage --component Licenses
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $dist = Join-Path $env:GITHUB_WORKSPACE 'dist'
+          New-Item -ItemType Directory -Force $dist | Out-Null
+
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) {
+            throw "ISCC.exe not found"
+          }
+
+          & $iscc `
+            "/DStageDir=$env:GITHUB_WORKSPACE\stage" `
+            "/DRepoRoot=$env:GITHUB_WORKSPACE" `
+            "/DBuildVersion=$version" `
+            "/DBuildArch=x64" `
+            "/DOutputDir=$dist" `
+            "installer\md_viewer.iss"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          New-Item -ItemType Directory -Force "$dist\pdb" | Out-Null
+          Copy-Item build\bin\*.pdb "$dist\pdb\" -Force
+          Compress-Archive -Path "$dist\pdb\*" `
+            -DestinationPath "$dist\qlitemd-md_viewer-$version-x64-pdb.zip" `
+            -Force
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qlitemd-md_viewer-${{ github.ref_name }}-x64
+          path: |
+            dist/*-setup.exe
+            dist/*-pdb.zip
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            dist/*-setup.exe
+            dist/*-pdb.zip

@@ -216,6 +216,12 @@ cmake --install build --component Development
 cmake --install build --component Licenses
 ```
 
+## Releases
+
+Tags matching `v*` build a Qt 5.15.2 x64 Windows installer and a PDB archive
+through GitHub Actions. The installer contains `md_viewer`, its Qt runtime and
+the license files; the SDK remains a separate install component.
+
 ## Example application
 
 `examples/md_viewer` is a complete FluentUI-style viewer built on the
@@ -233,9 +239,12 @@ and settings.
 - `examples/minimal/` — standalone QWidget example for an installed SDK
 - `tests/markdown/` — headless GoogleTest suite
 - `cmake/` — package config template and test helpers
+- `installer/` — Inno Setup script for the Windows installer
+- `licenses/` — license texts for JavaScript payloads
 - `3rdparty/` — pinned, patched dependency snapshots
 - `patches/` — provenance of the patches applied to those snapshots
 - `docs/` — architecture, rendering and diagnostics notes
+- `CHANGELOG.md` — release notes
 
 ## Known limitations
 

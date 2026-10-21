@@ -125,9 +125,12 @@ clang-format --dry-run --Werror <file>
 - `examples/minimal/`：面向已安装 SDK 的最小 `QWidget` 示例
 - `tests/markdown/`：无头 GoogleTest 测试
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
+- `installer/`：Inno Setup 安装包脚本
+- `licenses/`：JS 载荷的许可证文本
 - `3rdparty/`：固定版本、已打补丁的依赖快照
 - `patches/`：补丁来源记录
 - `docs/`：架构、渲染、诊断和评估文档
+- `CHANGELOG.md`：发布说明
 
 ## 代码规则
 
@@ -198,10 +201,21 @@ clang-format --dry-run --Werror <file>
 - `.bat` 必须 CRLF，`.sh` 必须 LF；JS 载荷和补丁文件按
   `.gitattributes` 保持字节稳定。
 
+## 发布
+
+- 版本号写在顶层 `project(qlitemd VERSION x.y.z ...)`；tag 用 `vx.y.z`，
+  发布 workflow 会校验两者一致。
+- 推送 `v*` tag 触发 `.github/workflows/release.yml`：Qt 5.15.2 x64
+  构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
+  并把 exe 对应的 PDB 打成 zip。
+- 安装包脚本是 `installer/md_viewer.iss`；使用 Inno Setup 6.x。
+- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe` 和
+  `qlitemd-md_viewer-<version>-x64-pdb.zip`。
+
 ## 变更流程
 
 - 非平凡改动先讨论设计，再写代码。
 - 新增功能或行为变化要补无头测试，并同步文档。
 - 修改公开 API、安装规则或第三方依赖时，更新 README、NOTICE 和
   `docs/` 中对应说明。
-- 发布使用 `RelWithDebInfo`，保留 PDB；安装包流程尚未接入。
+- 发布使用 `RelWithDebInfo`，保留 PDB。

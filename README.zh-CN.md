@@ -205,6 +205,12 @@ cmake --install build --component Development
 cmake --install build --component Licenses
 ```
 
+## 发布
+
+匹配 `v*` 的 tag 会通过 GitHub Actions 构建 Qt 5.15.2 x64 Windows
+安装包和 PDB 归档。安装包包含 `md_viewer`、Qt 运行时和许可证文件；
+SDK 仍通过独立的 install 组件发布。
+
 ## 示例程序
 
 `examples/md_viewer` 是基于本库的完整 FluentUI 风格查看器，包含单实例、
@@ -220,9 +226,12 @@ cmake --install build --component Licenses
 - `examples/minimal/`：面向已安装 SDK 的独立 QWidget 示例
 - `tests/markdown/`：无头 GoogleTest 测试
 - `cmake/`：package config 模板与测试辅助
+- `installer/`：Windows 安装包的 Inno Setup 脚本
+- `licenses/`：JS 载荷的许可证文本
 - `3rdparty/`：固定版本、已打补丁的依赖快照
 - `patches/`：补丁来源记录
 - `docs/`：架构、渲染和诊断文档
+- `CHANGELOG.md`：发布说明
 
 ## 已知限制
 

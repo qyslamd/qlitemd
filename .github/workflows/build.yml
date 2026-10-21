@@ -146,10 +146,23 @@ jobs:
 
       - name: Build minimal consumer
         run: |
-          cmake -S examples/minimal -B consumer-build -G Ninja \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/stage;$QT_ROOT_DIR"
-          cmake --build consumer-build
+          set -o pipefail
+          ls -l "$GITHUB_WORKSPACE/stage/lib"
+          if ! cmake -S examples/minimal -B consumer-build -G Ninja \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/stage;$QT_ROOT_DIR" \
+              > consumer-configure.log 2>&1; then
+            tail -n 40 consumer-configure.log
+            msg=$(tail -n 20 consumer-configure.log | tr '\n' ' ')
+            echo "::error title=consumer configure failed::$msg"
+            exit 1
+          fi
+          if ! cmake --build consumer-build > consumer-build.log 2>&1; then
+            tail -n 40 consumer-build.log
+            msg=$(tail -n 20 consumer-build.log | tr '\n' ' ')
+            echo "::error title=consumer build failed::$msg"
+            exit 1
+          fi
 
       - name: Run minimal consumer
         env:

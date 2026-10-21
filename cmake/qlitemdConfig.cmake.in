@@ -44,17 +44,20 @@ find_library(QLITEMD_QJS_LIBRARY
     NO_DEFAULT_PATH
     REQUIRED)
 
+# Static archives must precede the Qt shared libraries that they reference:
+# Linux linkers with --as-needed may otherwise drop Qt PrintSupport before
+# qlitehtml's QPrinter symbols are seen.
 set(_qlitemd_link_libraries
-    ${_qlitemd_qt}::Widgets
-    ${_qlitemd_qt}::Gui
-    ${_qlitemd_qt}::Core
-    ${_qlitemd_qt}::Svg
-    ${_qlitemd_qt}::PrintSupport
     ${QLITEMD_QLITEHTML_LIBRARY}
     ${QLITEMD_LITEHTML_LIBRARY}
     ${QLITEMD_GUMBO_LIBRARY}
     ${QLITEMD_MD4C_LIBRARY}
     ${QLITEMD_QJS_LIBRARY}
+    ${_qlitemd_qt}::Widgets
+    ${_qlitemd_qt}::Gui
+    ${_qlitemd_qt}::Core
+    ${_qlitemd_qt}::Svg
+    ${_qlitemd_qt}::PrintSupport
     Threads::Threads
     ${CMAKE_DL_LIBS})
 if(UNIX AND NOT APPLE)

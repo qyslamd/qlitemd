@@ -2,6 +2,7 @@ build/
 build-*/
 install/
 dist/
+stage/
 temp/
 *.user
 *.user.*
