@@ -16,6 +16,18 @@ ctest --test-dir build --output-on-failure
 Keep `QLITEMD_BUILD_TESTS=ON` for code changes. Run at least the
 `MARKDOWN` test group before opening a pull request.
 
+On Linux, CI builds the library and tests with Qt 6.8.3 and keeps
+`md_viewer` disabled:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DQLITEMD_QT_MAJOR=6 \
+  -DQLITEMD_BUILD_MD_VIEWER=OFF
+cmake --build build
+QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure -L MARKDOWN
+```
+
 ## Code style
 
 - C++17, two-space indentation, Google C++ Style naming

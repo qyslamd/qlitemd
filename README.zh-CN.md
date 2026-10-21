@@ -122,13 +122,19 @@ MarkdownRenderService（worker 池）
 | Qt 5.15.2 | x86 | 库、测试、`md_viewer`、安装 |
 | Qt 5.14.2 | x64 | 库、测试、`md_viewer` |
 | Qt 6.8.3 | x64 | 库、测试和 `md_viewer` 构建；运行时界面尚未验证 |
+| Qt 6.8.3 | x64（Linux） | CI 中构建库并运行测试；`md_viewer` 暂不构建 |
 | Qt 5.12.12 | x64 | 不支持；最低要求 Qt 5.14 |
 
-Windows + MSVC 是主平台。Linux 尚未验证。
+Windows + MSVC 是主平台。Linux 的库与测试已由 CI（Ubuntu 24.04 +
+Qt 6.8.3）覆盖；`md_viewer` 尚未在 Linux 上构建。Ubuntu 20.04 自带
+Qt 5.12.8，低于最低要求 Qt 5.14，需要安装更新的 Qt 或 Qt 6。
 
 ## 构建
 
 Windows 下请在 Visual Studio 开发者命令行中执行。
+
+Linux 下把 `CMAKE_PREFIX_PATH` 指向 Qt 5.14+ 或 Qt 6。CI 的 Linux job
+关闭 `md_viewer`，用 Qt 6.8.3 构建库并运行测试。
 
 ```bash
 cmake -S . -B build -G Ninja \
@@ -204,7 +210,9 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown)
 
 - 不下载远程图片；只支持本地文件和 `data:` URI。
 - PDF 导出按页面高度切分布局，超长元素可能被切在页缝上。
-- Qt 6 和 Linux 只有构建覆盖，尚未做运行时界面验证。
+- Linux 和 Qt 6 已有库/测试构建覆盖；`md_viewer` 的 Linux 运行时和
+  界面验证仍未完成。
+- Ubuntu 20.04 自带的 Qt 5.12.8 低于最低要求 Qt 5.14，需要安装更新的 Qt。
 - 仓库不重新分发微软 Segoe Fluent Icons 字体，FluentUI 会回退到
   系统字体。
 

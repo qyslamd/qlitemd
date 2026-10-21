@@ -17,7 +17,8 @@ Markdown -> md4c -> qlitehtml/litehtml -> QWidget
 
 - 主验证平台：Windows + MSVC
 - Qt 支持：Qt 5.14+、Qt 6.x
-- Linux：构建与运行时验证尚未完成
+- Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
+  `md_viewer` 运行时尚未验证
 - 自有代码许可证：MIT；第三方许可见 `NOTICE`
 
 ## 关于作者与 AI
@@ -51,6 +52,17 @@ cmake --build build-qt6
 
 也可以使用 `CMakePresets.json` 的 `qt5`、`qt6` 预设，并把 `QTDIR` 指向
 目标 Qt Kit。
+
+Linux（与 CI 同口径，只构建库和测试）：
+
+```bash
+cmake -S . -B build-linux -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DQLITEMD_QT_MAJOR=6 \
+  -DQLITEMD_BUILD_MD_VIEWER=OFF
+cmake --build build-linux
+QT_QPA_PLATFORM=offscreen ctest --test-dir build-linux --output-on-failure -L MARKDOWN
+```
 
 构建产物：
 
@@ -163,8 +175,10 @@ clang-format --dry-run --Werror <file>
 - 干净 checkout 可能缺少被 vendored `.gitignore` 忽略的源文件；CI 失败
   先检查 `git ls-files` 是否包含必要的 CMake 模板。
 - Qt 6 移除了 `QSettings::setIniCodec`；Qt5/Qt6 共用代码要加版本保护。
-- WSL/Ubuntu Focal 自带的 Qt 5.12 低于最低要求 Qt 5.14；不要据此判断
-  Linux 不可用，先确认是否有更新的 Qt Kit。
+- WSL/Ubuntu Focal 自带的 Qt 5.12.8 低于最低要求 Qt 5.14，官方配置会
+  直接失败。用只改版本号的 Qt5Config shim 验证过库、`md_viewer` 和
+  20/20 测试都能过，但这不是正式支持 Qt 5.12 的结论。Linux CI 使用
+  Qt 6.8.3，只构建库和测试。
 - 本机 GitHub HTTPS 可能连不上，SSH 可用；CI 的 Qt 安装在 GitHub
   Runner 上，不使用本机 Qt。
 - `.bat` 必须 CRLF，`.sh` 必须 LF；JS 载荷和补丁文件按

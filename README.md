@@ -130,13 +130,20 @@ Validated configurations:
 | Qt 5.15.2 | x86 | Library, tests, `md_viewer`, install |
 | Qt 5.14.2 | x64 | Library, tests, `md_viewer` |
 | Qt 6.8.3 | x64 | Library, tests and `md_viewer` build; runtime visual check pending |
+| Qt 6.8.3 | x64 (Linux) | Library and tests in CI; `md_viewer` disabled |
 | Qt 5.12.12 | x64 | Not supported; Qt 5.14 is the minimum |
 
-Windows with MSVC is the primary platform. Linux has not been validated.
+Windows with MSVC is the primary platform. Linux library/tests are covered by
+CI on Ubuntu 24.04 with Qt 6.8.3; `md_viewer` is not built there yet. Ubuntu
+20.04 ships Qt 5.12.8, which is below the minimum Qt 5.14; install a newer Qt
+or Qt 6 to build on Linux.
 
 ## Build
 
 Run these commands from a Visual Studio developer prompt on Windows.
+
+On Linux, point `CMAKE_PREFIX_PATH` at Qt 5.14+ or Qt 6. The CI Linux job
+disables `md_viewer` and runs the library tests with Qt 6.8.3.
 
 ```bash
 cmake -S . -B build -G Ninja \
@@ -217,7 +224,9 @@ and settings.
   supported.
 - PDF export paginates by slicing the layout, so a very long element can be
   split across pages.
-- Qt 6 and Linux have build coverage but no visual/runtime sign-off yet.
+- Linux and Qt 6 have library/test build coverage; `md_viewer` runtime and
+  visual sign-off are still pending.
+- Ubuntu 20.04's Qt 5.12.8 is below the minimum Qt 5.14; install a newer Qt.
 - FluentUI falls back to a system icon font because the Microsoft Segoe
   Fluent Icons font is not redistributed with this repository.
 

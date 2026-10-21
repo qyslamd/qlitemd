@@ -22,3 +22,4 @@
 - 构建、测试、格式化和 Git 规则以 [CLAUDE.md](CLAUDE.md) 为准。
 - 不要静默修改 `3rdparty/`；补丁记录到 `patches/`。
 - 改动 `src/markdown/` 后至少跑 `ctest -L MARKDOWN`。
+- Linux CI 覆盖库和测试，`md_viewer` 的 Linux 运行时尚未验证。
