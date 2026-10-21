@@ -247,6 +247,13 @@ Versions are the snapshots vendored in this repository; upstream projects may
 have newer releases. Full license texts are in [NOTICE](NOTICE) and, after
 installation, under `licenses/`.
 
+## Development note
+
+The code in this repository is largely AI-generated. The maintainer provided
+the design goals, constraints and review; an AI coding assistant produced and
+iterated on the implementation. Commit history does not add AI co-author
+trailers. The maintainer is responsible for the final decisions and validation.
+
 ## License
 
 qlitemd's own code is MIT. Third-party components keep their licenses; see
