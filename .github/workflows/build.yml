@@ -48,13 +48,28 @@ jobs:
         with:
           arch: ${{ matrix.msvc_arch }}
 
+      - name: Show Qt
+        shell: pwsh
+        run: |
+          Write-Output "::notice title=Qt root::$env:QT_ROOT_DIR"
+          if (Test-Path "$env:QT_ROOT_DIR/lib/cmake") {
+            Get-ChildItem "$env:QT_ROOT_DIR/lib/cmake" |
+              Select-Object -ExpandProperty Name
+          }
+
       - name: Configure
         shell: pwsh
-        run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
-          -DQLITEMD_QT_MAJOR=${{ matrix.qt_major }}
+        run: |
+          $output = & cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" `
+            "-DQLITEMD_QT_MAJOR=${{ matrix.qt_major }}" 2>&1 |
+            Tee-Object -FilePath configure.log
+          if ($LASTEXITCODE -ne 0) {
+            $tail = ($output | Select-Object -Last 15) -join "%0A"
+            Write-Output "::error title=CMake configure failed::$tail"
+            exit $LASTEXITCODE
+          }
 
       - name: Build
         run: cmake --build build --parallel
