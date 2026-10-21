@@ -1,10 +1,11 @@
 #include "code_highlighter.h"
 
-#include <gtest/gtest.h>
 #include <thread>
 
 #include <QString>
 #include <QStringList>
+
+#include <gtest/gtest.h>
 
 #include "markdown_engine_state.h"
 #include "markdown_render_context.h"

@@ -77,6 +77,25 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure -L MARKDOWN
 
+      - name: Install SDK
+        shell: pwsh
+        run: cmake --install build --prefix "$env:GITHUB_WORKSPACE/stage"
+
+      - name: Build minimal consumer
+        shell: pwsh
+        run: |
+          cmake -S examples/minimal -B consumer-build -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            "-DCMAKE_PREFIX_PATH=$env:GITHUB_WORKSPACE/stage;$env:QT_ROOT_DIR"
+          cmake --build consumer-build
+
+      - name: Run minimal consumer
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:GITHUB_WORKSPACE\stage\bin;$env:QT_ROOT_DIR\bin;$env:PATH"
+          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          .\consumer-build\qlitemd_minimal.exe
+
   linux:
     name: Linux Qt6 (x64)
     runs-on: ubuntu-24.04
@@ -112,3 +131,30 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build --output-on-failure -L MARKDOWN
+
+      - name: Check formatting
+        run: |
+          python3 -m pip install --user --break-system-packages clang-format==21.1.2
+          export PATH="$HOME/.local/bin:$PATH"
+          git ls-files 'src/**/*.h' 'src/**/*.cpp' \
+            'examples/**/*.h' 'examples/**/*.cpp' \
+            'tests/**/*.h' 'tests/**/*.cpp' |
+            xargs clang-format --dry-run --Werror
+
+      - name: Install SDK
+        run: cmake --install build --prefix "$GITHUB_WORKSPACE/stage"
+
+      - name: Build minimal consumer
+        run: |
+          cmake -S examples/minimal -B consumer-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/stage;$QT_ROOT_DIR"
+          cmake --build consumer-build
+
+      - name: Run minimal consumer
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          export QT_PLUGIN_PATH="$QT_ROOT_DIR/plugins"
+          LD_LIBRARY_PATH="$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}" \
+            ./consumer-build/qlitemd_minimal

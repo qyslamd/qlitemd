@@ -3,11 +3,12 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <gtest/gtest.h>
 #include <thread>
 
 #include <QElapsedTimer>
 #include <QString>
+
+#include <gtest/gtest.h>
 
 // JsRuntime 错误处理的判据：异常消息真的被消费、坏字节码不崩且作废引擎、
 // 非异常结果原样放行

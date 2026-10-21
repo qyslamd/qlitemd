@@ -87,12 +87,25 @@ cmake --build build
 cmake --install build
 ```
 
-安装会带静态依赖、公开头文件、许可证和 `qlitemdConfig.cmake`。消费方：
+安装分为 `Runtime`、`Development`、`Licenses` 三个组件。`Runtime` 只含
+`md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含静态库、
+公开头文件和 `qlitemdConfig.cmake`；`Licenses` 含项目与第三方许可证。
+
+```bash
+cmake --install build --component Runtime
+cmake --install build --component Development
+cmake --install build --component Licenses
+```
+
+消费方：
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
 target_link_libraries(myapp PRIVATE qlitemd::markdown)
 ```
+
+`examples/minimal` 是只依赖已安装 SDK 的最小 `QWidget` 示例；它不依赖
+FluentUI/QWindowKit，也是 CI 的 install/consumer smoke 用例。
 
 ### 格式
 
@@ -109,6 +122,7 @@ clang-format --dry-run --Werror <file>
 - `src/markdown/`：库主体，目标名 `qlitemd_markdown`
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
 - `examples/md_viewer/`：FluentUI + QWindowKit 示例
+- `examples/minimal/`：面向已安装 SDK 的最小 `QWidget` 示例
 - `tests/markdown/`：无头 GoogleTest 测试
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
 - `3rdparty/`：固定版本、已打补丁的依赖快照

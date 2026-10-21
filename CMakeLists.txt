@@ -152,9 +152,12 @@ install(FILES
     "$<TARGET_FILE:gumbo>"
     "$<TARGET_FILE:md4c>"
     "$<TARGET_FILE:qjs>"
-    DESTINATION lib)
+    DESTINATION lib
+    COMPONENT Development)
 
-install(FILES ${QLITEMD_PUBLIC_HEADERS} DESTINATION include/qlitemd)
+install(FILES ${QLITEMD_PUBLIC_HEADERS}
+    DESTINATION include/qlitemd
+    COMPONENT Development)
 
 include(CMakePackageConfigHelpers)
 set(QLITEMD_CMAKE_INSTALL_DIR lib/cmake/qlitemd)
@@ -169,17 +172,40 @@ write_basic_package_version_file(
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfigVersion.cmake"
-    DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR})
+    DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR}
+    COMPONENT Development)
 
-install(FILES LICENSE NOTICE README.md README.zh-CN.md DESTINATION .)
-install(FILES 3rdparty/litehtml/LICENSE DESTINATION licenses/litehtml)
-install(FILES 3rdparty/md4c/LICENSE.md DESTINATION licenses/md4c)
-install(FILES 3rdparty/quickjs/LICENSE DESTINATION licenses/quickjs)
-install(FILES 3rdparty/spdlog/LICENSE DESTINATION licenses/spdlog)
-install(FILES 3rdparty/qwindowkit/LICENSE DESTINATION licenses/qwindowkit)
-install(FILES 3rdparty/qmsetup/LICENSE DESTINATION licenses/qmsetup)
-install(FILES 3rdparty/fluentui/LICENSE DESTINATION licenses/fluentui)
-install(DIRECTORY 3rdparty/qlitehtml/LICENSES DESTINATION licenses/qlitehtml)
+install(FILES LICENSE NOTICE README.md README.zh-CN.md
+    DESTINATION .
+    COMPONENT Licenses)
+install(FILES 3rdparty/litehtml/LICENSE
+    DESTINATION licenses/litehtml COMPONENT Licenses)
+install(FILES 3rdparty/litehtml/src/gumbo/LICENSE
+    DESTINATION licenses/gumbo COMPONENT Licenses)
+install(FILES 3rdparty/md4c/LICENSE.md
+    DESTINATION licenses/md4c COMPONENT Licenses)
+install(FILES 3rdparty/quickjs/LICENSE
+    DESTINATION licenses/quickjs COMPONENT Licenses)
+install(FILES 3rdparty/spdlog/LICENSE
+    DESTINATION licenses/spdlog COMPONENT Licenses)
+install(FILES 3rdparty/qwindowkit/LICENSE
+    DESTINATION licenses/qwindowkit COMPONENT Licenses)
+install(FILES 3rdparty/qmsetup/LICENSE
+    DESTINATION licenses/qmsetup COMPONENT Licenses)
+install(FILES 3rdparty/fluentui/LICENSE
+    DESTINATION licenses/fluentui COMPONENT Licenses)
+install(FILES 3rdparty/fluentui/THIRD_PARTY_NOTICES.md
+    DESTINATION licenses/fluentui COMPONENT Licenses)
+install(DIRECTORY 3rdparty/qlitehtml/LICENSES
+    DESTINATION licenses/qlitehtml COMPONENT Licenses)
+install(FILES licenses/mathjax/LICENSE
+    DESTINATION licenses/mathjax COMPONENT Licenses)
+install(FILES licenses/mermaid/LICENSE
+    DESTINATION licenses/mermaid COMPONENT Licenses)
+install(FILES licenses/highlightjs/LICENSE
+    DESTINATION licenses/highlightjs COMPONENT Licenses)
+install(FILES licenses/mermaidx/LICENSE
+    DESTINATION licenses/mermaidx COMPONENT Licenses)
 
 # --------------------------------------------------------------- tests
 if(QLITEMD_BUILD_TESTS)

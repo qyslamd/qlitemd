@@ -1,8 +1,8 @@
 #include "mermaid_svg_cleanup.h"
 
-#include <gtest/gtest.h>
-
 #include <QString>
+
+#include <gtest/gtest.h>
 
 // 后处理两层的判据。都是纯字符串→字符串，毫秒级、可逐条断言——渲染出来长什么样
 // 是像素的事（见 test_mermaid_renderer），这里钉的是"位置有没有烘焙对""箭头插

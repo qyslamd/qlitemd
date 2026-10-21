@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
-
 #include <QFile>
 #include <QSet>
 #include <QString>
+
+#include <gtest/gtest.h>
 
 #include "markdown_theme.h"
 

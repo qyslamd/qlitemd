@@ -1,11 +1,12 @@
 #include "heading_ids.h"
 
-#include <gtest/gtest.h>
 #include <vector>
 
 #include <QHash>
 #include <QString>
 #include <QVector>
+
+#include <gtest/gtest.h>
 
 namespace {
 

@@ -7,6 +7,7 @@ components. Their licenses remain in effect for those components.
 
 - qlitehtml: BSD-3-Clause
 - litehtml: BSD-3-Clause
+- gumbo-parser: Apache-2.0 (bundled with litehtml)
 - md4c: MIT
 - QuickJS: MIT
 - QWindowKit: Apache-2.0
@@ -14,9 +15,10 @@ components. Their licenses remain in effect for those components.
 - FluentUIStyle: MIT
 - spdlog: MIT
 - GoogleTest: BSD-3-Clause
-- MathJax: Apache-2.0
-- Mermaid: MIT
-- highlight.js: BSD-3-Clause
+- MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
+- Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
+- highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
+- mermaidx: MIT; Copyright (c) 2023-present Mohammad Raziei
 
 Qt is an external dependency and is not vendored. Qt 5.15 is available
 under the LGPLv3/GPLv3/commercial licenses; users must comply with the
@@ -26,4 +28,5 @@ The Microsoft Segoe Fluent Icons font is not distributed with qlitemd.
 FluentUIStyle falls back to a system-installed font when present.
 
 Full license texts are kept alongside the vendored sources under
-3rdparty/*/LICENSE or 3rdparty/*/LICENSES.
+3rdparty/*/LICENSE or 3rdparty/*/LICENSES, and under licenses/ for the
+JavaScript payloads.

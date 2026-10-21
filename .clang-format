@@ -29,7 +29,9 @@ IncludeCategories:
     Priority: 1
   - Regex: '^<Q[A-Z]|^<Qt[A-Za-z]*/'
     Priority: 3
+  - Regex: '^<(spdlog/|gtest/|gmock/|quickjs\.h>|fluent|ex[a-z]+\.h>)'
+    Priority: 4
   - Regex: '^<'
     Priority: 2
   - Regex: '.*'
-    Priority: 4
+    Priority: 5

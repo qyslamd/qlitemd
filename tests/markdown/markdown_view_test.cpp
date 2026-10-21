@@ -1,7 +1,5 @@
 #include "markdown_view.h"
 
-#include <gtest/gtest.h>
-
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -9,6 +7,8 @@
 #include <QString>
 #include <QTemporaryDir>
 #include <QUrl>
+
+#include <gtest/gtest.h>
 
 // "复制按钮"链路里属于本模块的那一段：copy: 链接 → 要复制的原文。
 //

@@ -39,13 +39,15 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION bin)
+install(TARGETS ${TARGET_NAME}
+    RUNTIME DESTINATION bin
+    COMPONENT Runtime)
 
 if(WIN32)
     # FluentUI3Style/ExWidgets are built in-tree and are not Qt plugins.
     install(TARGETS FluentUI3Style ExWidgets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib)
+        RUNTIME DESTINATION bin COMPONENT Runtime
+        LIBRARY DESTINATION lib COMPONENT Runtime)
     get_filename_component(_md_viewer_qt_prefix
         "${Qt${QT_VERSION_MAJOR}_DIR}/../../.." ABSOLUTE)
     find_program(QLITEMD_WINDEPLOYQT
@@ -53,7 +55,8 @@ if(WIN32)
         HINTS "${_md_viewer_qt_prefix}/bin")
     if(QLITEMD_WINDEPLOYQT)
         install(CODE
-            "execute_process(COMMAND \"${QLITEMD_WINDEPLOYQT}\" --dir \"\${CMAKE_INSTALL_PREFIX}/bin\" \"\${CMAKE_INSTALL_PREFIX}/bin/md_viewer.exe\")")
+            "execute_process(COMMAND \"${QLITEMD_WINDEPLOYQT}\" --dir \"\${CMAKE_INSTALL_PREFIX}/bin\" \"\${CMAKE_INSTALL_PREFIX}/bin/md_viewer.exe\")"
+            COMPONENT Runtime)
     endif()
 endif()
 

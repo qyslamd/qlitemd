@@ -1,12 +1,12 @@
 #include "render_cache.h"
 
-#include <gtest/gtest.h>
-
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QStringList>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 #include "markdown_types.h"
 

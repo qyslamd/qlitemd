@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
-
 #include <QApplication>
 #include <QTest>
 #include <QTreeWidgetItem>
 #include <QVector>
+
+#include <gtest/gtest.h>
 
 #include "markdown_outline_widget.h"
 

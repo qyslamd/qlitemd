@@ -39,7 +39,8 @@ class LogCore {
 
  private:
   // 按需创建模块 logger，线程安全（调用方需持有 s_mutex_）
-  static spdlog::logger* GetOrCreateModuleLogger(const std::string& module_name);
+  static spdlog::logger* GetOrCreateModuleLogger(
+      const std::string& module_name);
 
   static void ApplyPatternToSinks(const LogInitOptions& options);
 

@@ -13,6 +13,8 @@ WebEngine、Chromium 或 Node.js。
 
 [English](README.md) · [示例程序](examples/md_viewer) · [文档](docs/)
 
+![qlitemd md_viewer 截图](docs/images/screenshot.png)
+
 ## 为什么做 qlitemd
 
 在 Qt 应用里嵌入 Markdown 预览，通常要在两种取舍之间选：
@@ -47,6 +49,9 @@ auto* view = new MarkdownView(parent);
 view->LoadFile(QStringLiteral("README.md"));
 // 或者：view->SetContent(markdown_text, base_directory);
 ```
+
+独立的 `QWidget` 示例在 [`examples/minimal`](examples/minimal)，不依赖
+FluentUI/QWindowKit，可直接针对已安装的 SDK 构建。
 
 ## 功能
 
@@ -188,6 +193,18 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown)
 只安装库 SDK 时，配置阶段加上 `QLITEMD_BUILD_MD_VIEWER=OFF` 和
 `QLITEMD_BUILD_TESTS=OFF`。
 
+安装组件：
+
+- `Runtime`：`md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
+- `Development`：静态库、公开头文件和 `qlitemdConfig.cmake`
+- `Licenses`：项目和第三方许可证文本
+
+```bash
+cmake --install build --component Runtime
+cmake --install build --component Development
+cmake --install build --component Licenses
+```
+
 ## 示例程序
 
 `examples/md_viewer` 是基于本库的完整 FluentUI 风格查看器，包含单实例、
@@ -199,7 +216,8 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown)
 
 - `src/markdown/`：库主体
 - `resources/`：主题 CSS 与 JS 载荷
-- `examples/md_viewer/`：示例程序
+- `examples/md_viewer/`：FluentUI 示例程序
+- `examples/minimal/`：面向已安装 SDK 的独立 QWidget 示例
 - `tests/markdown/`：无头 GoogleTest 测试
 - `cmake/`：package config 模板与测试辅助
 - `3rdparty/`：固定版本、已打补丁的依赖快照
@@ -230,6 +248,7 @@ qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | 语法高亮 | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1（mathjax-full） | TeX 转 SVG | Apache-2.0 |
 | [Mermaid](https://mermaid.js.org/) | 11.16.0 | 图表渲染 | MIT |
+| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | 载荷抽取 / DOM shim | MIT |
 | [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | 无边框窗口（`md_viewer`） | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0（4a3ff82） | QWindowKit 的 CMake 辅助 | MIT |
 | [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI 外壳（`md_viewer`） | MIT |

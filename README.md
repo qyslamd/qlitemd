@@ -13,6 +13,8 @@ with QPainter, so there is no WebEngine, Chromium or Node.js at runtime.
 
 [中文](README.zh-CN.md) · [Example](examples/md_viewer) · [Docs](docs/)
 
+![qlitemd md_viewer screenshot](docs/images/screenshot.png)
+
 ## Why qlitemd?
 
 Embedding Markdown preview in a Qt application usually means one of two
@@ -49,6 +51,10 @@ auto* view = new MarkdownView(parent);
 view->LoadFile(QStringLiteral("README.md"));
 // or: view->SetContent(markdown_text, base_directory);
 ```
+
+A standalone `QWidget` example is in
+[`examples/minimal`](examples/minimal). It does not use FluentUI or
+QWindowKit and builds against an installed SDK.
 
 ## Features
 
@@ -198,6 +204,18 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown)
 For a library-only SDK, configure with `QLITEMD_BUILD_MD_VIEWER=OFF` and
 `QLITEMD_BUILD_TESTS=OFF`.
 
+Install components:
+
+- `Runtime` — `md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
+- `Development` — static libraries, public headers and `qlitemdConfig.cmake`
+- `Licenses` — project and third-party license texts
+
+```bash
+cmake --install build --component Runtime
+cmake --install build --component Development
+cmake --install build --component Licenses
+```
+
 ## Example application
 
 `examples/md_viewer` is a complete FluentUI-style viewer built on the
@@ -211,7 +229,8 @@ and settings.
 
 - `src/markdown/` — the library
 - `resources/` — theme CSS and JS payloads
-- `examples/md_viewer/` — the example application
+- `examples/md_viewer/` — the FluentUI example application
+- `examples/minimal/` — standalone QWidget example for an installed SDK
 - `tests/markdown/` — headless GoogleTest suite
 - `cmake/` — package config template and test helpers
 - `3rdparty/` — pinned, patched dependency snapshots
@@ -245,6 +264,7 @@ maintainers and contributors.
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | Syntax highlighting | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1 (mathjax-full) | TeX to SVG | Apache-2.0 |
 | [Mermaid](https://mermaid.js.org/) | 11.16.0 | Diagrams | MIT |
+| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | Payload extraction / DOM shim | MIT |
 | [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | Frameless windows (`md_viewer`) | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0 (4a3ff82) | CMake helpers for QWindowKit | MIT |
 | [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI shell (`md_viewer`) | MIT |

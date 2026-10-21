@@ -4,8 +4,6 @@
 //
 // 无头跑：offscreen 平台不建真窗口；QPrinter(PdfFormat) 也不需要真打印机，
 // 直接往临时文件写。这里不验"排出来长什么样"——像素验收需要真实界面环境
-#include <gtest/gtest.h>
-
 #include <QApplication>
 #include <QByteArray>
 #include <QDateTime>
@@ -17,6 +15,8 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 #include "formula_renderer.h"
 #include "markdown_test_wait.h"

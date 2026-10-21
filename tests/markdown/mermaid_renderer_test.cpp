@@ -1,7 +1,5 @@
 #include "mermaid_renderer.h"
 
-#include <gtest/gtest.h>
-
 #include <QByteArray>
 #include <QDateTime>
 #include <QDir>
@@ -11,6 +9,8 @@
 #include <QString>
 #include <QStringList>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 #include "markdown_render_context.h"
 #include "markdown_types.h"

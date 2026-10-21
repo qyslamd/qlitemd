@@ -1,11 +1,11 @@
 #include "markdown_to_html.h"
 
-#include <gtest/gtest.h>
-
 #include <QHash>
 #include <QString>
 #include <QStringList>
 #include <QVector>
+
+#include <gtest/gtest.h>
 
 #include "markdown_render_tasks.h"
 

@@ -1,11 +1,5 @@
 #include "logging/log_core.h"
 
-#include <spdlog/async.h>
-#include <spdlog/sinks/base_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-// stdout_color_sink 在 Windows 上映射为 wincolor，其余平台映射为 ansicolor
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include <chrono>
 #include <cstdio>
 #include <exception>
@@ -17,6 +11,13 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+
+#include <spdlog/async.h>
+#include <spdlog/sinks/base_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+
+// stdout_color_sink 在 Windows 上映射为 wincolor，其余平台映射为 ansicolor
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "logging/log_pattern.h"
 
@@ -153,10 +154,9 @@ spdlog::logger* GetBootstrapLogger(std::string_view module) {
 // 懒创建虽然能用，但要走注册表的查重（见 GetOrCreateModuleLogger），提前建好
 // 就绕开了那段时序。新模块先登记在这里
 constexpr const char* kPreRegisterModules[] = {
-    "ACQUISITION", "ALARM",    "AUTH",   "COMM", "CONFIG",
-    "CURVE",       "DASHBOARD", "LOGIN", "LOGGER", "MAIN",
-    "PRESSURE",    "PROCESS",  "REPLAY", "SELFTEST", "STORAGE",
-    "UI"};
+    "ACQUISITION", "ALARM",    "AUTH",    "COMM", "CONFIG",   "CURVE",
+    "DASHBOARD",   "LOGIN",    "LOGGER",  "MAIN", "PRESSURE", "PROCESS",
+    "REPLAY",      "SELFTEST", "STORAGE", "UI"};
 
 }  // namespace
 
@@ -265,7 +265,8 @@ void LogCore::Init(const LogInitOptions& options,
   g_initialized = true;
 
   // 预注册常用模块 logger：懒创建在首个模块首次实例化时偶发不稳定（logger
-  // 静默丢弃全部输出），提前在单线程初始化阶段一次建好（表见 kPreRegisterModules）
+  // 静默丢弃全部输出），提前在单线程初始化阶段一次建好（表见
+  // kPreRegisterModules）
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     for (const char* name : kPreRegisterModules) {

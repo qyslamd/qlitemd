@@ -1,6 +1,5 @@
 #include "formula_renderer.h"
 
-#include <gtest/gtest.h>
 #include <thread>
 
 #include <QByteArray>
@@ -11,6 +10,8 @@
 #include <QString>
 #include <QStringList>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 #include "markdown_engine_state.h"
 #include "markdown_render_context.h"

@@ -1,7 +1,5 @@
 // qlitehtml 图片命中与选区公开入口的回归：宿主靠 imageAt() 判断右键/左键
 // 落在哪张图上，靠 clearSelection() 在搜索框清空时清掉选区。
-#include <gtest/gtest.h>
-
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QMouseEvent>
@@ -10,6 +8,8 @@
 #include <QTest>
 #include <QTextDocument>
 #include <QUrl>
+
+#include <gtest/gtest.h>
 
 #include "qlitehtmlwidget.h"
 

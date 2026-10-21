@@ -1,12 +1,12 @@
 #include "render_diagnostics.h"
 
-#include <gtest/gtest.h>
-
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
 #include <QStringList>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 namespace {
 

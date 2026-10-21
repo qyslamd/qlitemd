@@ -1,7 +1,5 @@
 #include "render_service.h"
 
-#include <gtest/gtest.h>
-
 #include <QByteArray>
 #include <QDateTime>
 #include <QGuiApplication>
@@ -10,6 +8,8 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QTest>
+
+#include <gtest/gtest.h>
 
 #include "code_highlighter.h"
 #include "formula_renderer.h"

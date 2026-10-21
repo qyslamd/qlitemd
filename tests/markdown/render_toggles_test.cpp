@@ -1,5 +1,3 @@
-#include <gtest/gtest.h>
-
 #include <QApplication>
 #include <QBuffer>
 #include <QDateTime>
@@ -11,6 +9,8 @@
 #include <QTemporaryDir>
 #include <QUrl>
 #include <QWidget>
+
+#include <gtest/gtest.h>
 
 #include "markdown_render_context.h"
 #include "markdown_test_wait.h"

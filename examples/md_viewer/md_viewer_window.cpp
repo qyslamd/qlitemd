@@ -1,3 +1,4 @@
+// clang-format off
 #include "md_viewer_window.h"
 
 // Must precede windows.h: winuser.h defines FindText as FindTextA/W.
@@ -61,6 +62,7 @@
 // winuser.h maps FindText to FindTextA/W; MarkdownView's method is not that.
 #undef FindText
 #endif
+// clang-format on
 
 #include "markdown_outline_widget.h"
 #include "md_viewer_settings.h"

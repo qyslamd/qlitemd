@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
-
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QLabel>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+
+#include <gtest/gtest.h>
 
 #include "markdown_test_wait.h"
 #include "markdown_view.h"
