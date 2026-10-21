@@ -76,3 +76,39 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure -L MARKDOWN
+
+  linux:
+    name: Linux Qt6 (x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          install-deps: true
+          cache: true
+          cache-key-prefix: qlitemd-qt-linux
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DQLITEMD_QT_MAJOR=6
+          -DQLITEMD_BUILD_MD_VIEWER=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build --output-on-failure -L MARKDOWN
