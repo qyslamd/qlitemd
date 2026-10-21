@@ -221,15 +221,31 @@ and settings.
 - FluentUI falls back to a system icon font because the Microsoft Segoe
   Fluent Icons font is not redistributed with this repository.
 
-## Acknowledgements
+## Third-party libraries
 
-This project builds on [qlitehtml](https://github.com/qtproject/qlitehtml),
-[litehtml](https://github.com/litehtml/litehtml),
-[md4c](https://github.com/mity/md4c), [QuickJS](https://bellard.org/quickjs/),
-[highlight.js](https://highlightjs.org/), [MathJax](https://www.mathjax.org/),
-[Mermaid](https://mermaid.js.org/), [spdlog](https://github.com/gabime/spdlog),
-[GoogleTest](https://github.com/google/googletest), QWindowKit, qmsetup and
-FluentUIStyle. Qt is an external dependency and is not bundled.
+qlitemd would not exist without these projects. Thank you to their
+maintainers and contributors.
+
+| Project | Version | Used for | License |
+| --- | --- | --- | --- |
+| [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
+| [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
+| [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown parser | MIT |
+| [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript runtime | MIT |
+| [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
+| [highlight.js](https://highlightjs.org/) | 11.12.0 | Syntax highlighting | BSD-3-Clause |
+| [MathJax](https://www.mathjax.org/) | 3.2.1 (mathjax-full) | TeX to SVG | Apache-2.0 |
+| [Mermaid](https://mermaid.js.org/) | 11.16.0 | Diagrams | MIT |
+| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | Frameless windows (`md_viewer`) | Apache-2.0 |
+| [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0 (4a3ff82) | CMake helpers for QWindowKit | MIT |
+| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI shell (`md_viewer`) | MIT |
+| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | Logging (`md_viewer`) | MIT |
+| [GoogleTest](https://github.com/google/googletest) | 1.17.0 | Tests | BSD-3-Clause |
+| [Qt](https://www.qt.io/) | 5.14+ / 6.x | Application framework (external) | LGPLv3 / GPLv3 / commercial |
+
+Versions are the snapshots vendored in this repository; upstream projects may
+have newer releases. Full license texts are in [NOTICE](NOTICE) and, after
+installation, under `licenses/`.
 
 ## License
 

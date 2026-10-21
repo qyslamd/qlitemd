@@ -208,15 +208,29 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown)
 - 仓库不重新分发微软 Segoe Fluent Icons 字体，FluentUI 会回退到
   系统字体。
 
-## 致谢
+## 第三方库
 
-本项目建立在 [qlitehtml](https://github.com/qtproject/qlitehtml)、
-[litehtml](https://github.com/litehtml/litehtml)、
-[md4c](https://github.com/mity/md4c)、[QuickJS](https://bellard.org/quickjs/)、
-[highlight.js](https://highlightjs.org/)、[MathJax](https://www.mathjax.org/)、
-[Mermaid](https://mermaid.js.org/)、[spdlog](https://github.com/gabime/spdlog)、
-[GoogleTest](https://github.com/google/googletest)、QWindowKit、qmsetup 和
-FluentUIStyle 之上。Qt 是外部依赖，不随本仓库分发。
+qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者。
+
+| 项目 | 版本 | 用途 | 许可证 |
+| --- | --- | --- | --- |
+| [litehtml](https://github.com/litehtml/litehtml) | 0.10（快照） | HTML/CSS 排版 | BSD-3-Clause |
+| [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0（快照） | Qt 控件桥接 | BSD-3-Clause |
+| [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown 解析 | MIT |
+| [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript 运行时 | MIT |
+| [gumbo-parser](https://github.com/google/gumbo-parser) | 随 litehtml 内置 | HTML5 解析 | Apache-2.0 |
+| [highlight.js](https://highlightjs.org/) | 11.12.0 | 语法高亮 | BSD-3-Clause |
+| [MathJax](https://www.mathjax.org/) | 3.2.1（mathjax-full） | TeX 转 SVG | Apache-2.0 |
+| [Mermaid](https://mermaid.js.org/) | 11.16.0 | 图表渲染 | MIT |
+| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | 无边框窗口（`md_viewer`） | Apache-2.0 |
+| [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0（4a3ff82） | QWindowKit 的 CMake 辅助 | MIT |
+| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI 外壳（`md_viewer`） | MIT |
+| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | 日志（`md_viewer`） | MIT |
+| [GoogleTest](https://github.com/google/googletest) | 1.17.0 | 测试 | BSD-3-Clause |
+| [Qt](https://www.qt.io/) | 5.14+ / 6.x | 应用框架（外部依赖） | LGPLv3 / GPLv3 / 商业许可 |
+
+表中的版本是本仓库内置的快照版本，上游可能已有更新。完整许可证文本见
+[NOTICE](NOTICE)，安装后也会放在 `licenses/` 下。
 
 ## 许可证
 
