@@ -130,11 +130,56 @@ endif()
 
 add_subdirectory(src/markdown)
 
-install(TARGETS qlitemd_markdown ARCHIVE DESTINATION lib)
-install(DIRECTORY src/markdown/
-    DESTINATION include/qlitemd
-    FILES_MATCHING PATTERN "*.h")
+set(QLITEMD_PUBLIC_HEADERS
+    src/markdown/heading_ids.h
+    src/markdown/markdown_outline_widget.h
+    src/markdown/markdown_render_tasks.h
+    src/markdown/markdown_theme.h
+    src/markdown/markdown_to_html.h
+    src/markdown/markdown_types.h
+    src/markdown/markdown_view.h)
+
+# The public library only exposes qlitemd headers; qlitehtml, litehtml, md4c
+# and QuickJS stay implementation details. Their archives are installed because
+# qlitemd_markdown is a static library and consumers must link them.
+# All of these targets are static archives. Install the files directly so the
+# vendored targets' PUBLIC_HEADER paths are not resolved against this source
+# directory; only qlitemd's public headers are part of the SDK.
+install(FILES
+    "$<TARGET_FILE:qlitemd_markdown>"
+    "$<TARGET_FILE:qlitehtml>"
+    "$<TARGET_FILE:litehtml>"
+    "$<TARGET_FILE:gumbo>"
+    "$<TARGET_FILE:md4c>"
+    "$<TARGET_FILE:qjs>"
+    DESTINATION lib)
+
+install(FILES ${QLITEMD_PUBLIC_HEADERS} DESTINATION include/qlitemd)
+
+include(CMakePackageConfigHelpers)
+set(QLITEMD_CMAKE_INSTALL_DIR lib/cmake/qlitemd)
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/qlitemdConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfig.cmake"
+    INSTALL_DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR})
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfigVersion.cmake"
+    DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR})
+
 install(FILES LICENSE NOTICE README.md README.zh-CN.md DESTINATION .)
+install(FILES 3rdparty/litehtml/LICENSE DESTINATION licenses/litehtml)
+install(FILES 3rdparty/md4c/LICENSE.md DESTINATION licenses/md4c)
+install(FILES 3rdparty/quickjs/LICENSE DESTINATION licenses/quickjs)
+install(FILES 3rdparty/spdlog/LICENSE DESTINATION licenses/spdlog)
+install(FILES 3rdparty/qwindowkit/LICENSE DESTINATION licenses/qwindowkit)
+install(FILES 3rdparty/qmsetup/LICENSE DESTINATION licenses/qmsetup)
+install(FILES 3rdparty/fluentui/LICENSE DESTINATION licenses/fluentui)
+install(DIRECTORY 3rdparty/qlitehtml/LICENSES DESTINATION licenses/qlitehtml)
 
 # --------------------------------------------------------------- tests
 if(QLITEMD_BUILD_TESTS)

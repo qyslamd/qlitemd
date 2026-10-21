@@ -1,0 +1,79 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+if(@QLITEMD_QT_MAJOR@ EQUAL 6)
+    find_dependency(Qt6 6.0 COMPONENTS Core Gui Widgets Svg PrintSupport)
+    set(_qlitemd_qt Qt6)
+else()
+    find_dependency(Qt5 5.14 COMPONENTS Core Gui Widgets Svg PrintSupport)
+    set(_qlitemd_qt Qt5)
+endif()
+find_dependency(Threads)
+
+set(_qlitemd_libdir "${PACKAGE_PREFIX_DIR}/lib")
+
+find_library(QLITEMD_MARKDOWN_LIBRARY
+    NAMES qlitemd_markdown
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+find_library(QLITEMD_QLITEHTML_LIBRARY
+    NAMES qlitehtml0 qlitehtml
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+find_library(QLITEMD_LITEHTML_LIBRARY
+    NAMES litehtml
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+find_library(QLITEMD_GUMBO_LIBRARY
+    NAMES gumbo
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+find_library(QLITEMD_MD4C_LIBRARY
+    NAMES md4c
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+find_library(QLITEMD_QJS_LIBRARY
+    NAMES qjs
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+
+set(_qlitemd_link_libraries
+    ${_qlitemd_qt}::Widgets
+    ${_qlitemd_qt}::Gui
+    ${_qlitemd_qt}::Core
+    ${_qlitemd_qt}::Svg
+    ${_qlitemd_qt}::PrintSupport
+    ${QLITEMD_QLITEHTML_LIBRARY}
+    ${QLITEMD_LITEHTML_LIBRARY}
+    ${QLITEMD_GUMBO_LIBRARY}
+    ${QLITEMD_MD4C_LIBRARY}
+    ${QLITEMD_QJS_LIBRARY}
+    Threads::Threads
+    ${CMAKE_DL_LIBS})
+if(UNIX AND NOT APPLE)
+    list(APPEND _qlitemd_link_libraries m)
+endif()
+
+if(MSVC)
+    set(_qlitemd_compile_options "/utf-8")
+else()
+    set(_qlitemd_compile_options "")
+endif()
+
+if(NOT TARGET qlitemd::markdown)
+    add_library(qlitemd::markdown STATIC IMPORTED)
+    set_target_properties(qlitemd::markdown PROPERTIES
+        IMPORTED_LOCATION "${QLITEMD_MARKDOWN_LIBRARY}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "CXX;C"
+        INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/include/qlitemd"
+        INTERFACE_COMPILE_FEATURES "cxx_std_17"
+        INTERFACE_COMPILE_OPTIONS "${_qlitemd_compile_options}"
+        INTERFACE_LINK_LIBRARIES "${_qlitemd_link_libraries}")
+endif()

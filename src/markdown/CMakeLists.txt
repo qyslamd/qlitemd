@@ -123,6 +123,9 @@ target_include_directories(${TARGET_NAME} PUBLIC
 )
 
 if(MSVC)
+    # Public headers contain UTF-8 comments; consumers need the same source
+    # charset as the library itself.
+    target_compile_options(${TARGET_NAME} PUBLIC /utf-8)
     target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX- /EHsc)
 
     # 线程栈放大：MathJax 在 QuickJS 里解析递归深，formula_renderer.cpp 里

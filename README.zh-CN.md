@@ -32,6 +32,13 @@ add_subdirectory(path/to/qlitemd)
 target_link_libraries(myapp PRIVATE qlitemd_markdown)
 ```
 
+或者使用已安装的 SDK：
+
+```cmake
+find_package(qlitemd CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE qlitemd::markdown)
+```
+
 ```cpp
 #include "markdown_view.h"
 
@@ -160,9 +167,19 @@ cmake --install build
 ```
 
 默认选项下，安装内容包含 `bin/md_viewer.exe`、`qlitemd_markdown`
-静态库和公开头文件。Windows 安装阶段会调用 `windeployqt`，并拷贝项目内构建的
-`FluentUI3Style.dll` 和 `ExWidgets.dll`。目前尚未提供 CMake package
-config，集成方式是 `add_subdirectory`。
+静态库及其静态依赖、公开头文件、许可证文件和 CMake package config。
+Windows 安装阶段会调用 `windeployqt`，并拷贝项目内构建的
+`FluentUI3Style.dll` 和 `ExWidgets.dll`。
+
+消费方可以这样使用：
+
+```cmake
+find_package(qlitemd CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE qlitemd::markdown)
+```
+
+只安装库 SDK 时，配置阶段加上 `QLITEMD_BUILD_MD_VIEWER=OFF` 和
+`QLITEMD_BUILD_TESTS=OFF`。
 
 ## 示例程序
 
@@ -177,6 +194,7 @@ config，集成方式是 `add_subdirectory`。
 - `resources/`：主题 CSS 与 JS 载荷
 - `examples/md_viewer/`：示例程序
 - `tests/markdown/`：无头 GoogleTest 测试
+- `cmake/`：package config 模板与测试辅助
 - `3rdparty/`：固定版本、已打补丁的依赖快照
 - `patches/`：补丁来源记录
 - `docs/`：架构、渲染和诊断文档

@@ -34,6 +34,13 @@ add_subdirectory(path/to/qlitemd)
 target_link_libraries(myapp PRIVATE qlitemd_markdown)
 ```
 
+Or, from an installed SDK:
+
+```cmake
+find_package(qlitemd CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE qlitemd::markdown)
+```
+
 ```cpp
 #include "markdown_view.h"
 
@@ -168,10 +175,20 @@ cmake --install build
 ```
 
 With the default options, the install contains `bin/md_viewer.exe`, the
-`qlitemd_markdown` static library and public headers. On Windows, `windeployqt` is invoked during
-install, and the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied
-next to the viewer. A CMake package config is not shipped yet;
-`add_subdirectory` is the supported integration path.
+`qlitemd_markdown` static library, its static dependency archives, public
+headers, license files and a CMake package config. On Windows, `windeployqt`
+is invoked during install, and the in-tree `FluentUI3Style` and `ExWidgets`
+DLLs are copied next to the viewer.
+
+Consumers can then use:
+
+```cmake
+find_package(qlitemd CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE qlitemd::markdown)
+```
+
+For a library-only SDK, configure with `QLITEMD_BUILD_MD_VIEWER=OFF` and
+`QLITEMD_BUILD_TESTS=OFF`.
 
 ## Example application
 
@@ -188,6 +205,7 @@ and settings.
 - `resources/` — theme CSS and JS payloads
 - `examples/md_viewer/` — the example application
 - `tests/markdown/` — headless GoogleTest suite
+- `cmake/` — package config template and test helpers
 - `3rdparty/` — pinned, patched dependency snapshots
 - `patches/` — provenance of the patches applied to those snapshots
 - `docs/` — architecture, rendering and diagnostics notes
