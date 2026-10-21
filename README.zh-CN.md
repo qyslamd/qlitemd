@@ -6,6 +6,7 @@ md4c 负责解析，qlitehtml 负责排版，QuickJS 负责运行 highlight.js�
 MathJax 和 Mermaid。公式与图表的 SVG 由 QPainter 光栅化，运行时不需要
 WebEngine、Chromium 或 Node.js。
 
+[![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Qt](https://img.shields.io/badge/Qt-5.14%2B-green.svg)](#构建要求)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#构建要求)

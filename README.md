@@ -6,6 +6,7 @@ md4c parses the document, qlitehtml lays it out, and QuickJS runs
 highlight.js, MathJax and Mermaid. Formula and diagram SVGs are rasterized
 with QPainter, so there is no WebEngine, Chromium or Node.js at runtime.
 
+[![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Qt](https://img.shields.io/badge/Qt-5.14%2B-green.svg)](#requirements)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#requirements)
