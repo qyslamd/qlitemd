@@ -1,0 +1,35 @@
+# Normalize text files in the repository. Checkouts use the platform default.
+* text=auto
+
+# Windows scripts must keep CRLF so cmd.exe parses them correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+
+# Payloads whose MD5 is verified by extract_mermaid_payload.py. Any line-ending
+# conversion would change the bytes and break the checks.
+resources/mermaid.js -text
+resources/dom_shim.js -text
+resources/path_bbox.js -text
+resources/highlight.min.js -text
+resources/mathjax-svg.min.js -text
+
+# Patch files must use LF so they apply consistently on every platform.
+patches/** text eol=lf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.lib binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.zip binary
+*.7z binary

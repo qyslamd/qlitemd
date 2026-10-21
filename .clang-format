@@ -1,0 +1,35 @@
+---
+# qlitemd C++ formatting rules.
+#
+# Usage:
+#   clang-format -i <file>
+#   clang-format --dry-run --Werror <file>
+#
+# Keep order-sensitive includes inside // clang-format off blocks. In
+# particular, windows.h must precede headers that depend on it.
+
+BasedOnStyle: Google
+Standard: c++17
+
+IndentWidth: 2
+UseTab: Never
+ColumnLimit: 80
+PointerAlignment: Left
+
+# Project style: braces are required even for single-line bodies.
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Include order: related header, C standard library, C++ standard library,
+# Qt, then project headers. IncludeCategories uses first-match-wins, so the
+# Qt and C standard rules must come before the generic '<' rule.
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<[a-z_0-9]+\.h>'
+    Priority: 1
+  - Regex: '^<Q[A-Z]|^<Qt[A-Za-z]*/'
+    Priority: 3
+  - Regex: '^<'
+    Priority: 2
+  - Regex: '.*'
+    Priority: 4
