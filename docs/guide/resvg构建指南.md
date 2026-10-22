@@ -56,6 +56,8 @@ cargo build --release --target i686-pc-windows-msvc -p resvg-capi
 注意：
 
 - `default-members` 只有 CLI，**必须带 `-p resvg-capi`** 才会编 C 库；
+- cdylib 会同时生成 `resvg.dll` 与 `resvg.dll.lib`（import library），
+  两者都要入库；
 - `--target` 形式的产物在 `target\<三元组>\release\` 下，与宿主构建
   目录分开；
 - 别动默认 feature（`text`/`system-fonts` 必须在），mermaid SVG 的
@@ -81,9 +83,9 @@ size 参考：x64 release 约 3.8 MB；明显偏小（如 < 2 MB）通常是 fea
 
 1. 下载新版本 release 压缩包，校验 SHA256（GitHub release 提供 digest）；
 2. 按第二节构建 x64 与 x86 两个 `resvg.dll`，按第三节校验；
-3. 替换 `3rdparty/resvg/` 下的 DLL 与 `resvg.h`（同版本），在
-   `3rdparty/resvg/VERSION.md` 记录：resvg 版本、Rust 版本、构建日期、
-   SHA256；
+3. 替换 `3rdparty/resvg/` 下的 DLL、`resvg.dll.lib` 与 `resvg.h`
+   （同版本），在 `3rdparty/resvg/VERSION.md` 记录：resvg 版本、
+   Rust 版本、构建日期、SHA256；
 4. NOTICE 的 resvg 条目核对许可证（Apache-2.0 OR MIT）；
 5. 跑 `ctest -L MARKDOWN`，再用 `MD_MARKDOWN_DUMP` 的产物批量比对
    渲染结果无回退；

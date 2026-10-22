@@ -8,13 +8,16 @@ qlitehtml.
 
 ## Formula and Mermaid
 
-QuickJS executes the pinned MathJax and Mermaid payloads. The resulting
-SVG is converted to a QPixmap and inserted into the HTML as an image
-token (`mj:f/<hash>` or `mj:m/<hash>`). Tokens are served by the
+MathJax runs in QuickJS. Mermaid uses the native merman-ffi backend by
+default; the legacy QuickJS + mermaid.js backend remains selectable with
+`QLITEMD_MERMAID_BACKEND=quickjs`. Both produce SVG, which is rasterized by
+resvg (or QtSvg with `QLITEMD_SVG_BACKEND=qtsvg`) and inserted into the HTML
+as an image token (`mj:f/<hash>` or `mj:m/<hash>`). Tokens are served by the
 MarkdownView resource callback and cached in the render context.
 
-MathJax, Mermaid and highlight.js are build-time payloads; the runtime
-does not need Node.js.
+MathJax, highlight.js and the optional legacy Mermaid path are build-time
+QuickJS payloads; the runtime does not need Node.js. The native backends are
+shipped as prebuilt DLLs under `3rdparty/resvg/` and `3rdparty/merman/`.
 
 ## Asynchronous commit
 

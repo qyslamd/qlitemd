@@ -2,6 +2,22 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- Add a native Mermaid backend based on merman-ffi; the legacy
+  QuickJS + mermaid.js path remains selectable with
+  `QLITEMD_MERMAID_BACKEND=quickjs`.
+- Rasterize formula and Mermaid SVG with resvg by default; QtSvg remains
+  selectable with `QLITEMD_SVG_BACKEND=qtsvg`.
+- Ship prebuilt `merman_ffi.dll` and `resvg.dll` for Windows x86/x64;
+  normal builds do not require Rust.
+- Add `docs/guide/merman构建指南.md` and integrate both native DLLs into
+  the SDK and installer components.
+- Add a class-diagram render test and runtime DLL staging for tests and
+  the example application.
+- Generate `run_md_viewer.bat`/`.sh` with Qt `PATH` and `QT_PLUGIN_PATH`
+  prepared before launch.
+
 ## 0.0.1 - 2026-10-21
 
 Initial public release.

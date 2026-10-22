@@ -12,13 +12,17 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 
 ```text
 Markdown -> md4c -> qlitehtml/litehtml -> QWidget
-                  \-> QuickJS: highlight.js / MathJax / Mermaid
+                  \-> QuickJS: highlight.js / MathJax
+                  \-> merman-ffi: Mermaid（原生）
+                  \-> resvg: 公式/图表 SVG 光栅化
 ```
 
 - 主验证平台：Windows + MSVC
 - Qt 支持：Qt 5.14+、Qt 6.x
+- 原生后端：`QLITEMD_SVG_BACKEND=resvg|qtsvg`、
+  `QLITEMD_MERMAID_BACKEND=merman|quickjs`；merman 要求 resvg
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
-  `md_viewer` 运行时尚未验证
+  `md_viewer` 运行时尚未验证；原生后端目前仅 Windows
 - 自有代码许可证：MIT；第三方许可见 `NOTICE`
 
 ## 关于作者与 AI

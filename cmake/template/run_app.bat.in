@@ -1,0 +1,13 @@
+@echo off
+setlocal
+
+set "PATH=@QT_BIN_DIR@;%PATH%"
+set "QT_PLUGIN_PATH=@QT_PLUGINS_DIR@"
+
+chcp 65001 >nul
+
+cd /d "@RUN_DIR@"
+
+rem Explicit .\ prefix: with NoDefaultCurrentDirectoryInExePath in effect,
+rem a bare filename is not resolved from the current directory.
+.\@TARGET_NAME@.exe @PROGRAM_ARGS@ %*

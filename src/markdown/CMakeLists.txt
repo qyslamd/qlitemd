@@ -20,10 +20,13 @@ set(TARGET_SRCS
     markdown_theme.h
     markdown_types.h
     html_escape.h
+    merman_renderer.h
     mermaid_renderer.cpp
     mermaid_renderer.h
     mermaid_svg_cleanup.cpp
     mermaid_svg_cleanup.h
+    svg_rasterizer.cpp
+    svg_rasterizer.h
     markdown_to_html.cpp
     markdown_to_html.h
     markdown_view.cpp
@@ -92,6 +95,12 @@ foreach(entry "md_hl:highlight.min.js"
     list(APPEND MARKDOWN_BYTECODE_SRCS "${c_file}")
 endforeach()
 
+if(WIN32)
+    list(APPEND TARGET_SRCS merman_renderer.cpp)
+else()
+    list(APPEND TARGET_SRCS merman_renderer_stub.cpp)
+endif()
+
 add_library(${TARGET_NAME} STATIC
     ${TARGET_SRCS}
     ${MARKDOWN_BYTECODE_SRCS}
@@ -114,13 +123,30 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
     qlitehtml
     md4c
-    qjs            # 公式：在 QuickJS 里跑 MathJax（tex→svg）
-    Qt${QT_VERSION_MAJOR}::Svg  # 公式：QSvgRenderer 把 SVG 画成位图
+    qjs            # 公式与高亮：在 QuickJS 里跑 MathJax/highlight.js
+    Qt${QT_VERSION_MAJOR}::Svg
 )
+if(WIN32)
+    target_link_libraries(${TARGET_NAME} PRIVATE
+        qlitemd::resvg
+        qlitemd::merman)
+endif()
 
 target_include_directories(${TARGET_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+        QLITEMD_SVG_BACKEND_RESVG=1)
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+        QLITEMD_MERMAID_BACKEND_MERMAN=1)
+endif()
+if(WIN32)
+    add_dependencies(${TARGET_NAME} qlitemd_runtime_dlls)
+endif()
 
 if(MSVC)
     # Public headers contain UTF-8 comments; consumers need the same source

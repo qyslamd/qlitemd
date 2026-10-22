@@ -44,6 +44,21 @@ find_library(QLITEMD_QJS_LIBRARY
     NO_DEFAULT_PATH
     REQUIRED)
 
+if(WIN32)
+    if(NOT TARGET qlitemd::resvg)
+        add_library(qlitemd::resvg SHARED IMPORTED)
+        set_target_properties(qlitemd::resvg PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/resvg.dll"
+            IMPORTED_IMPLIB "${_qlitemd_libdir}/resvg.dll.lib")
+    endif()
+    if(NOT TARGET qlitemd::merman)
+        add_library(qlitemd::merman SHARED IMPORTED)
+        set_target_properties(qlitemd::merman PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/merman_ffi.dll"
+            IMPORTED_IMPLIB "${_qlitemd_libdir}/merman_ffi.dll.lib")
+    endif()
+endif()
+
 # Static archives must precede the Qt shared libraries that they reference:
 # Linux linkers with --as-needed may otherwise drop Qt PrintSupport before
 # qlitehtml's QPrinter symbols are seen.
@@ -52,7 +67,11 @@ set(_qlitemd_link_libraries
     ${QLITEMD_LITEHTML_LIBRARY}
     ${QLITEMD_GUMBO_LIBRARY}
     ${QLITEMD_MD4C_LIBRARY}
-    ${QLITEMD_QJS_LIBRARY}
+    ${QLITEMD_QJS_LIBRARY})
+if(WIN32)
+    list(APPEND _qlitemd_link_libraries qlitemd::resvg qlitemd::merman)
+endif()
+list(APPEND _qlitemd_link_libraries
     ${_qlitemd_qt}::Widgets
     ${_qlitemd_qt}::Gui
     ${_qlitemd_qt}::Core

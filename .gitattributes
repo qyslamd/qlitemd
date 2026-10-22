@@ -3,8 +3,10 @@
 
 # Windows scripts must keep CRLF so cmd.exe parses them correctly.
 *.bat text eol=crlf
+*.bat.in text eol=crlf
 *.cmd text eol=crlf
 *.sh text eol=lf
+*.sh.in text eol=lf
 
 # Payloads whose MD5 is verified by extract_mermaid_payload.py. Any line-ending
 # conversion would change the bytes and break the checks.

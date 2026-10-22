@@ -4,6 +4,8 @@
 | --- | --- | --- | --- | --- | --- |
 | 2026-10-22 | 0.48.1 | 1.99.1 (stable-msvc) | bin/x64/resvg.dll | 08741e9bb21e66380b5678eace2e6d1cf65193cf98ef98eefe26758eaf5ff034 | VS2019 x64 工具链，release profile，默认 feature |
 | 2026-10-22 | 0.48.1 | 1.99.1 (stable-msvc) | bin/x86/resvg.dll | 8ccb13e5184f5a783aac9933e4788aa1c213b18bccfe4228c49b68a27d5ea345 | VS2019 x86 工具链 + `--target i686-pc-windows-msvc`，release profile，默认 feature |
+| 2026-10-22 | 0.48.1 | 1.99.1 (stable-msvc) | bin/x64/resvg.dll.lib | ed369e4e0567962a93652a0f2b608dc0bb17c09f2c71bb48055e0b36d56b58f7 | x64 import library |
+| 2026-10-22 | 0.48.1 | 1.99.1 (stable-msvc) | bin/x86/resvg.dll.lib | f6a7c8fd6006e8686babd26e62deb414e0cd4060b39225f375e283ca7bcc1025 | x86 import library |
 
 构建与升级流程见 `docs/guide/resvg构建指南.md`。
 
