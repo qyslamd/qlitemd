@@ -64,3 +64,5 @@ if(MSVC)
     target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX- /EHsc /utf-8)
 endif()
 
+configure_run_script("run_${TARGET_NAME}")
+

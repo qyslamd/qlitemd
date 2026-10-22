@@ -158,6 +158,9 @@ cmake -S . -B build-qt6 -G Ninja \
 cmake --build build-qt6
 ```
 
+Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
+`PATH` 与 `QT_PLUGIN_PATH`，可直接运行。
+
 构建开关：
 
 - `QLITEMD_QT_MAJOR`：`5`（默认）或 `6`

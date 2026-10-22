@@ -168,6 +168,9 @@ cmake -S . -B build-qt6 -G Ninja \
 cmake --build build-qt6
 ```
 
+Windows builds generate `build/bin/run_md_viewer.bat`, which sets `PATH`
+and `QT_PLUGIN_PATH` before launching the viewer.
+
 Build options:
 
 - `QLITEMD_QT_MAJOR` — `5` (default) or `6`

@@ -43,6 +43,8 @@ else()
         Core Gui Widgets Svg Network PrintSupport Test)
 endif()
 
+include(cmake/run_app.cmake)
+
 # ---------------------------------------------------------------- spdlog
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
