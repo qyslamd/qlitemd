@@ -15,6 +15,7 @@ components. Their licenses remain in effect for those components.
 - FluentUIStyle: MIT
 - spdlog: MIT
 - GoogleTest: BSD-3-Clause
+- resvg: Apache-2.0 OR MIT (prebuilt DLL under 3rdparty/resvg)
 - MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
 - Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
 - highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
@@ -28,5 +29,6 @@ The Microsoft Segoe Fluent Icons font is not distributed with qlitemd.
 FluentUIStyle falls back to a system-installed font when present.
 
 Full license texts are kept alongside the vendored sources under
-3rdparty/*/LICENSE or 3rdparty/*/LICENSES, and under licenses/ for the
-JavaScript payloads.
+3rdparty/*/LICENSE or 3rdparty/*/LICENSES, under licenses/ for the
+JavaScript payloads, and under 3rdparty/resvg/ for the prebuilt resvg
+DLL (Apache-2.0 OR MIT).
