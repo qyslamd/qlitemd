@@ -33,7 +33,16 @@
 
 ## 三、质量对比（决定性）
 
-截图见本目录四张 PNG（2110x2046 与 2850x1146，2x）。
+证据文件（本目录）：
+
+- `sequence.qt.png` / `sequence.resvg.png`
+- `class.qt.png` / `class.resvg.png`
+- `formula-display-int.*.white.png`
+- `formula-display-quadratic.*.white.png`
+- `formula-inline-cjk-text.*.white.png`
+- `x86.qt.png` / `x86.resvg.png`
+
+截图尺寸：mermaid 2x（2110x2046 与 2850x1146）；公式 4x（白底合成）。
 
 ### 时序图
 
@@ -67,20 +76,63 @@ CSS 支持（选择器、继承、`currentColor`），生 SVG 直接正确呈现
 
 结论：**质量维度 resvg 完胜，且不是程度差异，是"可用与不可用"的差异。**
 
+### 公式（MathJax）对比
+
+补测四组公式（inline 毕达哥拉斯、display 积分、display 求和+二次方程
+求根公式、含中文 `\text`），原始 `currentColor`、ex 单位归一化为
+ex=8px（与生产约定一致），4x 光栅化。截图见本目录
+`formula-*.white.png`（白底合成）：
+
+| 项 | QtSvg | resvg |
+| --- | --- | --- |
+| 积分/求和/分式/根号的排版 | 正确 | 正确，与 QtSvg 肉眼无差 |
+| 字形（MathJax 内嵌 path 字形） | 正确 | 正确，逐像素级接近 |
+| `currentColor` | 生效（按黑渲染） | **原生支持**（继承 color 属性） |
+| `\text{（质能方程）}` 中文回退 | 正确 | 正确（回退族生效） |
+
+两个额外发现：
+
+1. **`currentColor` 无需替换 hack**：resvg 原生解析 currentColor；暗色
+   主题配色可用 `resvg_options_set_stylesheet()` 注入
+   `* { color: <主题色> }` 实现，比现在的字符串替换更干净。
+2. **既有载荷限制（与渲染器无关）**：打包的 MathJax 载荷不支持
+   `pmatrix` 等 ams 环境（报 `Unknown environment`，两侧拿到同样的
+   merror SVG）。这是 `mathjax_svg_entry.mjs` 打包时 TeX 包集的问题，
+   如需矩阵公式要在升级载荷时补 `ams`，与本次迁移无关。
+
+结论：**公式路径同样满足替换条件，且能顺带删掉 `currentColor` 替换。**
+
+### 32 位验证
+
+用 `i686-pc-windows-msvc` target 构建的 x86 DLL，配合 Qt 5.15.2 x86
+重新编译 `resvg-vs-qtsvg`，加载样张 SVG 成功（进程存活、两张位图落盘）。
+证据见 `x86.qt.png` / `x86.resvg.png`：
+
+- QtSvg 侧：箭头 marker 缺失、CSS 字体未生效（退化为衬线）、文字对比度低；
+- resvg 侧：marker、字体、渐变、虚线箭头全部正确。
+
+x86 与 x64 结论一致，DLL 架构与 Qt 配置匹配，无 32/64 位差异。
+
 ## 四、性能数据
 
 构建为未优化配置（评估程序未设 `CMAKE_BUILD_TYPE`），绝对值仅作相对
 参考；生产管线的 mermaid 执行耗时与渲染器无关，两侧共享同一 SVG 输入。
+计时为预热 1 轮后取 3 轮中位数。
 
-| 图表 | mermaid 执行 | SVG 大小 | QtSvg 2x | resvg 2x | 位图尺寸 |
+| 图表 | mermaid 执行 | SVG 大小 | QtSvg | resvg | 位图尺寸 |
 | --- | ---: | ---: | ---: | ---: | --- |
-| sequence | 3388 ms | 35940 B | 190 ms | 237 ms | 2110x2046（约 17MPix） |
-| class | 13828 ms | 38654 B | 291 ms | 232 ms | 2849x1146（约 13MPix） |
+| sequence @2x | 2628-3388 ms | 35940 B | 166-190 ms | 211-237 ms | 2110x2046（约 17MPix） |
+| class @2x | 11332-13828 ms | 38647 B | 281-310 ms | 223-240 ms | 2849x1146（约 13MPix） |
+| formula inline @4x | — | 4163 B | 4-13 ms | 81-116 ms | 380x64 |
+| formula display @4x | — | 6055-13609 B | 6-22 ms | 92-104 ms | 1175x209 |
 
-- 栅格化本身两侧同量级（百毫秒级，10+ MPix @2x），sequence 侧 Qt 略快、
-  class 侧 resvg 略快，无决定性差距；
-- 端到端耗时由 mermaid 在 QuickJS 里的执行主导（本机未优化构建 3.4s /
-  13.8s；生产 relwithdebinfo 下显著低于此），换渲染器**不影响**这部分；
+- 大图栅格化两侧同量级，无决定性差距；
+- **小 SVG（公式）的 resvg 数字含一次性开销**：demo 每次调用都重建
+  `resvg_options` 并重扫系统字体（fontdb），约 80-100 ms。真实集成应
+  只建一次 options 复用，摊销后预期与 QtSvg 同量级；该假设需在实施时
+  用 options 复用版本复核；
+- 端到端耗时由 mermaid 在 QuickJS 里的执行主导（本机未优化构建 2.6s /
+  11.3s；生产 relwithdebinfo 下显著低于此），换渲染器**不影响**这部分；
 - 换 resvg 的收益在质量与维护成本，不在速度；也不引入速度回退。
 
 ## 五、成本
@@ -157,22 +209,28 @@ DLL；qlitemd 项目**不承担 Rust 工具链的维护与支持**——自行�
 
 ## 七、风险与待验证项
 
-- [ ] `docs/guide/resvg构建指南.md` 撰写（含 Rust 环境搭建、版本钉定、
+- [x] `docs/guide/resvg构建指南.md` 撰写（含 Rust 环境搭建、版本钉定、
       x86/x64 两条构建命令、产物校验清单）；
-- [ ] 预编 DLL 的分发位置（仓库内 `3rdparty/resvg/bin/` 还是 Release
-      资产 + CMake 下载）；x86 target 的 resvg 构建与 x64 一致性验证；
+- [x] 预编 DLL 分发位置已定：`3rdparty/resvg/bin/{x64,x86}/resvg.dll`；
+      x86 DLL 已构建，并用 Qt 5.15.2 x86 consumer 完成加载与渲染验证；
+- [x] MathJax 公式 SVG 的 resvg 对比（inline/display/中文 text 四组）；
 - [ ] 生产 relwithdebinfo 下重测端到端耗时（预期不变）；
-- [ ] MathJax 公式 SVG 的 resvg 对比（inline + display 各一组，预期同样
-      正确，需确认字体 base 的字形间距）；
 - [ ] `resvg.dll` 与 QuickJS 的栈需求并存（resvg 自身递归浅，风险低）；
 - [ ] 文本定标删除后的逐图 diff 验证（用 `MD_MARKDOWN_DUMP` 产物批量比）；
 - [ ] 离线字体环境（无中文字体的机器）下 resvg 的回退表现。
 
 ## 八、结论
 
-质量上 QtSvg 对 mermaid 输出是"不可用"，resvg 是"开箱即用"；性能同
-量级无回退。引入 Rust 工具链的结构性成本通过**二进制分发**规避：仓库
-只收预编 DLL 与头文件，日常开发、CI 与终端用户完全接触不到 Rust；
-Rust 环境的搭建与 resvg 的重建流程文档化为
-`docs/guide/resvg构建指南.md`，属于维护者自用指南，qlitemd 项目不承担
-其维护与支持。按第六节草案出设计文档评审后实施。
+质量上 QtSvg 对 mermaid 输出是"不可用"，resvg 是"开箱即用"；公式路径
+两侧质量相当，但 resvg 原生支持 `currentColor`，可删掉替换 hack；x86
+与 x64 结论一致。性能同量级无回退（公式小图的一次性 options 开销需在
+实施时用复用版本复核）。
+
+引入 Rust 工具链的结构性成本通过**二进制分发**规避：仓库只收预编 DLL
+与头文件，日常开发、CI 与终端用户完全接触不到 Rust；Rust 环境的搭建与
+resvg 的重建流程文档化为 `docs/guide/resvg构建指南.md`，属于维护者自用
+指南，qlitemd 项目不承担其维护与支持。
+
+补验 MathJax 与 x86 后，剩余风险集中在两项实施期验证：
+生产 relwithdebinfo 下的端到端耗时、以及删除文本定标后的真实产物批量
+diff。按第六节草案出设计文档评审后实施。
