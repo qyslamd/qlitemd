@@ -240,8 +240,9 @@ SDK 仍通过独立的 install 组件发布。
 - Linux 和 Qt 6 已有库/测试构建覆盖；`md_viewer` 的 Linux 运行时和
   界面验证仍未完成。
 - Ubuntu 20.04 自带的 Qt 5.12.8 低于最低要求 Qt 5.14，需要安装更新的 Qt。
-- 仓库不重新分发微软 Segoe Fluent Icons 字体，FluentUI 会回退到
-  系统字体。
+- 仓库不重新分发微软 Segoe Fluent Icons 字体；FluentUI 使用系统
+  `Segoe Fluent Icons`，缺失时回退到 `Segoe MDL2 Assets`。两者都没有
+  的机器会显示占位方框。
 
 ## 第三方库
 

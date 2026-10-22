@@ -200,6 +200,10 @@ clang-format --dry-run --Werror <file>
   Runner 上，不使用本机 Qt。
 - `.bat` 必须 CRLF，`.sh` 必须 LF；JS 载荷和补丁文件按
   `.gitattributes` 保持字节稳定。
+- `md_viewer` 不分发 Segoe Fluent Icons。FluentUI3Style 与
+  FluentTitleBar 必须按 `Segoe Fluent Icons` -> `Segoe MDL2 Assets`
+  的顺序使用系统字体；不要改成 `QFont()` 的默认族，否则图标会变成
+  方框。
 
 ## 发布
 
