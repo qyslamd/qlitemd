@@ -17,6 +17,9 @@ All notable changes to qlitemd are documented here.
   the example application.
 - Generate `run_md_viewer.bat`/`.sh` with Qt `PATH` and `QT_PLUGIN_PATH`
   prepared before launch.
+- Fix FluentUI glyph fallback when Segoe Fluent Icons is unavailable;
+  `md_viewer` now uses the system font (or Segoe MDL2 Assets) instead of
+  drawing placeholder boxes.
 
 ## 0.0.1 - 2026-10-21
 

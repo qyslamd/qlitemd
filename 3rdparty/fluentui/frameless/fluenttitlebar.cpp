@@ -7,6 +7,7 @@
 #include <QButtonGroup>
 #include <QEvent>
 #include <QFont>
+#include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
@@ -33,8 +34,21 @@ const QList<QColor> defaultAccentColors = {
     QColor(QStringLiteral("#107C41"))  // Microsoft Excel / Fluent 品牌绿
 };
 
+QString PreferredIconFontFamily() {
+  const QFontDatabase database;
+  const QStringList families = database.families();
+  for (const QString& candidate :
+       {QStringLiteral("Segoe Fluent Icons"),
+        QStringLiteral("Segoe MDL2 Assets")}) {
+    if (families.contains(candidate, Qt::CaseInsensitive)) {
+      return candidate;
+    }
+  }
+  return QStringLiteral("Segoe Fluent Icons");
+}
+
 QFont captionIconFont(int pixelSize = 11) {
-  QFont font(QStringLiteral("Segoe Fluent Icons"));
+  QFont font(PreferredIconFontFamily());
   font.setPixelSize(pixelSize);
   font.setStyleStrategy(QFont::PreferAntialias);
   return font;
@@ -55,7 +69,7 @@ QToolButton *createCaptionButton(QWidget *parent, const QString &objectName,
 
 QIcon searchIcon(bool darkTheme) {
   constexpr int iconSize = 32;
-  QFont iconFont(QStringLiteral("Segoe Fluent Icons"));
+  QFont iconFont(PreferredIconFontFamily());
   iconFont.setPixelSize(iconSize);
 
   QPixmap pixmap(iconSize, iconSize);

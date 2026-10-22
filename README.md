@@ -272,8 +272,9 @@ and settings.
 - Linux and Qt 6 have library/test build coverage; `md_viewer` runtime and
   visual sign-off are still pending.
 - Ubuntu 20.04's Qt 5.12.8 is below the minimum Qt 5.14; install a newer Qt.
-- FluentUI falls back to a system icon font because the Microsoft Segoe
-  Fluent Icons font is not redistributed with this repository.
+- FluentUI uses the system `Segoe Fluent Icons` font and falls back to
+  `Segoe MDL2 Assets`; the Microsoft font is not redistributed with this
+  repository. A machine with neither font shows placeholder boxes.
 
 ## Third-party libraries
 

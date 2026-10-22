@@ -11,6 +11,7 @@
 #include <QDial>
 #include <QDialogButtonBox>
 #include <QDockWidget>
+#include <QFontDatabase>
 #include <QFontMetrics>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
@@ -356,6 +357,8 @@ static QByteArray navigationSettingsAnimKey( const QTreeView* treeView, const QM
     return key;
 }
 
+static QString PreferredIconFontFamily();
+
 static QPixmap navigationGlyphPixmapCached( const QString& iconCode, int glyphSide, const QColor& color )
 {
     static QHash<QString, QPixmap> cache;
@@ -374,7 +377,9 @@ static QPixmap navigationGlyphPixmapCached( const QString& iconCode, int glyphSi
     glyphPainter.setRenderHint( QPainter::Antialiasing, true );
     glyphPainter.setRenderHint( QPainter::TextAntialiasing, true );
     glyphPainter.setRenderHint( QPainter::SmoothPixmapTransform, true );
-    QFont iconFont( "Segoe Fluent Icons" );
+    const QString iconFamily = PreferredIconFontFamily();
+    QFont iconFont( iconFamily.isEmpty() ? QStringLiteral( "Segoe Fluent Icons" )
+                                        : iconFamily );
     iconFont.setPixelSize( qMax( 12, qRound( glyphSide * 0.78 ) ) );
     iconFont.setHintingPreference( QFont::PreferNoHinting );
     glyphPainter.setFont( iconFont );
@@ -1563,6 +1568,24 @@ static QStyle* createBaseStyle( QStyle* style )
     return QStyleFactory::create( fallbackKey );
 }
 
+static QString PreferredIconFontFamily()
+{
+    // qlitemd deliberately does not redistribute Segoe Fluent Icons.
+    // Prefer the system font, with the Windows 10 MDL2 font as a fallback
+    // (their icon codepoints used by this style overlap).
+    const QFontDatabase database;
+    const QStringList families = database.families();
+    for ( const QString& candidate :
+          { QStringLiteral( "Segoe Fluent Icons" ), QStringLiteral( "Segoe MDL2 Assets" ) } )
+    {
+        if ( families.contains( candidate, Qt::CaseInsensitive ) )
+        {
+            return candidate;
+        }
+    }
+    return QString();
+}
+
 FluentUI3Style::FluentUI3Style( QStyle* style )
     : QProxyStyle( createBaseStyle( style ) )
 {
@@ -1584,11 +1607,19 @@ FluentUI3Style::FluentUI3Style( QStyle* style )
         }
     }
 
-    if ( assetFont.family().isEmpty() )
+    if ( fontId == -1 || assetFont.family().isEmpty() )
     {
-        qWarning() << "[FluentUI3Style] Failed to load Segoe Fluent Icons font "
-                      "from resource. Falling back to system font.";
-        assetFont = QFont( QStringLiteral( "Segoe Fluent Icons" ) );
+        const QString family = PreferredIconFontFamily();
+        if ( !family.isEmpty() )
+        {
+            assetFont = QFont( family );
+        }
+        else
+        {
+            qWarning() << "[FluentUI3Style] No Segoe icon font available;"
+                          " Fluent glyphs may render as boxes.";
+            assetFont = QFont( QStringLiteral( "Segoe Fluent Icons" ) );
+        }
     }
     assetFont.setStyleStrategy( QFont::NoFontMerging );
 
