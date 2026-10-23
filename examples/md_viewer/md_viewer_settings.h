@@ -5,6 +5,12 @@
 #include <QString>
 #include <QStringList>
 
+enum class WindowMaterial {
+  kAuto = 0,
+  kAcrylic = 1,
+  kNone = 2,
+};
+
 // md_viewer 的最小设置：标准配置目录下的 md_viewer.ini。
 // 只存这个示例自己需要的项，不引入应用级配置体系。
 struct MdViewerSettings {
@@ -16,6 +22,10 @@ struct MdViewerSettings {
   // 覆盖掉当前窗口状态
   void Save() const;
   void SaveRecent() const;
+  // 只写根目录与上次文档，根变化/切篇时立即落盘
+  void SaveSession() const;
+  void SaveBookmarks() const;
+  void SavePositions() const;
 
   // 最近的放最前，最多 10 条
   void AddRecentFile(const QString& path);
@@ -23,12 +33,16 @@ struct MdViewerSettings {
   QByteArray window_geometry;
   QByteArray dock_state;
   bool dark_theme = false;
-  bool window_blur = true;
+  WindowMaterial window_material = WindowMaterial::kAuto;
   bool code_line_numbers = false;
   bool formula_rendering = true;
   bool mermaid_rendering = true;
   bool persistent_cache = true;
   QStringList recent_files;
+  QString root_dir;
+  QString last_file;
+  QString bookmarks_json;
+  QString positions_json;
 };
 
 #endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_SETTINGS_H_

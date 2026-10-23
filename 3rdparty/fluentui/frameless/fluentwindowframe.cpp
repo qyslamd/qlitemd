@@ -127,6 +127,14 @@ void FluentWindowFrame::attachChromeHeader()
     {
         m_windowAgent->setHitTestVisible(btn, true);
     }
+    if (auto *leading = m_titleBar->leadingWidget())
+    {
+        m_windowAgent->setHitTestVisible(leading, true);
+    }
+    if (auto *trailing = m_titleBar->trailingWidget())
+    {
+        m_windowAgent->setHitTestVisible(trailing, true);
+    }
     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Minimize, m_titleBar->minButton());
     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Maximize, m_titleBar->maxButton());
     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Close, m_titleBar->closeButton());

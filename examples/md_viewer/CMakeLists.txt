@@ -2,11 +2,21 @@ set(TARGET_NAME "md_viewer")
 
 set(ALL_SRCS
     main.cpp
+    bookmarks.cpp
+    bookmarks.h
+    document_index.cpp
+    document_index.h
+    documents_panel.cpp
+    documents_panel.h
     md_viewer_settings.cpp
     md_viewer_settings.h
     md_viewer_window.cpp
     md_viewer_window.h
+    navigation_history.cpp
+    navigation_history.h
     render_settings_panel.cpp
+    text_search.cpp
+    text_search.h
     render_settings_panel.h
     render_status_panel.cpp
     render_status_panel.h
@@ -23,10 +33,26 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     ExWidgets::ExWidgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
 )
+if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+    set(_md_viewer_formula_label "RaTeX")
+else()
+    set(_md_viewer_formula_label "QuickJS")
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+    set(_md_viewer_mermaid_label "merman")
+else()
+    set(_md_viewer_mermaid_label "QuickJS")
+endif()
+if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
+    set(_md_viewer_svg_label "resvg")
+else()
+    set(_md_viewer_svg_label "QtSvg")
+endif()
 target_compile_definitions(${TARGET_NAME} PRIVATE
     APP_UI_FLUENT
     UNICODE
-    _UNICODE)
+    _UNICODE
+    QLITEMD_BACKEND_LABEL="${_md_viewer_formula_label} / ${_md_viewer_mermaid_label} / ${_md_viewer_svg_label}")
 
 if(WIN32)
     target_link_libraries(${TARGET_NAME} PRIVATE psapi)

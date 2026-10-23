@@ -250,12 +250,17 @@ the license files; the SDK remains a separate install component.
 
 ## Example application
 
-`examples/md_viewer` is a complete FluentUI-style viewer built on the
-library. It provides single-instance behavior, a directory sidebar, an
-outline, find, zoom, recent files, image preview/save-as, formula and
-Mermaid source inspection, HTML/PDF export and a render-status panel. It is
-also the reference integration for host-side policy such as link handling
-and settings.
+`examples/md_viewer` is a complete FluentUI-style viewer for reading a
+multi-level documentation set. It provides a recursive document tree with
+filename filtering, file-level bookmarks, global full-text search with hit
+navigation, session and per-document reading-position restore, a single-row
+title bar that merges the menu, navigation, zoom and search, a right-hand
+outline, segmented sidebar tabs with inline bookmark stars, focus mode,
+Mica/acrylic window materials, a status bar with document count and build
+backend labels, and a large-file confirmation. The existing zoom, recent
+files, image preview/save-as, formula and Mermaid source inspection,
+HTML/PDF export and render-status panel remain. It is also the reference
+integration for host-side policy such as link handling and settings.
 
 ## Layout
 
@@ -263,7 +268,8 @@ and settings.
 - `resources/` — theme CSS and JS payloads
 - `examples/md_viewer/` — the FluentUI example application
 - `examples/minimal/` — standalone QWidget example for an installed SDK
-- `tests/markdown/` — headless GoogleTest suite
+- `tests/markdown/` — headless library GoogleTest suite
+- `tests/md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
 - `installer/` — Inno Setup script for the Windows installer
 - `licenses/` — license texts for JavaScript payloads

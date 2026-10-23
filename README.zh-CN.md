@@ -228,10 +228,14 @@ SDK 仍通过独立的 install 组件发布。
 
 ## 示例程序
 
-`examples/md_viewer` 是基于本库的完整 FluentUI 风格查看器，包含单实例、
-目录侧栏、大纲、查找、缩放、最近文件、图片预览/另存为、公式与 Mermaid
-源码查看、HTML/PDF 导出和渲染状态面板。它也是链接策略、设置持久化等
-宿主侧策略的参考实现。
+`examples/md_viewer` 是基于本库的完整 FluentUI 风格查看器，面向多层
+文档集阅读。它包含递归目录树、文件名过滤、文件级书签、跨文件全文搜索
+与命中跳转、会话与每篇文档的阅读位置恢复、合并菜单/导航/缩放/搜索的
+单行标题栏、右侧大纲、带行内星标的分段侧栏页签、专注模式、Mica/
+亚克力窗口材质、显示篇数与构建后端的状态栏和大文件确认；原有的缩放、
+最近文件、图片预览/另存为、公式与 Mermaid 源码查看、HTML/PDF 导出和
+渲染状态面板保持不变。它也是链接策略、设置持久化等宿主侧策略的参考
+实现。
 
 ## 目录结构
 
@@ -239,7 +243,8 @@ SDK 仍通过独立的 install 组件发布。
 - `resources/`：主题 CSS 与 JS 载荷
 - `examples/md_viewer/`：FluentUI 示例程序
 - `examples/minimal/`：面向已安装 SDK 的独立 QWidget 示例
-- `tests/markdown/`：无头 GoogleTest 测试
+- `tests/markdown/`：库的无头 GoogleTest 测试
+- `tests/md_viewer/`：示例层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助
 - `installer/`：Windows 安装包的 Inno Setup 脚本
 - `licenses/`：JS 载荷的许可证文本

@@ -7,6 +7,7 @@
 
 class QAction;
 class QButtonGroup;
+class QHBoxLayout;
 class QLineEdit;
 class QMainWindow;
 class QLabel;
@@ -52,6 +53,14 @@ public:
     QToolButton *closeButton() const;
     QLineEdit *searchLineEdit() const;
 
+    // qlitemd 本地补丁（patches/FluentUIStyle/0003-titlebar-widgets.patch）：
+    // 图标之后、标题之前，以及搜索框之前，各留一个宿主注入口
+    QWidget *leadingWidget() const;
+    QWidget *trailingWidget() const;
+    void setLeadingWidget(QWidget *widget);
+    void setTrailingWidget(QWidget *widget);
+    void setTitleVisible(bool visible);
+
     void setThemeDark(bool dark);
     void setPinned(bool pinned);
 
@@ -87,4 +96,7 @@ private:
     QToolButton *m_closeButton{nullptr};
     QLineEdit *m_searchLineEdit{nullptr};
     QAction *m_searchAction{nullptr};
+    QWidget *m_leadingWidget{nullptr};
+    QWidget *m_trailingWidget{nullptr};
+    QHBoxLayout *m_layout{nullptr};
 };

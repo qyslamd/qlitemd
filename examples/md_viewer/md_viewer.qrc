@@ -1,5 +1,12 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/svg/icon.svg</file>
+        <file>resources/svg/folder.svg</file>
+        <file>resources/svg/file.svg</file>
+        <file>resources/svg/search.svg</file>
+        <file>resources/svg/star-outline.svg</file>
+        <file>resources/svg/star-filled.svg</file>
+        <file>resources/svg/menu.svg</file>
+        <file>resources/svg/status-dot.svg</file>
     </qresource>
 </RCC>

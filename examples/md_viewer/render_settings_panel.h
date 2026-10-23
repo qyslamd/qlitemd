@@ -4,6 +4,7 @@
 #include <QWidget>
 
 #include "markdown_types.h"
+#include "md_viewer_settings.h"
 
 class QCheckBox;
 class QComboBox;
@@ -24,15 +25,15 @@ class RenderSettingsPanel : public QWidget {
 
   // 外部（标题栏主题按钮）改了文档主题时同步下拉框，不再反向触发
   void SetTheme(MarkdownTheme theme);
-  // 启动时按持久化设置同步模糊开关，不触发重新应用
-  void SetWindowBlurEnabled(bool enabled);
+  // 启动时按持久化设置同步材质下拉框，不触发重新应用
+  void SetWindowMaterial(WindowMaterial material);
 
  signals:
   void statusMessage(const QString& message);
   // 用户在面板里改了主题：宿主负责把文档与 Fluent 壳一起切
   void themeChanged(MarkdownTheme theme);
-  // Windows：标题栏/窗口的 DWM 模糊开关
-  void windowBlurEnabledChanged(bool enabled);
+  // Windows：窗口背景材质（Mica/亚克力/关闭）
+  void windowMaterialChanged(WindowMaterial material);
 
  private:
   void initUi();
@@ -46,7 +47,7 @@ class RenderSettingsPanel : public QWidget {
   MarkdownView* view_ = nullptr;
   QComboBox* theme_ = nullptr;
   // 仅 Windows 创建
-  QCheckBox* window_blur_ = nullptr;
+  QComboBox* window_material_ = nullptr;
   QCheckBox* code_line_numbers_ = nullptr;
   QCheckBox* formula_rendering_ = nullptr;
   QCheckBox* mermaid_rendering_ = nullptr;

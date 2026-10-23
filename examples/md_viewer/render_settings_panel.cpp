@@ -110,12 +110,22 @@ void RenderSettingsPanel::initUi() {
   appearance->addWidget(new QLabel(QStringLiteral("主题"), appearance_card));
   appearance->addWidget(theme_);
 #ifdef Q_OS_WIN
-  // 窗口模糊是 Windows 的 DWM 能力；其它平台不创建这个开关
-  window_blur_ = CreateSwitch(true);
-  window_blur_->setObjectName(QStringLiteral("windowBlurSwitch"));
-  AddSwitchRow(appearance, appearance_card, QStringLiteral("窗口模糊"),
-               window_blur_,
-               QStringLiteral("DWM 窗口模糊，仅 Windows；关闭后背景不透明"));
+  // 窗口材质是 Windows 的 DWM 能力；其它平台不创建这个下拉框
+  auto* material_label =
+      new QLabel(QStringLiteral("窗口材质"), appearance_card);
+  material_label->setToolTip(QStringLiteral(
+      "自动：Windows 11 用 Mica，旧系统回退 DWM 模糊；关闭后背景不透明"));
+  appearance->addWidget(material_label);
+  window_material_ = new QComboBox(appearance_card);
+  window_material_->setObjectName(QStringLiteral("windowMaterialCombo"));
+  window_material_->setToolTip(material_label->toolTip());
+  window_material_->addItem(QStringLiteral("自动（Mica）"),
+                            static_cast<int>(WindowMaterial::kAuto));
+  window_material_->addItem(QStringLiteral("亚克力"),
+                            static_cast<int>(WindowMaterial::kAcrylic));
+  window_material_->addItem(QStringLiteral("关闭"),
+                            static_cast<int>(WindowMaterial::kNone));
+  appearance->addWidget(window_material_);
 #endif
   outer->addWidget(appearance_card);
 
@@ -193,23 +203,32 @@ void RenderSettingsPanel::SetTheme(MarkdownTheme theme) {
   theme_->setCurrentIndex(index);
 }
 
-void RenderSettingsPanel::SetWindowBlurEnabled(bool enabled) {
+void RenderSettingsPanel::SetWindowMaterial(WindowMaterial material) {
 #ifdef Q_OS_WIN
-  if (window_blur_ == nullptr) {
+  if (window_material_ == nullptr) {
     return;
   }
-  const QSignalBlocker blocker(window_blur_);
-  window_blur_->setChecked(enabled);
-  window_blur_->setText(enabled ? QStringLiteral("开") : QStringLiteral("关"));
+  const int index = window_material_->findData(static_cast<int>(material));
+  if (index < 0) {
+    return;
+  }
+  const QSignalBlocker blocker(window_material_);
+  window_material_->setCurrentIndex(index);
 #else
-  Q_UNUSED(enabled);
+  Q_UNUSED(material);
 #endif
 }
 
 void RenderSettingsPanel::initSignals() {
 #ifdef Q_OS_WIN
-  connect(window_blur_, &QCheckBox::toggled, this,
-          &RenderSettingsPanel::windowBlurEnabledChanged);
+  connect(window_material_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            if (index < 0) {
+              return;
+            }
+            emit windowMaterialChanged(static_cast<WindowMaterial>(
+                window_material_->itemData(index).toInt()));
+          });
 #endif
   connect(theme_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
           [this](int index) {

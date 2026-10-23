@@ -13,12 +13,18 @@ constexpr int kMaxRecentFiles = 10;
 constexpr char kKeyGeometry[] = "window/geometry";
 constexpr char kKeyDockState[] = "window/dock_state";
 constexpr char kKeyDarkTheme[] = "appearance/dark_theme";
+constexpr char kKeyWindowMaterial[] = "appearance/window_material";
+// 旧键只用于迁移；新版本写它保持降级可读
 constexpr char kKeyWindowBlur[] = "appearance/window_blur";
 constexpr char kKeyCodeLineNumbers[] = "render/code_line_numbers";
 constexpr char kKeyFormula[] = "render/formula";
 constexpr char kKeyMermaid[] = "render/mermaid";
 constexpr char kKeyPersistentCache[] = "render/persistent_cache";
 constexpr char kKeyRecentFiles[] = "recent/files";
+constexpr char kKeyRootDir[] = "root/dir";
+constexpr char kKeyLastFile[] = "session/last_file";
+constexpr char kKeyBookmarks[] = "bookmarks/files";
+constexpr char kKeyPositions[] = "session/positions";
 
 // Qt6 always stores INI files as UTF-8; setIniCodec is Qt5-only.
 void SetIniUtf8(QSettings& settings) {
@@ -61,7 +67,18 @@ void MdViewerSettings::Load() {
   window_geometry = settings.value(kKeyGeometry).toByteArray();
   dock_state = settings.value(kKeyDockState).toByteArray();
   dark_theme = settings.value(kKeyDarkTheme, false).toBool();
-  window_blur = settings.value(kKeyWindowBlur, true).toBool();
+  if (settings.contains(kKeyWindowMaterial)) {
+    const int material = settings.value(kKeyWindowMaterial).toInt();
+    window_material = material == static_cast<int>(WindowMaterial::kAcrylic)
+                          ? WindowMaterial::kAcrylic
+                      : material == static_cast<int>(WindowMaterial::kNone)
+                          ? WindowMaterial::kNone
+                          : WindowMaterial::kAuto;
+  } else {
+    window_material = settings.value(kKeyWindowBlur, true).toBool()
+                          ? WindowMaterial::kAuto
+                          : WindowMaterial::kNone;
+  }
   code_line_numbers = settings.value(kKeyCodeLineNumbers, false).toBool();
   formula_rendering = settings.value(kKeyFormula, true).toBool();
   mermaid_rendering = settings.value(kKeyMermaid, true).toBool();
@@ -70,6 +87,10 @@ void MdViewerSettings::Load() {
   while (recent_files.size() > kMaxRecentFiles) {
     recent_files.removeLast();
   }
+  root_dir = settings.value(kKeyRootDir).toString();
+  last_file = settings.value(kKeyLastFile).toString();
+  bookmarks_json = settings.value(kKeyBookmarks).toString();
+  positions_json = settings.value(kKeyPositions).toString();
 }
 
 void MdViewerSettings::Save() const {
@@ -82,12 +103,17 @@ void MdViewerSettings::Save() const {
     settings.setValue(kKeyDockState, dock_state);
   }
   settings.setValue(kKeyDarkTheme, dark_theme);
-  settings.setValue(kKeyWindowBlur, window_blur);
+  settings.setValue(kKeyWindowMaterial, static_cast<int>(window_material));
+  settings.setValue(kKeyWindowBlur, window_material != WindowMaterial::kNone);
   settings.setValue(kKeyCodeLineNumbers, code_line_numbers);
   settings.setValue(kKeyFormula, formula_rendering);
   settings.setValue(kKeyMermaid, mermaid_rendering);
   settings.setValue(kKeyPersistentCache, persistent_cache);
   settings.setValue(kKeyRecentFiles, recent_files);
+  settings.setValue(kKeyRootDir, root_dir);
+  settings.setValue(kKeyLastFile, last_file);
+  settings.setValue(kKeyBookmarks, bookmarks_json);
+  settings.setValue(kKeyPositions, positions_json);
   settings.sync();
   WarnWriteFailed(settings);
 }
@@ -96,6 +122,31 @@ void MdViewerSettings::SaveRecent() const {
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyRecentFiles, recent_files);
+  settings.sync();
+  WarnWriteFailed(settings);
+}
+
+void MdViewerSettings::SaveSession() const {
+  QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
+  SetIniUtf8(settings);
+  settings.setValue(kKeyRootDir, root_dir);
+  settings.setValue(kKeyLastFile, last_file);
+  settings.sync();
+  WarnWriteFailed(settings);
+}
+
+void MdViewerSettings::SaveBookmarks() const {
+  QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
+  SetIniUtf8(settings);
+  settings.setValue(kKeyBookmarks, bookmarks_json);
+  settings.sync();
+  WarnWriteFailed(settings);
+}
+
+void MdViewerSettings::SavePositions() const {
+  QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
+  SetIniUtf8(settings);
+  settings.setValue(kKeyPositions, positions_json);
   settings.sync();
   WarnWriteFailed(settings);
 }

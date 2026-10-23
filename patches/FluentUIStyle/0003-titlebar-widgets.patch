@@ -1,0 +1,160 @@
+diff -ruN a/frameless/fluenttitlebar.cpp b/frameless/fluenttitlebar.cpp
+--- a/frameless/fluenttitlebar.cpp	2026-10-23 20:15:09.059947500 +0800
++++ b/frameless/fluenttitlebar.cpp	2026-10-23 20:15:09.147796900 +0800
+@@ -7,6 +7,7 @@
+ #include <QButtonGroup>
+ #include <QEvent>
+ #include <QFont>
++#include <QFontDatabase>
+ #include <QHBoxLayout>
+ #include <QIcon>
+ #include <QLabel>
+@@ -33,8 +34,21 @@
+     QColor(QStringLiteral("#107C41"))  // Microsoft Excel / Fluent 品牌绿
+ };
+ 
++QString PreferredIconFontFamily() {
++  const QFontDatabase database;
++  const QStringList families = database.families();
++  for (const QString& candidate :
++       {QStringLiteral("Segoe Fluent Icons"),
++        QStringLiteral("Segoe MDL2 Assets")}) {
++    if (families.contains(candidate, Qt::CaseInsensitive)) {
++      return candidate;
++    }
++  }
++  return QStringLiteral("Segoe Fluent Icons");
++}
++
+ QFont captionIconFont(int pixelSize = 11) {
+-  QFont font(QStringLiteral("Segoe Fluent Icons"));
++  QFont font(PreferredIconFontFamily());
+   font.setPixelSize(pixelSize);
+   font.setStyleStrategy(QFont::PreferAntialias);
+   return font;
+@@ -55,7 +69,7 @@
+ 
+ QIcon searchIcon(bool darkTheme) {
+   constexpr int iconSize = 32;
+-  QFont iconFont(QStringLiteral("Segoe Fluent Icons"));
++  QFont iconFont(PreferredIconFontFamily());
+   iconFont.setPixelSize(iconSize);
+ 
+   QPixmap pixmap(iconSize, iconSize);
+@@ -226,7 +240,8 @@
+   m_searchAction = m_searchLineEdit->addAction(searchIcon(m_themeDark),
+                                                QLineEdit::TrailingPosition);
+ 
+-  auto *layout = new QHBoxLayout(this);
++  m_layout = new QHBoxLayout(this);
++  auto *layout = m_layout;
+   layout->setContentsMargins(12, 0, 0, 0);
+   layout->setSpacing(8);
+   layout->addWidget(m_iconLabel);
+@@ -324,6 +339,54 @@
+ 
+ QLineEdit *FluentTitleBar::searchLineEdit() const { return m_searchLineEdit; }
+ 
++QWidget *FluentTitleBar::leadingWidget() const { return m_leadingWidget; }
++
++QWidget *FluentTitleBar::trailingWidget() const { return m_trailingWidget; }
++
++void FluentTitleBar::setLeadingWidget(QWidget *widget) {
++  if (m_leadingWidget == widget) {
++    return;
++  }
++  if (m_leadingWidget) {
++    m_layout->removeWidget(m_leadingWidget);
++    m_leadingWidget->deleteLater();
++  }
++  m_leadingWidget = widget;
++  if (!widget) {
++    return;
++  }
++  if (widget->parentWidget() != this) {
++    widget->setParent(this);
++  }
++  // 索引 0 是应用图标，注入口紧跟在它后面
++  m_layout->insertWidget(1, widget);
++}
++
++void FluentTitleBar::setTrailingWidget(QWidget *widget) {
++  if (m_trailingWidget == widget) {
++    return;
++  }
++  if (m_trailingWidget) {
++    m_layout->removeWidget(m_trailingWidget);
++    m_trailingWidget->deleteLater();
++  }
++  m_trailingWidget = widget;
++  if (!widget) {
++    return;
++  }
++  if (widget->parentWidget() != this) {
++    widget->setParent(this);
++  }
++  // 插在搜索框之前：图标之后、导航/缩放、搜索、窗口按钮
++  const int searchIndex = m_layout->indexOf(m_searchLineEdit);
++  m_layout->insertWidget(searchIndex >= 0 ? searchIndex : m_layout->count(),
++                         widget);
++}
++
++void FluentTitleBar::setTitleVisible(bool visible) {
++  m_titleLabel->setVisible(visible);
++}
++
+ void FluentTitleBar::setThemeDark(bool dark) {
+   if (m_themeDark == dark) {
+     return;
+diff -ruN a/frameless/fluenttitlebar.h b/frameless/fluenttitlebar.h
+--- a/frameless/fluenttitlebar.h	2026-10-23 20:15:08.902408800 +0800
++++ b/frameless/fluenttitlebar.h	2026-10-23 20:15:08.986435800 +0800
+@@ -7,6 +7,7 @@
+ 
+ class QAction;
+ class QButtonGroup;
++class QHBoxLayout;
+ class QLineEdit;
+ class QMainWindow;
+ class QLabel;
+@@ -52,6 +53,14 @@
+     QToolButton *closeButton() const;
+     QLineEdit *searchLineEdit() const;
+ 
++    // qlitemd 本地补丁（patches/FluentUIStyle/0003-titlebar-widgets.patch）：
++    // 图标之后、标题之前，以及搜索框之前，各留一个宿主注入口
++    QWidget *leadingWidget() const;
++    QWidget *trailingWidget() const;
++    void setLeadingWidget(QWidget *widget);
++    void setTrailingWidget(QWidget *widget);
++    void setTitleVisible(bool visible);
++
+     void setThemeDark(bool dark);
+     void setPinned(bool pinned);
+ 
+@@ -87,4 +96,7 @@
+     QToolButton *m_closeButton{nullptr};
+     QLineEdit *m_searchLineEdit{nullptr};
+     QAction *m_searchAction{nullptr};
++    QWidget *m_leadingWidget{nullptr};
++    QWidget *m_trailingWidget{nullptr};
++    QHBoxLayout *m_layout{nullptr};
+ };
+diff -ruN a/frameless/fluentwindowframe.cpp b/frameless/fluentwindowframe.cpp
+--- a/frameless/fluentwindowframe.cpp	2026-10-23 20:15:09.238469800 +0800
++++ b/frameless/fluentwindowframe.cpp	2026-10-23 20:15:09.318890600 +0800
+@@ -127,6 +127,14 @@
+     {
+         m_windowAgent->setHitTestVisible(btn, true);
+     }
++    if (auto *leading = m_titleBar->leadingWidget())
++    {
++        m_windowAgent->setHitTestVisible(leading, true);
++    }
++    if (auto *trailing = m_titleBar->trailingWidget())
++    {
++        m_windowAgent->setHitTestVisible(trailing, true);
++    }
+     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Minimize, m_titleBar->minButton());
+     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Maximize, m_titleBar->maxButton());
+     m_windowAgent->setSystemButton(QWK::WindowAgentBase::Close, m_titleBar->closeButton());

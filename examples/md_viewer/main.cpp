@@ -60,9 +60,11 @@ int main(int argc, char** argv) {
 #ifdef Q_OS_WIN
   // 2 对应 Gallery 的 DwmBlur：调色板给 Base/Window 留出透明度，
   // DWM 模糊才有地方透出来
-  app.setProperty("_q_widget_mode", settings.window_blur ? 2 : 0);
+  app.setProperty("_q_widget_mode",
+                  settings.window_material == WindowMaterial::kNone ? 0 : 2);
 #endif
   app.setStyle(new FluentUI3Style);
+  app.setPalette(app.style()->standardPalette());
 
   QFont app_font = app.font();
   app_font.setFamily(QStringLiteral("Microsoft YaHei"));
@@ -83,14 +85,13 @@ int main(int argc, char** argv) {
                      window.raise();
                      window.activateWindow();
                    });
-  window.show();
-
-  // 第一个位置参数：目录就铺开侧栏，文件直接看；没有参数就接着看上次的
+  // 恢复要在 show 前完成：树、文档、滚动位置一次性就位
   const QString path = FirstPathArgument(app.arguments());
   if (!path.isEmpty()) {
     window.OpenPath(path);
   } else {
-    window.OpenLastFile();
+    window.RestoreSession();
   }
+  window.show();
   return app.exec();
 }

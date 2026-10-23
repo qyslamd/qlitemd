@@ -22,6 +22,7 @@ Markdown -> md4c -> qlitehtml/litehtml -> QWidget
 - 验证矩阵（以这两组为准）：
   - Windows：Qt 5.15.2 x86、Qt 6.8.3 x64
   - WSL：Qt 5.12.8 x64
+- 开发期本地只跑 Qt 5.15.2 x86；其余组合在功能完成后交给 GitHub CI
 - Qt 支持目标：Qt 5.12.x ~ Qt 6.12.x（当前实测覆盖以上矩阵）
 - 原生后端：`QLITEMD_SVG_BACKEND=resvg|qtsvg`、
   `QLITEMD_MERMAID_BACKEND=merman|quickjs`；merman 要求 resvg。
@@ -159,9 +160,12 @@ clang-format --dry-run --Werror <file>
 
 - `src/markdown/`：库主体，目标名 `qlitemd_markdown`
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
-- `examples/md_viewer/`：FluentUI + QWindowKit 示例
+- `examples/md_viewer/`：FluentUI + QWindowKit 示例（递归文档树、书签、
+  全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
+  `text_search` / `navigation_history` / `documents_panel`）
 - `examples/minimal/`：面向已安装 SDK 的最小 `QWidget` 示例
-- `tests/markdown/`：无头 GoogleTest 测试
+- `tests/markdown/`：库的无头 GoogleTest 测试
+- `tests/md_viewer/`：示例层模块与文档面板的无头测试
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
 - `installer/`：Inno Setup 安装包脚本
 - `licenses/`：JS 载荷的许可证文本
@@ -209,6 +213,11 @@ clang-format --dry-run --Werror <file>
 - `3rdparty/fluentui/.gitignore` 忽略了 `/cmake`；新增的
   `*Config.cmake.in` 必须用 `git add -f` 强制加入，否则干净 checkout
   会在 configure 阶段失败。
+- `3rdparty/fluentui` 有本地补丁（`patches/FluentUIStyle/`）：除 Qt5
+  兼容补丁外，`0002-exwidgets-trim.patch` 增加
+  `EXWIDGETS_MINIMAL` 与 `EXWIDGETS_ENABLE_SPECTRUM` 两个选项。顶层
+  默认只编 md_viewer 用到的控件，kissfft 不再参与构建；升级 FluentUI
+  时需重放补丁。
 - `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
   不要做行尾转换，也不要直接编辑压缩后的文件。Windows 构建不再使用
   这些载荷（公式走 RaTeX、Mermaid 走 merman），它们只服务其它平台的

@@ -240,7 +240,8 @@ FluentTitleBar::FluentTitleBar(QMainWindow *window)
   m_searchAction = m_searchLineEdit->addAction(searchIcon(m_themeDark),
                                                QLineEdit::TrailingPosition);
 
-  auto *layout = new QHBoxLayout(this);
+  m_layout = new QHBoxLayout(this);
+  auto *layout = m_layout;
   layout->setContentsMargins(12, 0, 0, 0);
   layout->setSpacing(8);
   layout->addWidget(m_iconLabel);
@@ -337,6 +338,54 @@ QToolButton *FluentTitleBar::maxButton() const { return m_maxButton; }
 QToolButton *FluentTitleBar::closeButton() const { return m_closeButton; }
 
 QLineEdit *FluentTitleBar::searchLineEdit() const { return m_searchLineEdit; }
+
+QWidget *FluentTitleBar::leadingWidget() const { return m_leadingWidget; }
+
+QWidget *FluentTitleBar::trailingWidget() const { return m_trailingWidget; }
+
+void FluentTitleBar::setLeadingWidget(QWidget *widget) {
+  if (m_leadingWidget == widget) {
+    return;
+  }
+  if (m_leadingWidget) {
+    m_layout->removeWidget(m_leadingWidget);
+    m_leadingWidget->deleteLater();
+  }
+  m_leadingWidget = widget;
+  if (!widget) {
+    return;
+  }
+  if (widget->parentWidget() != this) {
+    widget->setParent(this);
+  }
+  // 索引 0 是应用图标，注入口紧跟在它后面
+  m_layout->insertWidget(1, widget);
+}
+
+void FluentTitleBar::setTrailingWidget(QWidget *widget) {
+  if (m_trailingWidget == widget) {
+    return;
+  }
+  if (m_trailingWidget) {
+    m_layout->removeWidget(m_trailingWidget);
+    m_trailingWidget->deleteLater();
+  }
+  m_trailingWidget = widget;
+  if (!widget) {
+    return;
+  }
+  if (widget->parentWidget() != this) {
+    widget->setParent(this);
+  }
+  // 插在搜索框之前：图标之后、导航/缩放、搜索、窗口按钮
+  const int searchIndex = m_layout->indexOf(m_searchLineEdit);
+  m_layout->insertWidget(searchIndex >= 0 ? searchIndex : m_layout->count(),
+                         widget);
+}
+
+void FluentTitleBar::setTitleVisible(bool visible) {
+  m_titleLabel->setVisible(visible);
+}
 
 void FluentTitleBar::setThemeDark(bool dark) {
   if (m_themeDark == dark) {

@@ -258,7 +258,7 @@ if(QLITEMD_NEEDS_QUICKJS)
     qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 endif()
 
-# ------------------------------------------------- tree-sitter (native)# ------------------------------------------------- tree-sitter (native)
+# ------------------------------------------------- tree-sitter (native)
 add_subdirectory(3rdparty/tree-sitter)
 qlitemd_skip_subdir_install(3rdparty/tree-sitter)
 
@@ -282,6 +282,9 @@ set(BUILD_LIBRARY ON CACHE BOOL "" FORCE)
 set(BUILD_FRAMELESS ON CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_QTCREATOR_PLUGIN OFF CACHE BOOL "" FORCE)
+# 只编 md_viewer 用到的 ExWidgets；频谱控件依赖 kissfft，整块裁掉
+set(EXWIDGETS_MINIMAL ON CACHE BOOL "" FORCE)
+set(EXWIDGETS_ENABLE_SPECTRUM OFF CACHE BOOL "" FORCE)
 set(CMAKE_SKIP_INSTALL_RULES TRUE)
 add_subdirectory(3rdparty/fluentui)
 qlitemd_skip_subdir_install(3rdparty/fluentui)
@@ -435,6 +438,8 @@ if(QLITEMD_BUILD_TESTS)
     include(cmake/test_helpers.cmake)
     add_subdirectory(tests/markdown)
     qlitemd_skip_subdir_install(tests/markdown)
+    add_subdirectory(tests/md_viewer)
+    qlitemd_skip_subdir_install(tests/md_viewer)
 endif()
 
 # ------------------------------------------------------------- viewer

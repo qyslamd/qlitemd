@@ -2,6 +2,44 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- md_viewer now targets documentation-set reading: a recursive tree that
+  only shows directories containing `.md`/`.markdown`, a filename/path
+  filter, file-level bookmarks with a Ctrl+D star, and global full-text
+  search with streamed, cancellable results and approximate hit navigation
+  through `FindText`.
+- Restore the last root, document and per-document scroll position on
+  startup (500-entry LRU), confirm documents larger than 20 MiB once per
+  session, and rebuild the tree through `QFileSystemWatcher` (300 ms
+  debounce, root-only beyond 200 directories) or F5.
+- Merge the menu, navigation, zoom and global search into a single-row
+  FluentUI title bar. The vendored FluentUI gains leading/trailing widget
+  hooks (recorded as `patches/FluentUIStyle/0003-titlebar-widgets.patch`).
+  Window material is selectable between auto (Mica on Windows 11, DWM blur
+  otherwise), acrylic and off; the markdown body keeps the theme surface.
+- Align `md_viewer` with the UI prototype: outline moved to a right-hand
+  column, segmented sidebar tabs with icons, filter above the tabs, a
+  single-column document tree with folder/file icons, per-folder counts,
+  file sizes and inline stars, two-line bookmark cards, card-style search
+  hits with a yellow match mark, a ready/count/backend status bar, focus
+  mode (Ctrl+Shift+F) and a window-material menu. The title bar shows the
+  root-relative breadcrumb. The tree keeps file sizes (the prototype used
+  only counts); reading-area typography remains the library theme.
+- Fix dark-theme switching in `md_viewer`: recreate the FluentUI style and
+  push its standard palette to the application, then explicitly refresh the
+  status bar, sidebar, outline and reader palettes. The reader now paints the
+  theme page background (`#ffffff` / `#0d1117`), so short documents no longer
+  expose a light strip below the rendered page in either theme.
+- Rework the `md_viewer` status bar to follow the prototype: a green ready
+  dot and the document's native full path on the left, with document count,
+  build backends and zoom grouped on the right. The prototype's “indexed”
+  stat is not shown because the viewer searches on demand and keeps no
+  persistent index.
+- Add headless `tests/md_viewer` coverage for navigation history, document
+  indexing, bookmarks/reading positions, text search, the sidebar panel and
+  the title-bar hooks.
+
 ## 0.0.2 - 2026-10-23
 
 - Formula and Mermaid backends are compile-time choices on every
