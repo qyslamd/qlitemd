@@ -489,6 +489,14 @@ void MarkdownView::SetScrollPosition(int y) {
   html_->verticalScrollBar()->setValue(y);
 }
 
+int MarkdownView::DocumentHeight() const {
+  return html_ != nullptr ? html_->documentHeight() : 0;
+}
+
+int MarkdownView::ViewportHeight() const {
+  return html_ != nullptr ? html_->viewport()->height() : 0;
+}
+
 int MarkdownView::layout_count() const { return html_->layoutCount(); }
 
 void MarkdownView::ApplyPendingZoom() {

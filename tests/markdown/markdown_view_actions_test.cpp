@@ -158,6 +158,16 @@ TEST(MarkdownViewStyleTest, PageBackgroundAppliesToHtmlSurface) {
   EXPECT_TRUE(area->viewport()->autoFillBackground());
 }
 
+TEST(MarkdownViewMetricsTest, DocumentAndViewportHeight) {
+  MarkdownView view;
+  view.resize(640, 420);
+  view.show();
+  ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));
+  EXPECT_GT(view.DocumentHeight(), 0);
+  EXPECT_GT(view.ViewportHeight(), 0);
+  view.hide();
+}
+
 TEST(MarkdownViewActionsTest, FindHits) {
   MarkdownView view;
   ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));

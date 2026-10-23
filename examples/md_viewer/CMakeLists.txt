@@ -18,12 +18,16 @@ set(ALL_SRCS
     quick_open.h
     reader_appearance.cpp
     reader_appearance.h
+    reading_progress.cpp
+    reading_progress.h
     render_settings_panel.cpp
     text_search.cpp
     text_search.h
     render_settings_panel.h
     render_status_panel.cpp
     render_status_panel.h
+    welcome_view.cpp
+    welcome_view.h
     md_viewer.qrc
 )
 

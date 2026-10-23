@@ -178,6 +178,10 @@ class MarkdownView : public QWidget {
   // 历史恢复用：宿主只记值，不碰内部滚动条
   int ScrollPosition() const;
   void SetScrollPosition(int y);
+  // 文档总高度与视口高度（虚拟像素）。无文档时 DocumentHeight 为 0；
+  // 阅读进度条用，不参与渲染逻辑
+  int DocumentHeight() const;
+  int ViewportHeight() const;
   // 整篇 litehtml 布局的累计次数：纯高度 resize 不增长，宽度/缩放/换文档
   // 才增长。给示例与排查用，不参与渲染逻辑
   int layout_count() const;

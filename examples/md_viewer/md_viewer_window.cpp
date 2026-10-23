@@ -25,6 +25,8 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QEasingCurve>
+#include <QEvent>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -63,6 +65,7 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QVariantAnimation>
 #include <QWheelEvent>
 
 #ifdef Q_OS_WIN
@@ -78,9 +81,11 @@
 #include "md_viewer_settings.h"
 #include "quick_open.h"
 #include "reader_appearance.h"
+#include "reading_progress.h"
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
 #include "text_search.h"
+#include "welcome_view.h"
 
 namespace {
 
@@ -316,12 +321,16 @@ void MdViewerWindow::initUi() {
   view_->SetMermaidRenderingEnabled(settings_->mermaid_rendering);
   view_->SetPersistentRenderCacheEnabled(settings_->persistent_cache);
 
-  // 阅读区顶部面包屑；正文仍由 MarkdownView 独占剩余空间
+  // 阅读区顶部进度线 + 面包屑；正文仍由 MarkdownView 独占剩余空间
   auto* reader = new QWidget(this);
+  reader_container_ = reader;
   reader->setObjectName(QStringLiteral("readerContainer"));
+  reader->installEventFilter(this);
   auto* reader_layout = new QVBoxLayout(reader);
   reader_layout->setContentsMargins(0, 0, 0, 0);
   reader_layout->setSpacing(0);
+  reading_progress_ = new ReadingProgressBar(reader);
+  reader_layout->addWidget(reading_progress_);
   breadcrumb_ = new QLabel(reader);
   breadcrumb_->setObjectName(QStringLiteral("readingBreadcrumb"));
   breadcrumb_->setContentsMargins(16, 6, 16, 6);
@@ -336,7 +345,33 @@ void MdViewerWindow::initUi() {
   breadcrumb_->hide();
   reader_layout->addWidget(breadcrumb_);
   reader_layout->addWidget(view_, 1);
+
+  // 欢迎页与正文互斥：没有已提交文档时收起 view，避免空白阅读区
+  welcome_ = new WelcomeView(reader);
+  welcome_->setObjectName(QStringLiteral("welcomeView"));
+  welcome_->hide();
+  reader_layout->addWidget(welcome_, 1);
   setCentralWidget(reader);
+
+  // 浮动回顶按钮：不占布局，按阅读区尺寸手动定位
+  back_to_top_ = new QToolButton(reader);
+  back_to_top_->setObjectName(QStringLiteral("backToTopButton"));
+  back_to_top_->setText(QStringLiteral("↑"));
+  back_to_top_->setToolTip(QStringLiteral("回到顶部"));
+  back_to_top_->setCursor(Qt::PointingHandCursor);
+  back_to_top_->setFixedSize(38, 38);
+  back_to_top_->hide();
+  scroll_animation_ = new QVariantAnimation(this);
+  scroll_animation_->setDuration(220);
+  scroll_animation_->setEasingCurve(QEasingCurve::OutCubic);
+  connect(scroll_animation_, &QVariantAnimation::valueChanged, this,
+          [this](const QVariant& value) {
+            if (view_ != nullptr) {
+              view_->SetScrollPosition(value.toInt());
+            }
+          });
+  connect(back_to_top_, &QToolButton::clicked, this,
+          &MdViewerWindow::ScrollToTop);
 
   // 递归文档树 / 书签 / 搜索结果的侧栏
   document_dock_ = new QDockWidget(QStringLiteral("文档"), this);
@@ -426,6 +461,10 @@ void MdViewerWindow::initUi() {
   document_count_label_->setObjectName(QStringLiteral("documentCountLabel"));
   document_count_label_->setToolTip(
       QStringLiteral("当前目录中的 Markdown 文档数"));
+  reading_time_label_ = new QLabel(this);
+  reading_time_label_->setObjectName(QStringLiteral("readingTimeLabel"));
+  reading_time_label_->setToolTip(
+      QStringLiteral("按源字符数估算，约 500 字/分钟"));
   backend_label_ =
       new QLabel(QStringLiteral(QLITEMD_BACKEND_LABEL)
                      .replace(QStringLiteral(" / "), QStringLiteral(" · ")),
@@ -443,6 +482,7 @@ void MdViewerWindow::initUi() {
   stats_layout->setContentsMargins(0, 0, 0, 0);
   stats_layout->setSpacing(14);
   stats_layout->addWidget(document_count_label_);
+  stats_layout->addWidget(reading_time_label_);
   stats_layout->addWidget(backend_label_);
   stats_layout->addWidget(zoom_label_);
   statusBar()->addPermanentWidget(render_progress_);
@@ -668,6 +708,7 @@ void MdViewerWindow::initUi() {
   UpdateChromeVisibility();
   UpdateBookmarkUi();
   RefreshRecentMenu();
+  ShowWelcome();
 }
 
 void MdViewerWindow::initSignals() {
@@ -721,6 +762,16 @@ void MdViewerWindow::initSignals() {
                                       "作者：zhouyonghua\n"
                                       "邮箱：zhouyohu@163.com"));
   });
+  connect(welcome_, &WelcomeView::openFileRequested, this,
+          &MdViewerWindow::OpenFileDialog);
+  connect(welcome_, &WelcomeView::openDirectoryRequested, this,
+          &MdViewerWindow::OpenDirectoryDialog);
+  connect(welcome_, &WelcomeView::quickOpenRequested, this,
+          &MdViewerWindow::ShowQuickOpen);
+  connect(welcome_, &WelcomeView::recentActivated, this,
+          [this](const QString& path) {
+            NavigateTo(path, QString(), /*record_history=*/true);
+          });
   // 点树里的文件换文档；树在根外打开书签时不换根
   connect(documents_panel_, &DocumentsPanel::fileActivated, this,
           [this](const QString& path) {
@@ -796,6 +847,9 @@ void MdViewerWindow::initSignals() {
       pending_restore_scroll_ = -1;
       pending_restore_path_.clear();
     }
+    HideWelcome();
+    UpdateReadingProgress(view_->ScrollPosition());
+    UpdateReadingTime();
   });
   connect(view_, &MarkdownView::codeCopied, this, [this] {
     statusBar()->showMessage(QStringLiteral("已复制代码块"), 2000);
@@ -840,6 +894,7 @@ void MdViewerWindow::initSignals() {
       current = heading.anchor;
     }
     outline_->SetCurrentAnchor(current);
+    UpdateReadingProgress(y);
   });
 
   connect(view_, &MarkdownView::loadFailed, this,
@@ -1157,6 +1212,7 @@ void MdViewerWindow::RestoreSession() {
   if (!settings_->root_dir.isEmpty()) {
     const DocumentScanResult result = SetRootDir(settings_->root_dir);
     if (!result.root_exists) {
+      ShowWelcome();
       return;  // SetRootDir 已显示空态
     }
     if (QFileInfo(settings_->last_file).isFile()) {
@@ -1165,6 +1221,9 @@ void MdViewerWindow::RestoreSession() {
       if (ShowFile(absolute, OpenReason::kRestore)) {
         PushHistory(absolute, QString());
       }
+    }
+    if (!view_->is_rendering() && !view_->has_document()) {
+      ShowWelcome();
     }
     return;
   }
@@ -1192,6 +1251,7 @@ void MdViewerWindow::OpenLastFile() {
   }
   documents_panel_->SetRootMissing(
       QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+  ShowWelcome();
 }
 
 void MdViewerWindow::OpenFileDialog() {
@@ -1545,6 +1605,120 @@ void MdViewerWindow::ShowReaderAppearance() {
   appearance_popup_->OpenNear(appearance_button_);
 }
 
+void MdViewerWindow::ShowWelcome() {
+  if (welcome_ == nullptr || view_ == nullptr) {
+    return;
+  }
+  welcome_->SetRecentFiles(settings_->recent_files, root_dir_);
+  if (breadcrumb_ != nullptr) {
+    breadcrumb_->hide();
+  }
+  if (reading_progress_ != nullptr) {
+    reading_progress_->hide();
+  }
+  if (back_to_top_ != nullptr) {
+    back_to_top_->hide();
+  }
+  if (appearance_popup_ != nullptr) {
+    appearance_popup_->hide();
+  }
+  if (outline_dock_ != nullptr) {
+    welcome_outline_visible_ = !outline_dock_->isHidden();
+    outline_dock_->hide();
+  }
+  view_->hide();
+  welcome_->show();
+  welcome_->raise();
+}
+
+void MdViewerWindow::HideWelcome() {
+  if (welcome_ != nullptr) {
+    welcome_->hide();
+  }
+  if (view_ != nullptr && !view_->isVisible()) {
+    view_->show();
+  }
+  if (reading_progress_ != nullptr) {
+    reading_progress_->show();
+  }
+  if (welcome_outline_visible_ && outline_dock_ != nullptr && !focus_mode_) {
+    outline_dock_->show();
+  }
+  welcome_outline_visible_ = false;
+}
+
+void MdViewerWindow::UpdateReadingProgress(int y) {
+  if (reading_progress_ == nullptr || back_to_top_ == nullptr ||
+      view_ == nullptr) {
+    return;
+  }
+  if (!view_->has_document() || !view_->isVisible()) {
+    reading_progress_->SetProgress(0.0);
+    back_to_top_->hide();
+    return;
+  }
+  const int document_height = view_->DocumentHeight();
+  const int viewport_height = view_->ViewportHeight();
+  const int max_scroll = qMax(1, document_height - viewport_height);
+  const qreal progress = qBound(0.0, qreal(y) / max_scroll, 1.0);
+  reading_progress_->SetProgress(progress);
+  // 短文档的滚动范围可能还不到一屏；按绝对滚动距离判断更可靠
+  const bool show = y > 200;
+  back_to_top_->setVisible(show);
+  if (show) {
+    PositionBackToTop();
+  }
+}
+
+void MdViewerWindow::UpdateReadingTime() {
+  if (reading_time_label_ == nullptr || view_ == nullptr) {
+    return;
+  }
+  if (!view_->has_document() || view_->is_rendering()) {
+    reading_time_label_->clear();
+    return;
+  }
+  const int chars = view_->document_stats().source_chars;
+  if (chars <= 0) {
+    reading_time_label_->clear();
+    return;
+  }
+  const int minutes = qMax(1, (chars + 499) / 500);
+  reading_time_label_->setText(QStringLiteral("约 %1 分钟").arg(minutes));
+}
+
+void MdViewerWindow::PositionBackToTop() {
+  if (back_to_top_ == nullptr || reader_container_ == nullptr) {
+    return;
+  }
+  constexpr int kMargin = 22;
+  back_to_top_->move(
+      reader_container_->width() - back_to_top_->width() - kMargin,
+      reader_container_->height() - back_to_top_->height() - kMargin);
+  back_to_top_->raise();
+}
+
+void MdViewerWindow::ScrollToTop() {
+  if (view_ == nullptr) {
+    return;
+  }
+  if (scroll_animation_ == nullptr) {
+    view_->SetScrollPosition(0);
+    return;
+  }
+  scroll_animation_->stop();
+  scroll_animation_->setStartValue(view_->ScrollPosition());
+  scroll_animation_->setEndValue(0);
+  scroll_animation_->start();
+}
+
+bool MdViewerWindow::eventFilter(QObject* watched, QEvent* event) {
+  if (watched == reader_container_ && event->type() == QEvent::Resize) {
+    PositionBackToTop();
+  }
+  return QMainWindow::eventFilter(watched, event);
+}
+
 void MdViewerWindow::UpdateChromeVisibility() {
   if (fluent_frame_ == nullptr || fluent_frame_->titleBar() == nullptr) {
     return;
@@ -1626,6 +1800,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
     pending_restore_path_.clear();
     return false;  // 视图里已经是错误页，状态栏的消息由 loadFailed 负责
   }
+  HideWelcome();
   // 旧文档还在屏幕上，而新文档已在后台渲染；先给一个明确的等待页
   view_->ShowPlaceholder(QStringLiteral("正在渲染…"));
   displayed_file_ = absolute_path;
@@ -1840,6 +2015,7 @@ void MdViewerWindow::closeEvent(QCloseEvent* event) {
 void MdViewerWindow::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
   UpdateChromeVisibility();
+  PositionBackToTop();
 }
 
 void MdViewerWindow::dragEnterEvent(QDragEnterEvent* event) {

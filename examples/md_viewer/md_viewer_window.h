@@ -32,7 +32,10 @@ class QProgressBar;
 class QResizeEvent;
 class QTimer;
 class QToolButton;
+class QVariantAnimation;
 class DocumentsPanel;
+class ReadingProgressBar;
+class WelcomeView;
 class FluentWindowFrame;
 class MarkdownOutlineWidget;
 class MarkdownView;
@@ -68,6 +71,7 @@ class MdViewerWindow : public QMainWindow {
   void dragMoveEvent(QDragMoveEvent* event) override;
   void dropEvent(QDropEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
  private:
   void createActions();
@@ -133,6 +137,14 @@ class MdViewerWindow : public QMainWindow {
   ReaderPreferences CurrentReaderPreferences() const;
   void ApplyReaderAppearance();
   void ShowReaderAppearance();
+  // 无文档时的欢迎页，与正文互斥显示
+  void ShowWelcome();
+  void HideWelcome();
+  // 顶部进度线、浮动回顶按钮与状态栏阅读时长
+  void UpdateReadingProgress(int y);
+  void UpdateReadingTime();
+  void PositionBackToTop();
+  void ScrollToTop();
   // 当前主题的页面底色（与 resources/themes/*.css 的 body 对齐）
   QColor ReadingPageColor() const;
   void RememberCurrentPosition();
@@ -182,6 +194,11 @@ class MdViewerWindow : public QMainWindow {
   DocumentsPanel* documents_panel_ = nullptr;
   QuickOpenPopup* quick_open_ = nullptr;
   ReaderAppearancePopup* appearance_popup_ = nullptr;
+  WelcomeView* welcome_ = nullptr;
+  ReadingProgressBar* reading_progress_ = nullptr;
+  QWidget* reader_container_ = nullptr;
+  QToolButton* back_to_top_ = nullptr;
+  QVariantAnimation* scroll_animation_ = nullptr;
   // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
   QStringList quick_open_files_;
   QLabel* path_label_ = nullptr;
@@ -189,6 +206,7 @@ class MdViewerWindow : public QMainWindow {
   QLabel* zoom_label_ = nullptr;
   QLabel* status_ready_label_ = nullptr;
   QLabel* document_count_label_ = nullptr;
+  QLabel* reading_time_label_ = nullptr;
   QLabel* backend_label_ = nullptr;
   QProgressBar* render_progress_ = nullptr;
   quint64 progress_request_ = 0;
@@ -226,6 +244,8 @@ class MdViewerWindow : public QMainWindow {
   bool focus_mode_ = false;
   bool focus_restore_document_ = true;
   bool focus_restore_outline_ = true;
+  // 欢迎页会临时收起空大纲，打开文档后按这个记录恢复
+  bool welcome_outline_visible_ = false;
   // 窄宽度自动收起大纲；用户手动关掉的不算，恢复宽度时也不自动弹开
   bool outline_auto_hidden_ = false;
   QWidget* nav_widget_ = nullptr;

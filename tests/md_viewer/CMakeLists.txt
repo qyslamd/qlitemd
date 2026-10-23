@@ -88,3 +88,27 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+
+add_unit_test(
+    NAME test_welcome_view
+    SOURCES welcome_view_test.cpp
+            ${VIEWER_DIR}/welcome_view.cpp
+            ${VIEWER_DIR}/welcome_view.h
+            ${VIEWER_DIR}/document_index.cpp
+            ${VIEWER_DIR}/document_index.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
+    NAME test_reading_progress
+    SOURCES reading_progress_test.cpp
+            ${VIEWER_DIR}/reading_progress.cpp
+            ${VIEWER_DIR}/reading_progress.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
