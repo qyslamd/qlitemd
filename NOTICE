@@ -9,7 +9,8 @@ components. Their licenses remain in effect for those components.
 - litehtml: BSD-3-Clause
 - gumbo-parser: Apache-2.0 (bundled with litehtml)
 - md4c: MIT
-- quickjs-ng: MIT (source under 3rdparty/quickjs-ng)
+- quickjs-ng: MIT (source under 3rdparty/quickjs-ng; only built on
+  non-Windows platforms)
 - QWindowKit: Apache-2.0
 - qmsetup: MIT
 - FluentUIStyle: MIT
@@ -17,6 +18,8 @@ components. Their licenses remain in effect for those components.
 - GoogleTest: BSD-3-Clause
 - resvg: Apache-2.0 OR MIT (prebuilt DLL under 3rdparty/resvg)
 - merman: MIT OR Apache-2.0 (prebuilt DLL under 3rdparty/merman)
+- RaTeX: MIT (prebuilt DLL under 3rdparty/ratex; local SVG FFI patch in
+  patches/ratex)
 - tree-sitter: MIT (source under 3rdparty/tree-sitter)
 - tree-sitter language grammars (bash, batch, c, cpp, css, go, html,
   java, javascript, json, python, rust): MIT

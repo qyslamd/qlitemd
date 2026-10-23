@@ -4,6 +4,9 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Windows: render formulas with native RaTeX instead of MathJax in
+  QuickJS; Windows builds now ship no JavaScript engine at all. Other
+  platforms keep the quickjs-ng fallback.
 - Replace the base64 `<img>` pipeline with a `RenderedImage` struct:
   workers hand the view a decoded bitmap plus original PNG bytes, the
   view assembles `mj:`-token tags directly (no base64/PNG decode on the

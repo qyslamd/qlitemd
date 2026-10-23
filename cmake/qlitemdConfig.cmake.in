@@ -38,11 +38,13 @@ find_library(QLITEMD_MD4C_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
-find_library(QLITEMD_QJS_LIBRARY
-    NAMES qjs
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
+if(NOT WIN32)
+    find_library(QLITEMD_QJS_LIBRARY
+        NAMES qjs
+        PATHS "${_qlitemd_libdir}"
+        NO_DEFAULT_PATH
+        REQUIRED)
+endif()
 find_library(QLITEMD_TREE_SITTER_CORE_LIBRARY
     NAMES tree_sitter_core
     PATHS "${_qlitemd_libdir}"
@@ -55,6 +57,12 @@ find_library(QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY
     REQUIRED)
 
 if(WIN32)
+    if(NOT TARGET qlitemd::ratex)
+        add_library(qlitemd::ratex SHARED IMPORTED)
+        set_target_properties(qlitemd::ratex PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/ratex_ffi.dll"
+            IMPORTED_IMPLIB "${_qlitemd_libdir}/ratex_ffi.dll.lib")
+    endif()
     if(NOT TARGET qlitemd::resvg)
         add_library(qlitemd::resvg SHARED IMPORTED)
         set_target_properties(qlitemd::resvg PROPERTIES
@@ -77,11 +85,13 @@ set(_qlitemd_link_libraries
     ${QLITEMD_LITEHTML_LIBRARY}
     ${QLITEMD_GUMBO_LIBRARY}
     ${QLITEMD_MD4C_LIBRARY}
-    ${QLITEMD_QJS_LIBRARY}
     ${QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY}
     ${QLITEMD_TREE_SITTER_CORE_LIBRARY})
 if(WIN32)
-    list(APPEND _qlitemd_link_libraries qlitemd::resvg qlitemd::merman)
+    list(APPEND _qlitemd_link_libraries qlitemd::resvg qlitemd::merman
+        qlitemd::ratex)
+else()
+    list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
 endif()
 list(APPEND _qlitemd_link_libraries
     ${_qlitemd_qt}::Widgets

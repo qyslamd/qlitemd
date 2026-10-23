@@ -18,9 +18,12 @@ add_unit_test(
     QT_MODULES Core
     LABELS MARKDOWN
 )
-# worker 状态测试包含 markdown_engine_state.h，它直接引用 quickjs.h
-target_include_directories(test_code_highlighter PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+# worker 状态测试包含 markdown_engine_state.h；Windows 走原生后端时
+# 该头不再引用 quickjs.h
+if(NOT WIN32)
+    target_include_directories(test_code_highlighter PRIVATE
+        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+endif()
 
 # 标题锚点：slug 规则与 ASCII id 的生成是纯字符串变换，可逐条断言。
 # 为什么 id 非 ASCII 不可、data-md-slug 为什么要跟着走，见用例头部注释
@@ -44,8 +47,10 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
-target_include_directories(test_formula_renderer PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+if(NOT WIN32)
+    target_include_directories(test_formula_renderer PRIVATE
+        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+endif()
 
 # mermaid 的两层后处理是纯字符串→字符串，毫秒级，可逐条断言
 add_unit_test(
@@ -66,9 +71,10 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
-# markdown_engine_state.h 是内部头，直接包含 quickjs.h
-target_include_directories(test_mermaid_renderer PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+if(NOT WIN32)
+    target_include_directories(test_mermaid_renderer PRIVATE
+        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+endif()
 set_tests_properties(test_mermaid_renderer PROPERTIES TIMEOUT 120)
 
 # "复制按钮"链路里属于本模块的一段：copy: 链接 → 原文（纯函数）。
@@ -142,16 +148,19 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 
-# JsRuntime 的错误处理：异常消息消费、坏字节码、非异常放行
-add_unit_test(
-    NAME test_js_runtime
-    SOURCES js_runtime_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown qjs
-    QT_MODULES Core
-    LABELS MARKDOWN
-)
-# 死循环用例一旦中断机制回归会永久挂起，给 CTest 一个硬上限
-set_tests_properties(test_js_runtime PROPERTIES TIMEOUT 30)
+# JsRuntime 的错误处理：异常消费、坏字节码、非异常放行。
+# Windows 已无 QuickJS，该目标只在其它平台构建
+if(NOT WIN32)
+    add_unit_test(
+        NAME test_js_runtime
+        SOURCES js_runtime_test.cpp
+        LIBS ${APP_TARGET_PREFIX}_markdown qjs
+        QT_MODULES Core
+        LABELS MARKDOWN
+    )
+    # 死循环用例一旦中断机制回归会永久挂起，给 CTest 一个硬上限
+    set_tests_properties(test_js_runtime PROPERTIES TIMEOUT 30)
+endif()
 
 # 重排去抖：纯高度 resize 不重排、守卫命中、缩放合并。判据是布局次数
 add_unit_test(

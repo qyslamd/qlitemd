@@ -1,6 +1,8 @@
 #include "formula_renderer.h"
 
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
 #include <quickjs.h>
+#endif
 
 #include <atomic>
 #include <cmath>
@@ -12,8 +14,12 @@
 #include <QRegularExpression>
 #include <QSizeF>
 
+#if defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#include "ratex_ffi.h"
+#else
 #include "js_runtime.h"
 #include "markdown_bytecode.h"
+#endif
 #include "markdown_engine_state.h"
 #include "markdown_render_context_internal.h"
 #include "mermaid_renderer.h"
@@ -23,12 +29,6 @@
 
 namespace {
 
-// 同步入口的线程局部引擎；异步 worker 自己持有 state
-FormulaEngineState& DefaultEngine() {
-  thread_local FormulaEngineState engine;
-  return engine;
-}
-
 void AddArtifact(const MarkdownDiagnostics& diagnostics, const QString& name,
                  const QByteArray& data,
                  QVector<MarkdownRenderArtifact>* artifacts) {
@@ -37,6 +37,56 @@ void AddArtifact(const MarkdownDiagnostics& diagnostics, const QString& name,
   } else {
     DumpRenderArtifact(diagnostics, name, data);
   }
+}
+
+// 2x 超采样、按 1x 尺寸摆放；像素总量封顶，防止超大公式打爆内存
+RenderedImage RasterizeSizedSvg(const QString& svg, qreal width, qreal height,
+                                const MarkdownDiagnostics& diagnostics,
+                                const QString& artifact_prefix,
+                                QVector<MarkdownRenderArtifact>* artifacts) {
+  qreal scale = 2.0;
+  constexpr qreal kMaxRasterPixels = 4096.0 * 4096.0;
+  const qreal area = width * height;
+  if (area * scale * scale > kMaxRasterPixels) {
+    scale = std::sqrt(kMaxRasterPixels / area);
+  }
+  QImage image;
+  QString raster_error;
+  if (!RasterizeSvg(svg.toUtf8(), QSizeF(width, height), scale,
+                    MermaidFontFamily(), &image, &raster_error)) {
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("formula png: %1").arg(raster_error));
+    }
+    return {};
+  }
+  QByteArray png;
+  QBuffer buffer(&png);
+  buffer.open(QIODevice::WriteOnly);
+  if (!image.save(&buffer, "PNG")) {
+    if (diagnostics.trace) {
+      TraceRender(diagnostics, QStringLiteral("formula png: save failed"));
+    }
+    return {};
+  }
+  if (DumpEnabled(diagnostics, artifact_prefix)) {
+    AddArtifact(diagnostics, artifact_prefix + QStringLiteral(".png"), png,
+                artifacts);
+  }
+  RenderedImage out;
+  out.image = std::move(image);
+  out.png_bytes = png;
+  out.layout_width = qMax(1, qRound(width));
+  out.layout_height = qMax(1, qRound(height));
+  return out;
+}
+
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+
+// 同步入口的线程局部引擎；异步 worker 自己持有 state
+FormulaEngineState& DefaultEngine() {
+  thread_local FormulaEngineState engine;
+  return engine;
 }
 
 // SVG 字符串 → 渲染产物。失败返回 isNull() 的 RenderedImage。
@@ -114,48 +164,15 @@ RenderedImage SvgToImage(const QString& svg, const QColor& color,
     }
     return {};
   }
-
-  // 2 倍超采样、按 1 倍尺寸摆放：公式里的分数线与根号才有锐边。
-  // 像素总量与 mermaid 同口径封顶，防止超大公式把内存打爆
-  qreal scale = 2.0;
-  constexpr qreal kMaxRasterPixels = 4096.0 * 4096.0;
-  const qreal area = width * height;
-  if (area * scale * scale > kMaxRasterPixels) {
-    scale = std::sqrt(kMaxRasterPixels / area);
-  }
-  QImage image;
-  QString raster_error;
-  if (!RasterizeSvg(bare.toUtf8(), QSizeF(width, height), scale,
-                    MermaidFontFamily(), &image, &raster_error)) {
-    if (diagnostics.trace) {
-      TraceRender(diagnostics,
-                  QStringLiteral("formula png: %1").arg(raster_error));
-    }
-    return {};
-  }
-
-  QBuffer buffer;
-  buffer.open(QIODevice::WriteOnly);
-  if (!image.save(&buffer, "PNG")) {
-    if (diagnostics.trace) {
-      TraceRender(diagnostics, QStringLiteral("formula png: save failed"));
-    }
-    return {};  // PNG 编不出：返回空，正文落回原文而不是坏 img
-  }
-  if (DumpEnabled(diagnostics, artifact_prefix)) {
-    AddArtifact(diagnostics, artifact_prefix + QStringLiteral(".png"),
-                buffer.data(), artifacts);
-  }
-
-  RenderedImage out;
-  out.image = std::move(image);
-  out.png_bytes = buffer.data();
-  out.layout_width = qRound(width);
-  out.layout_height = qRound(height);
-  return out;
+  return RasterizeSizedSvg(bare, width, height, diagnostics, artifact_prefix,
+                           artifacts);
 }
 
+#endif  // !QLITEMD_FORMULA_BACKEND_RATEX
+
 }  // namespace
+
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
 
 bool EnsureFormulaEngine(FormulaEngineState& engine) {
   if (engine.runtime.status().loaded) {
@@ -274,6 +291,111 @@ RenderedImage RenderFormulaOnEngine(
   }
   return tag;
 }
+
+#else  // QLITEMD_FORMULA_BACKEND_RATEX
+
+MarkdownEngineStatus FormulaEngineStatus(const FormulaEngineState& /*engine*/) {
+  // RaTeX 是直接 FFI，没有引擎加载阶段：恒就绪
+  return {/*loaded=*/true, /*permanently_failed=*/false, /*first_load_ms=*/0};
+}
+
+MarkdownEngineStatus FormulaEngineStatus() {
+  FormulaEngineState engine;
+  return FormulaEngineStatus(engine);
+}
+
+RenderedImage RenderFormulaOnEngine(
+    FormulaEngineState& /*engine*/, const QString& tex, bool display,
+    const QColor& color, const MarkdownDiagnostics& diagnostics,
+    QVector<MarkdownRenderArtifact>* artifacts) {
+  const QString normalized = tex.trimmed();
+  if (normalized.isEmpty()) {
+    return {};
+  }
+  QElapsedTimer render_clock;
+  render_clock.start();
+
+  RatexColor rgba{0.0f, 0.0f, 0.0f, 1.0f};
+  RatexColor* color_ptr = nullptr;
+  if (color.isValid()) {
+    rgba.r = static_cast<float>(color.redF());
+    rgba.g = static_cast<float>(color.greenF());
+    rgba.b = static_cast<float>(color.blueF());
+    rgba.a = static_cast<float>(color.alphaF());
+    color_ptr = &rgba;
+  }
+  // font_size 与既有 MathJax 管线对齐（em=16px）；padding 0 避免公式周围
+  // 多出白边；stroke 按 40→16 的比例缩放
+  RatexOptions options{};
+  options.struct_size = sizeof(RatexOptions);
+  options.display_mode = display ? 1 : 0;
+  options.color = color_ptr;
+  options.font_size = 16.0;
+  options.padding = 0.0;
+  options.stroke_width = 0.6;
+
+  const QByteArray utf8 = normalized.toUtf8();
+  const RatexResult result = ratex_render_svg(utf8.constData(), &options);
+  if (result.error_code != 0 || result.data == nullptr) {
+    const char* error = ratex_get_last_error();
+    qWarning() << "formula(ratex) failed:" << (error != nullptr ? error : "?");
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("formula(ratex) failed: %1")
+                      .arg(QString::fromUtf8(error != nullptr ? error : "?")));
+    }
+    ratex_free_display_list(result.data);
+    return {};
+  }
+  const QString svg = QString::fromUtf8(result.data);
+  ratex_free_display_list(result.data);
+
+  static const QRegularExpression kViewBox(
+      QStringLiteral("viewBox=\"([-\\d.]+) ([-\\d.]+) ([\\d.]+) ([\\d.]+)\""));
+  const QRegularExpressionMatch match = kViewBox.match(svg);
+  if (!match.hasMatch()) {
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("formula(ratex) svg: no viewBox"));
+    }
+    return {};
+  }
+  const qreal width = match.captured(3).toDouble();
+  const qreal height = match.captured(4).toDouble();
+  if (width < 1.0 || height < 1.0) {
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("formula(ratex) svg: bad size %1x%2")
+                      .arg(width)
+                      .arg(height));
+    }
+    return {};
+  }
+
+  static std::atomic<int> dump_index{0};
+  const int index = dump_index.fetch_add(1, std::memory_order_relaxed) + 1;
+  const QString variant =
+      color.isValid() ? color.name() : QStringLiteral("legacy");
+  const QString artifact =
+      QStringLiteral("formula/%1-%2").arg(index).arg(variant);
+  if (DumpEnabled(diagnostics, artifact)) {
+    AddArtifact(diagnostics, artifact + QStringLiteral(".svg"), svg.toUtf8(),
+                artifacts);
+  }
+  RenderedImage image =
+      RasterizeSizedSvg(svg, width, height, diagnostics, artifact, artifacts);
+  if (diagnostics.trace) {
+    TraceRender(diagnostics,
+                QStringLiteral("formula(ratex) render: %1 ms, %2 bytes, "
+                               "display=%3")
+                    .arg(render_clock.elapsed())
+                    .arg(image.png_bytes.size())
+                    .arg(display));
+  }
+  return image;
+}
+
+#endif  // QLITEMD_FORMULA_BACKEND_RATEX
 
 QString FormulaRenderKey(const QString& tex, bool display,
                          const QColor& color) {

@@ -2,8 +2,9 @@
 
 **A Qt Widgets Markdown renderer that doesn't need a browser engine.**
 
-md4c parses the document, qlitehtml lays it out, and quickjs-ng runs
-MathJax. Highlighting uses native tree-sitter, Mermaid diagrams use
+md4c parses the document, qlitehtml lays it out, and formula rendering
+uses native RaTeX on Windows (MathJax in quickjs-ng elsewhere).
+Highlighting uses native tree-sitter, Mermaid diagrams use
 native merman-ffi, and
 formula/diagram SVGs are rasterized with resvg. There is no WebEngine,
 Chromium or Node.js at runtime.
@@ -113,12 +114,14 @@ Key design choices:
 - **Dependency inversion.** The public API knows nothing about QuickJS,
   merman or resvg. Highlighting, formula and Mermaid work are passed in as
   plain callbacks, so tests can use fakes and hosts can swap engines.
-- **Native Mermaid path.** merman-ffi replaces the QuickJS + mermaid.js
-  bundle for diagrams; MathJax still uses quickjs-ng. On
+- **Native math and Mermaid paths (Windows).** RaTeX renders TeX to
+  standalone SVG and merman-ffi renders Mermaid diagrams, so Windows
+  builds ship no JavaScript engine at all; other platforms keep the
+  quickjs-ng fallback (MathJax and mermaid.js). On
   Windows the default is `QLITEMD_MERMAID_BACKEND=merman` with
   `QLITEMD_SVG_BACKEND=resvg`; both legacy backends remain selectable.
-- **Bytecode for the remaining JS.** MathJax and the optional legacy
-  Mermaid path are precompiled by `qjsc`; see the
+- **Bytecode for the remaining JS (non-Windows).** MathJax and the
+  optional legacy Mermaid path are precompiled by `qjsc`; see the
   [evaluation](docs/eval/Markdown渲染qjsc预编译评估.md).
 - **Generation filtering.** Every render bumps a request id; stale worker
   results are dropped before they touch the widget, and cancellation
@@ -288,7 +291,8 @@ maintainers and contributors.
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
 | [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown parser | MIT |
-| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime | MIT |
+| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (non-Windows fallback) | MIT |
+| [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | TeX to SVG (Windows) | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | 0.27.1 | Incremental parsing core for syntax highlighting | MIT |
 | [tree-sitter grammars](https://github.com/tree-sitter/tree-sitter) | 0.23.x-0.25.x | Language grammars (12 languages) | MIT |

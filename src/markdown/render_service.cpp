@@ -39,6 +39,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
     return result;
   }
 
+#ifdef QLITEMD_HAS_QUICKJS
   JsRuntime* runtime = nullptr;
   switch (task.kind) {
     case MarkdownRenderKind::Highlight:
@@ -48,14 +49,13 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       runtime = &formula.runtime;
       break;
     case MarkdownRenderKind::Mermaid:
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
       runtime = &mermaid.runtime;
-#endif
       break;
   }
   if (runtime != nullptr) {
     runtime->SetInterruptFlag(task.cancel_flag.get());
   }
+#endif
   QElapsedTimer render_clock;
   render_clock.start();
 
@@ -85,6 +85,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
   }
 
   result.elapsed_ms = render_clock.elapsed();
+#ifdef QLITEMD_HAS_QUICKJS
   if (runtime != nullptr) {
     result.js_memory_bytes = runtime->MemoryBytes();
     if (task.cancel_flag != nullptr &&
@@ -102,7 +103,9 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       result.first_load_ms = status.first_load_ms;
     }
     runtime->SetInterruptFlag(nullptr);
-  } else {
+  } else
+#endif
+  {
     if (task.cancel_flag != nullptr &&
         task.cancel_flag->load(std::memory_order_relaxed)) {
       result.cancelled = true;
@@ -110,11 +113,19 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       result.rendered.clear();
       result.image = RenderedImage{};
     }
-    // 走到这里的都是 native 路径：高亮恒就绪，merman 查引擎状态
-    const MarkdownEngineStatus status =
-        task.kind == MarkdownRenderKind::Highlight
-            ? HighlightEngineStatus(highlight)
-            : MermaidEngineStatus(mermaid);
+    // 走到这里的是无 JS 运行时的路径：各后端按 kind 查自己的状态
+    MarkdownEngineStatus status;
+    switch (task.kind) {
+      case MarkdownRenderKind::Highlight:
+        status = HighlightEngineStatus(highlight);
+        break;
+      case MarkdownRenderKind::Formula:
+        status = FormulaEngineStatus(formula);
+        break;
+      case MarkdownRenderKind::Mermaid:
+        status = MermaidEngineStatus(mermaid);
+        break;
+    }
     result.engine_load_failed = status.permanently_failed;
     result.loaded = status.loaded;
     result.first_load_ms = status.first_load_ms;

@@ -1,13 +1,17 @@
 #ifndef FILE_MARKDOWN_MARKDOWN_ENGINE_STATE_H_
 #define FILE_MARKDOWN_MARKDOWN_ENGINE_STATE_H_
 
+#ifndef QLITEMD_FORMULA_BACKEND_RATEX
 #include <quickjs.h>
+#endif
 
 #include <QColor>
 #include <QString>
 #include <QVector>
 
+#ifndef QLITEMD_FORMULA_BACKEND_RATEX
 #include "js_runtime.h"
+#endif
 #include "markdown_types.h"
 #include "merman_renderer.h"
 #include "tree_sitter_highlighter.h"
@@ -20,7 +24,10 @@ struct HighlightEngineState {
 };
 
 struct FormulaEngineState {
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
   JsRuntime runtime;
+#endif
+  // RaTeX 后端无引擎状态：每次调用直接走 FFI
 };
 
 struct MermaidEngineState {
@@ -39,7 +46,9 @@ struct MermaidEngineState {
 
 // 只负责加载 runtime，不更新上下文计数；失败是永久性的，除取消后的
 // ResetForReload() 外不会重试
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
 bool EnsureFormulaEngine(FormulaEngineState& engine);
+#endif
 bool EnsureMermaidEngine(MermaidEngineState& engine);
 
 // 返回空串表示失败或取消；不写上下文/磁盘缓存。调度层必须丢弃过期

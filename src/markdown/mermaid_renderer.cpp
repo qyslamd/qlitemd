@@ -1,6 +1,8 @@
 #include "mermaid_renderer.h"
 
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
 #include <quickjs.h>
+#endif
 
 #include <atomic>
 #include <cmath>
@@ -20,8 +22,10 @@
 #include <QSizeF>
 #include <QStringList>
 
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
 #include "js_runtime.h"
 #include "markdown_bytecode.h"
+#endif
 #include "markdown_engine_state.h"
 #include "markdown_render_context_internal.h"
 #include "markdown_types.h"

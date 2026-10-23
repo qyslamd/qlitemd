@@ -1,0 +1,155 @@
+--- a/crates/ratex-ffi/Cargo.toml
++++ b/crates/ratex-ffi/Cargo.toml
+@@ -16,6 +16,8 @@
+ ratex-parser = { workspace = true }
+ ratex-layout = { workspace = true }
+ serde_json = { workspace = true }
++# add by me.2026-10-23
++ratex-svg = { path = "../ratex-svg", features = ["embed-fonts"] }
+ 
+ [target.'cfg(target_os = "android")'.dependencies]
+ jni = { version = "0.21", default-features = false }
+--- a/crates/ratex-ffi/src/lib.rs
++++ b/crates/ratex-ffi/src/lib.rs
+@@ -171,6 +171,13 @@
+     /// Explicit LaTeX color commands like `\color{...}` / `\textcolor{...}{...}`
+     /// still override this per subtree.
+     pub color: *const RatexColor,
++    /// User units per em for SVG output. Defaults to 40.0 when the caller's
++    /// `struct_size` does not cover this field.
++    pub font_size: f64,
++    /// Uniform padding around the formula, in user units. Defaults to 4.0.
++    pub padding: f64,
++    /// Stroke width for unfilled paths, in user units. Defaults to 1.5.
++    pub stroke_width: f64,
+ }
+ 
+ /// Result returned by [`ratex_parse_and_layout`].
+@@ -276,7 +283,7 @@
+         unsafe { drop(CString::from_raw(ptr)) };
+     }
+ }
+-
++// add by me.2026-10-23
+ /// Return the last error message set by any layout function on this thread.
+ ///
+ /// # Returns
+@@ -296,6 +303,118 @@
+     })
+ }
+ 
++use ratex_svg::{render_to_svg, SvgOptions};
++
++/// Parse LaTeX and render directly to a standalone SVG string.
++/// 
++/// The returned pointer is a null-terminated UTF-8 C string containing the SVG.
++/// Free it with [`ratex_free_display_list`] (which is just a free wrapper).
++#[no_mangle]
++pub unsafe extern "C" fn ratex_render_svg(
++    latex: *const c_char,
++    opts: *const RatexOptions,
++) -> RatexResult {
++    let err_result = |msg: &str| -> RatexResult {
++        set_last_error(msg);
++        RatexResult {
++            data: std::ptr::null_mut(),
++            error_code: 1,
++        }
++    };
++
++    clear_last_error();
++
++    if latex.is_null() {
++        return err_result("ratex_render_svg: latex pointer is null");
++    }
++
++    let latex_str = match unsafe { CStr::from_ptr(latex) }.to_str() {
++        Ok(s) => s,
++        Err(e) => return err_result(&format!("invalid UTF-8 in latex string: {e}")),
++    };
++
++    // 解析 Options (复用和 parse_and_layout 一样的逻辑)
++    let mut display_mode = 1;
++    let mut color = ratex_types::color::Color::BLACK;
++    if !opts.is_null() {
++        let opts_ref = unsafe { &*opts };
++        let min_size = std::mem::offset_of!(RatexOptions, display_mode) + std::mem::size_of::<c_int>();
++        if opts_ref.struct_size >= min_size {
++            display_mode = opts_ref.display_mode;
++        }
++        
++        let color_size = std::mem::offset_of!(RatexOptions, color) + std::mem::size_of::<*const RatexColor>();
++        if opts_ref.struct_size >= color_size && !opts_ref.color.is_null() {
++            match validate_color(unsafe { *opts_ref.color }) {
++                Ok(c) => color = c,
++                Err(msg) => return err_result(&msg),
++            }
++        }
++    }
++
++    let mut font_size = 40.0f64;
++    let mut padding = 4.0f64;
++    let mut stroke_width = 1.5f64;
++    if !opts.is_null() {
++        let opts_ref = unsafe { &*opts };
++        let font_size_size = std::mem::offset_of!(RatexOptions, font_size) + std::mem::size_of::<f64>();
++        if opts_ref.struct_size >= font_size_size {
++            font_size = opts_ref.font_size;
++        }
++        let padding_size = std::mem::offset_of!(RatexOptions, padding) + std::mem::size_of::<f64>();
++        if opts_ref.struct_size >= padding_size {
++            padding = opts_ref.padding;
++        }
++        let stroke_size = std::mem::offset_of!(RatexOptions, stroke_width) + std::mem::size_of::<f64>();
++        if opts_ref.struct_size >= stroke_size {
++            stroke_width = opts_ref.stroke_width;
++        }
++    }
++    if !(font_size > 0.0 && font_size <= 4096.0) {
++        return err_result("ratex_render_svg: font_size out of range");
++    }
++    if !(padding >= 0.0 && padding <= 4096.0) {
++        return err_result("ratex_render_svg: padding out of range");
++    }
++    if !(stroke_width >= 0.0 && stroke_width <= 256.0) {
++        return err_result("ratex_render_svg: stroke_width out of range");
++    }
++
++    let style = if display_mode == 0 { MathStyle::Text } else { MathStyle::Display };
++
++    // 1. 解析与布局
++    let nodes = match parse(latex_str) {
++        Ok(n) => n,
++        Err(e) => return err_result(&format!("parse error: {e}")),
++    };
++    let layout_opts = LayoutOptions::default().with_style(style).with_color(color);
++    let layout_box = layout(&nodes, &layout_opts);
++    if let Err(e) = validate_layout(&layout_box) {
++        return err_result(&e);
++    }
++    let display_list = to_display_list(&layout_box);
++
++    // 2. 配置 SVG 选项：开启 embed_glyphs 强制使用 <path> 轮廓
++    let svg_opts = SvgOptions {
++        font_size,
++        padding,
++        stroke_width,
++        embed_glyphs: true,       // 将字形变成矢量路径，摆脱字体依赖
++        font_dir: String::new(),  // 使用 embed-fonts，无需外部目录
++    };
++
++    // 3. 渲染为 SVG 字符串
++    let svg = render_to_svg(&display_list, &svg_opts);
++
++    match CString::new(svg) {
++        Ok(cs) => RatexResult {
++            data: cs.into_raw(),
++            error_code: 0,
++        },
++        Err(e) => err_result(&format!("SVG contains interior null byte: {e}")),
++    }
++}
++// end add
+ #[cfg(test)]
+ mod tests {
+     use super::*;

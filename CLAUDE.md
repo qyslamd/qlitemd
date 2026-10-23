@@ -13,15 +13,20 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 ```text
 Markdown -> md4c -> qlitehtml/litehtml -> QWidget
                   \-> tree-sitter: 语法高亮（原生）
-                  \-> QuickJS: MathJax
+                  \-> RaTeX: 公式（Windows 原生）/ QuickJS: MathJax（其它平台）
                   \-> merman-ffi: Mermaid（原生）
                   \-> resvg: 公式/图表 SVG 光栅化
 ```
 
 - 主验证平台：Windows + MSVC
-- Qt 支持：Qt 5.14+、Qt 6.x
+- 验证矩阵（以这两组为准）：
+  - Windows：Qt 5.15.2 x86、Qt 6.8.3 x64
+  - WSL：Qt 5.12.8 x64
+- Qt 支持目标：Qt 5.12.x ~ Qt 6.12.x（当前实测覆盖以上矩阵）
 - 原生后端：`QLITEMD_SVG_BACKEND=resvg|qtsvg`、
-  `QLITEMD_MERMAID_BACKEND=merman|quickjs`；merman 要求 resvg
+  `QLITEMD_MERMAID_BACKEND=merman|quickjs`；merman 要求 resvg。
+  Windows 公式走 RaTeX（`3rdparty/ratex`），不编 QuickJS；其它平台
+  回退 QuickJS + MathJax
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
   `md_viewer` 运行时尚未验证；原生后端目前仅 Windows
 - 自有代码许可证：MIT；第三方许可见 `NOTICE`
@@ -86,7 +91,7 @@ cmake --build build-qt6
 也可以使用 `CMakePresets.json` 的 `qt5`、`qt6` 预设，并把 `QTDIR` 指向
 目标 Qt Kit。
 
-Linux（与 CI 同口径，只构建库和测试）：
+Linux/WSL（本地验证口径：Qt 5.12.8 x64；CI 为 Ubuntu 24.04 + Qt 6.8.3）：
 
 ```bash
 cmake -S . -B build-linux -G Ninja \
@@ -205,7 +210,9 @@ clang-format --dry-run --Werror <file>
   `*Config.cmake.in` 必须用 `git add -f` 强制加入，否则干净 checkout
   会在 configure 阶段失败。
 - `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
-  不要做行尾转换，也不要直接编辑压缩后的文件。
+  不要做行尾转换，也不要直接编辑压缩后的文件。Windows 构建不再使用
+  这些载荷（公式走 RaTeX、Mermaid 走 merman），它们只服务其它平台的
+  quickjs 回退。
 - `patches/**` 固定使用 LF。
 
 ## Git 规则

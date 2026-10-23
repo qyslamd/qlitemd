@@ -35,31 +35,20 @@ option(QLITEMD_BUILD_MD_VIEWER "Build the md_viewer example" ON)
 
 set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
 set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
+set(QLITEMD_FORMULA_BACKEND "ratex" CACHE STRING
+    "Formula backend: ratex (native FFI) or quickjs (MathJax)")
+set_property(CACHE QLITEMD_FORMULA_BACKEND PROPERTY STRINGS ratex quickjs)
 set(QLITEMD_MERMAID_BACKEND "merman" CACHE STRING
     "Mermaid backend: merman or quickjs")
 set_property(CACHE QLITEMD_MERMAID_BACKEND PROPERTY STRINGS merman quickjs)
 if(NOT QLITEMD_SVG_BACKEND MATCHES "^(resvg|qtsvg)$")
     message(FATAL_ERROR "QLITEMD_SVG_BACKEND must be resvg or qtsvg")
 endif()
+if(NOT QLITEMD_FORMULA_BACKEND MATCHES "^(ratex|quickjs)$")
+    message(FATAL_ERROR "QLITEMD_FORMULA_BACKEND must be ratex or quickjs")
+endif()
 if(NOT QLITEMD_MERMAID_BACKEND MATCHES "^(merman|quickjs)$")
     message(FATAL_ERROR "QLITEMD_MERMAID_BACKEND must be merman or quickjs")
-endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman"
-   AND NOT QLITEMD_SVG_BACKEND STREQUAL "resvg")
-    message(FATAL_ERROR
-        "merman backend emits resvg-safe SVG and requires QLITEMD_SVG_BACKEND=resvg")
-endif()
-
-# The native backends are Windows-only in this iteration. Linux/WSL keeps the
-# legacy QtSvg/QuickJS path so the existing CI stays usable.
-if(NOT WIN32)
-    if(QLITEMD_SVG_BACKEND STREQUAL "resvg"
-       OR QLITEMD_MERMAID_BACKEND STREQUAL "merman")
-        message(STATUS
-            "resvg/merman are Windows-only; using qtsvg/quickjs on this platform")
-        set(QLITEMD_SVG_BACKEND qtsvg)
-        set(QLITEMD_MERMAID_BACKEND quickjs)
-    endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -68,54 +57,134 @@ else()
     set(QLITEMD_ARCH x86)
 endif()
 
+# 原生后端的预编目录：Windows 用 x64/x86，Linux 用 linux-x64/linux-x86
+if(WIN32)
+    set(QLITEMD_PLATFORM_DIR "${QLITEMD_ARCH}")
+else()
+    set(QLITEMD_PLATFORM_DIR "linux-${QLITEMD_ARCH}")
+endif()
+
+set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")
+set(_qlitemd_merman_dir "${CMAKE_SOURCE_DIR}/3rdparty/merman")
+set(_qlitemd_ratex_dir "${CMAKE_SOURCE_DIR}/3rdparty/ratex")
+
+# 本平台的原生产物是否存在（Windows 是 .dll，Linux 是 .so）
+if(WIN32)
+    set(_qlitemd_native_suffix ".dll")
+else()
+    set(_qlitemd_native_suffix ".so")
+endif()
+function(qlitemd_native_available out_var dir lib_name)
+    if(EXISTS "${dir}/bin/${QLITEMD_PLATFORM_DIR}/${lib_name}${_qlitemd_native_suffix}")
+        set(${out_var} TRUE PARENT_SCOPE)
+    else()
+        set(${out_var} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+qlitemd_native_available(_qlitemd_has_resvg "${_qlitemd_resvg_dir}" resvg)
+qlitemd_native_available(_qlitemd_has_merman "${_qlitemd_merman_dir}" merman_ffi)
+qlitemd_native_available(_qlitemd_has_ratex "${_qlitemd_ratex_dir}" ratex_ffi)
+
+# 请求了本平台缺产物的后端时回退到 quickjs/qtsvg，保证配置总能成功
+if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND NOT _qlitemd_has_ratex)
+    message(STATUS
+        "ratex binary missing for ${QLITEMD_PLATFORM_DIR}; using quickjs")
+    set(QLITEMD_FORMULA_BACKEND quickjs)
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman" AND NOT _qlitemd_has_merman)
+    message(STATUS
+        "merman binary missing for ${QLITEMD_PLATFORM_DIR}; using quickjs")
+    set(QLITEMD_MERMAID_BACKEND quickjs)
+endif()
+if(QLITEMD_SVG_BACKEND STREQUAL "resvg" AND NOT _qlitemd_has_resvg)
+    message(STATUS
+        "resvg binary missing for ${QLITEMD_PLATFORM_DIR}; using qtsvg")
+    set(QLITEMD_SVG_BACKEND qtsvg)
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman"
+   AND NOT QLITEMD_SVG_BACKEND STREQUAL "resvg")
+    message(FATAL_ERROR
+        "merman backend emits resvg-safe SVG and requires QLITEMD_SVG_BACKEND=resvg")
+endif()
+
+if(QLITEMD_FORMULA_BACKEND STREQUAL "quickjs"
+   OR QLITEMD_MERMAID_BACKEND STREQUAL "quickjs")
+    set(QLITEMD_NEEDS_QUICKJS TRUE)
+else()
+    set(QLITEMD_NEEDS_QUICKJS FALSE)
+endif()
+
 # 日志自报家门：CI 与本地排查不用反推缓存里到底配了哪个后端
 message(STATUS
     "qlitemd backends: SVG=${QLITEMD_SVG_BACKEND}, "
+    "Formula=${QLITEMD_FORMULA_BACKEND}, "
     "Mermaid=${QLITEMD_MERMAID_BACKEND}, arch=${QLITEMD_ARCH}")
 
 # Prebuilt native backends. Keep them as imported targets so the rest of the
 # build never needs Rust; upgrade instructions live in their VERSION.md files.
-set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")
-set(_qlitemd_merman_dir "${CMAKE_SOURCE_DIR}/3rdparty/merman")
-if(WIN32)
-    foreach(_file
-        "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
-        "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll.lib"
-        "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
-        "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib")
-        if(NOT EXISTS "${_file}")
-            message(FATAL_ERROR "missing prebuilt backend file: ${_file}")
-        endif()
-    endforeach()
-
+# 只有当前构建确实选中的后端才需要导入与拷贝。
+set(_qlitemd_runtime_libs "")
+if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     add_library(qlitemd_resvg SHARED IMPORTED)
     set_target_properties(qlitemd_resvg PROPERTIES
-        IMPORTED_LOCATION "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
-        IMPORTED_IMPLIB "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll.lib"
+        IMPORTED_LOCATION
+            "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg${_qlitemd_native_suffix}"
         INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_resvg_dir}/include")
+    if(WIN32)
+        set_target_properties(qlitemd_resvg PROPERTIES
+            IMPORTED_IMPLIB
+                "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg.dll.lib")
+    endif()
     add_library(qlitemd::resvg ALIAS qlitemd_resvg)
+    list(APPEND _qlitemd_runtime_libs
+        "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg${_qlitemd_native_suffix}")
+endif()
 
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
     add_library(qlitemd_merman SHARED IMPORTED)
     set_target_properties(qlitemd_merman PROPERTIES
-        IMPORTED_LOCATION "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
-        IMPORTED_IMPLIB "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib"
+        IMPORTED_LOCATION
+            "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi${_qlitemd_native_suffix}"
         INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_merman_dir}/include")
+    if(WIN32)
+        set_target_properties(qlitemd_merman PROPERTIES
+            IMPORTED_IMPLIB
+                "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi.dll.lib")
+    endif()
     add_library(qlitemd::merman ALIAS qlitemd_merman)
+    list(APPEND _qlitemd_runtime_libs
+        "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi${_qlitemd_native_suffix}")
+endif()
 
-    # Tests and examples use different runtime directories; copy both DLLs to
-    # each so ctest and md_viewer can start without a manually adjusted PATH.
+if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+    add_library(qlitemd_ratex SHARED IMPORTED)
+    set_target_properties(qlitemd_ratex PROPERTIES
+        IMPORTED_LOCATION
+            "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi${_qlitemd_native_suffix}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_ratex_dir}/include")
+    if(WIN32)
+        set_target_properties(qlitemd_ratex PROPERTIES
+            IMPORTED_IMPLIB
+                "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi.dll.lib")
+    endif()
+    add_library(qlitemd::ratex ALIAS qlitemd_ratex)
+    list(APPEND _qlitemd_runtime_libs
+        "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi${_qlitemd_native_suffix}")
+endif()
+
+# Tests and examples use different runtime directories; stage the selected
+# native libraries next to each so ctest and md_viewer start without a
+# manually adjusted PATH/LD_LIBRARY_PATH.
+if(_qlitemd_runtime_libs)
     add_custom_target(qlitemd_runtime_dlls ALL
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/tests"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
-            "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
-            "${CMAKE_BINARY_DIR}/bin"
+            ${_qlitemd_runtime_libs} "${CMAKE_BINARY_DIR}/bin"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
-            "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
-            "${CMAKE_BINARY_DIR}/bin/tests"
-        COMMENT "Copy resvg/merman runtime DLLs"
+            ${_qlitemd_runtime_libs} "${CMAKE_BINARY_DIR}/bin/tests"
+        COMMENT "Stage native backend libraries"
         VERBATIM)
 endif()
 
@@ -167,11 +236,14 @@ target_include_directories(md4c PUBLIC
 set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # ------------------------------------------------------------- QuickJS
-set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
-add_subdirectory(3rdparty/quickjs-ng)
-qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
+# 只有选了 quickjs 后端（公式或 Mermaid）才编译 QuickJS 与 JS 载荷
+if(QLITEMD_NEEDS_QUICKJS)
+    set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
+    add_subdirectory(3rdparty/quickjs-ng)
+    qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
+endif()
 
-# ------------------------------------------------- tree-sitter (native)
+# ------------------------------------------------- tree-sitter (native)# ------------------------------------------------- tree-sitter (native)
 add_subdirectory(3rdparty/tree-sitter)
 qlitemd_skip_subdir_install(3rdparty/tree-sitter)
 
@@ -243,11 +315,18 @@ install(FILES
     "$<TARGET_FILE:litehtml>"
     "$<TARGET_FILE:gumbo>"
     "$<TARGET_FILE:md4c>"
-    "$<TARGET_FILE:qjs>"
     "$<TARGET_FILE:tree_sitter_core>"
     "$<TARGET_FILE:tree_sitter_grammars>"
     DESTINATION lib
     COMPONENT Development)
+if(NOT WIN32)
+    install(FILES "$<TARGET_FILE:qjs>"
+        DESTINATION lib COMPONENT Development)
+else()
+    install(FILES
+        "${_qlitemd_ratex_dir}/bin/${QLITEMD_ARCH}/ratex_ffi.dll.lib"
+        DESTINATION lib COMPONENT Development)
+endif()
 
 install(FILES ${QLITEMD_PUBLIC_HEADERS}
     DESTINATION include/qlitemd
@@ -278,8 +357,10 @@ install(FILES 3rdparty/litehtml/src/gumbo/LICENSE
     DESTINATION licenses/gumbo COMPONENT Licenses)
 install(FILES 3rdparty/md4c/LICENSE.md
     DESTINATION licenses/md4c COMPONENT Licenses)
-install(FILES 3rdparty/quickjs-ng/LICENSE
-    DESTINATION licenses/quickjs COMPONENT Licenses)
+if(NOT WIN32)
+    install(FILES 3rdparty/quickjs-ng/LICENSE
+        DESTINATION licenses/quickjs COMPONENT Licenses)
+endif()
 install(FILES 3rdparty/spdlog/LICENSE
     DESTINATION licenses/spdlog COMPONENT Licenses)
 install(FILES 3rdparty/qwindowkit/LICENSE
@@ -298,22 +379,24 @@ install(FILES 3rdparty/resvg/LICENSE-APACHE 3rdparty/resvg/LICENSE-MIT
 install(FILES 3rdparty/merman/LICENSE-APACHE 3rdparty/merman/LICENSE-MIT
     3rdparty/merman/THIRD_PARTY_NOTICES.md 3rdparty/merman/VERSION.md
     DESTINATION licenses/merman COMPONENT Licenses)
+install(FILES 3rdparty/ratex/LICENSE 3rdparty/ratex/VERSION.md
+    DESTINATION licenses/ratex COMPONENT Licenses)
 if(WIN32)
     install(FILES
         "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll"
         "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+        "3rdparty/ratex/bin/${QLITEMD_ARCH}/ratex_ffi.dll"
         DESTINATION bin COMPONENT Runtime)
     install(FILES
         "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll.lib"
         "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib"
+        "3rdparty/ratex/bin/${QLITEMD_ARCH}/ratex_ffi.dll.lib"
         DESTINATION lib COMPONENT Development)
 endif()
 install(FILES licenses/mathjax/LICENSE
     DESTINATION licenses/mathjax COMPONENT Licenses)
 install(FILES licenses/mermaid/LICENSE
     DESTINATION licenses/mermaid COMPONENT Licenses)
-install(FILES licenses/highlightjs/LICENSE
-    DESTINATION licenses/highlightjs COMPONENT Licenses)
 install(FILES licenses/mermaidx/LICENSE
     DESTINATION licenses/mermaidx COMPONENT Licenses)
 
