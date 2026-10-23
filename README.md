@@ -286,7 +286,7 @@ maintainers and contributors.
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
 | [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown parser | MIT |
-| [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript runtime | MIT |
+| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | Syntax highlighting | BSD-3-Clause |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | 0.27.1 | Incremental parsing core for syntax highlighting | MIT |
