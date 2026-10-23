@@ -144,7 +144,10 @@ if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
         QLITEMD_SVG_BACKEND_RESVG=1)
 endif()
 if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
-    target_compile_definitions(${TARGET_NAME} PRIVATE
+    # PUBLIC：该宏决定 markdown_engine_state.h 里 MermaidEngineState 的
+    # 成员布局，所有包含该头的 TU（测试/使用方）必须看到同一个值，
+    # 否则同一类型在两侧布局不同（ODR 违规，运行期崩溃）
+    target_compile_definitions(${TARGET_NAME} PUBLIC
         QLITEMD_MERMAID_BACKEND_MERMAN=1)
 endif()
 if(WIN32)

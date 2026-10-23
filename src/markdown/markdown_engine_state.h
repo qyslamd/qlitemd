@@ -24,11 +24,15 @@ struct FormulaEngineState {
 };
 
 struct MermaidEngineState {
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+  // quickjs 后端专用：merman 构建里整个成员与依赖它的函数都不编译，
+  // 让"Mermaid 不依赖 QuickJS"在编译期成立
   JsRuntime runtime;
   // initialize 只做一次；主题走每张图的 %%{init}%% 指令
   bool initialized = false;
   // then/catch 落定旗子，泵循环只读它
   bool render_settled = false;
+#endif
   // 原生后端；QLITEMD_MERMAID_BACKEND=quickjs 时不加载
   MermanEngine merman;
 };

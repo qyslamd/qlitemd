@@ -115,6 +115,18 @@ bool IsBoldWeight(const QString& weight) {
   return lower == QLatin1String("bold") || lower == QLatin1String("bolder");
 }
 
+const char* ThemeName(MarkdownTheme theme) {
+  switch (theme) {
+    case MarkdownTheme::Light:
+      return "default";
+    case MarkdownTheme::Dark:
+      return "dark";
+  }
+  return "default";
+}
+
+// merman 后端不需要这些 JS 度量回调，整段编译期裁掉
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
 // mermaid 的度量回调：QFontMetricsF 走的是 QFont 的替换链，与 QSvgRenderer
 // 绘制时同一条路。不用 QRawFont——它的 advancesForGlyphs 不做字体替换，
 // 缺字时会与绘制对不上。
@@ -147,7 +159,7 @@ TextMeasure MeasureText(const QString& text, double size_px,
   return out;
 }
 
-// ---- QuickJS ----
+// ---- QuickJS（merman 后端构建时整段裁掉） ----
 
 // then/catch 落定时调一次：置引擎状态里的旗子，不做别的
 JSValue JsSetSettledRaw(JSContext* ctx, JSValue, int, JSValue*) {
@@ -286,16 +298,6 @@ bool EnsureLoaded(MermaidEngineState& engine) {
             " || globalThis.__esbuild_esm_mermaid_nm.mermaid);";
         return EvalGlobal(engine, QByteArray(kExpose), "expose");
       });
-}
-
-const char* ThemeName(MarkdownTheme theme) {
-  switch (theme) {
-    case MarkdownTheme::Light:
-      return "default";
-    case MarkdownTheme::Dark:
-      return "dark";
-  }
-  return "default";
 }
 
 // per-diagram 主题指令：mermaid 公开的 render API 没有 per-call config，
@@ -510,6 +512,8 @@ QString RenderMermaidSvg(MermaidEngineState& engine, const QString& code,
   }
   return svg;
 }
+
+#endif  // !QLITEMD_MERMAID_BACKEND_MERMAN
 
 // 后处理三层，顺序不可颠倒：CleanSvg（文本定标）→ InlineSvgCss（CSS 内联 +
 // 字体族强制）→ InlineSvgMarkers（marker 展开，颜色来自上一步内联的规则）
