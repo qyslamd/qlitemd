@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.0.2 - 2026-10-23
 
 - Formula and Mermaid backends are compile-time choices on every
   platform: `QLITEMD_FORMULA_BACKEND=ratex|quickjs` and
