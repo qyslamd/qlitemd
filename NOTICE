@@ -9,7 +9,7 @@ components. Their licenses remain in effect for those components.
 - litehtml: BSD-3-Clause
 - gumbo-parser: Apache-2.0 (bundled with litehtml)
 - md4c: MIT
-- quickjs-ng: MIT (source under 3rdparty/quickjs)
+- quickjs-ng: MIT (source under 3rdparty/quickjs-ng)
 - QWindowKit: Apache-2.0
 - qmsetup: MIT
 - FluentUIStyle: MIT

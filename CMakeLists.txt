@@ -168,8 +168,8 @@ set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # ------------------------------------------------------------- QuickJS
 set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
-add_subdirectory(3rdparty/quickjs)
-qlitemd_skip_subdir_install(3rdparty/quickjs)
+add_subdirectory(3rdparty/quickjs-ng)
+qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 
 # ------------------------------------------------------ viewer UI deps
 if(QLITEMD_BUILD_MD_VIEWER)
@@ -272,7 +272,7 @@ install(FILES 3rdparty/litehtml/src/gumbo/LICENSE
     DESTINATION licenses/gumbo COMPONENT Licenses)
 install(FILES 3rdparty/md4c/LICENSE.md
     DESTINATION licenses/md4c COMPONENT Licenses)
-install(FILES 3rdparty/quickjs/LICENSE
+install(FILES 3rdparty/quickjs-ng/LICENSE
     DESTINATION licenses/quickjs COMPONENT Licenses)
 install(FILES 3rdparty/spdlog/LICENSE
     DESTINATION licenses/spdlog COMPONENT Licenses)

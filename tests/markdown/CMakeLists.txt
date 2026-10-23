@@ -20,7 +20,7 @@ add_unit_test(
 )
 # worker 状态测试包含 markdown_engine_state.h，它直接引用 quickjs.h
 target_include_directories(test_code_highlighter PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs)
+    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 
 # 标题锚点：slug 规则与 ASCII id 的生成是纯字符串变换，可逐条断言。
 # 为什么 id 非 ASCII 不可、data-md-slug 为什么要跟着走，见用例头部注释
@@ -45,7 +45,7 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 target_include_directories(test_formula_renderer PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs)
+    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 
 # mermaid 的两层后处理是纯字符串→字符串，毫秒级，可逐条断言
 add_unit_test(
@@ -68,7 +68,7 @@ add_unit_test(
 )
 # markdown_engine_state.h 是内部头，直接包含 quickjs.h
 target_include_directories(test_mermaid_renderer PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs)
+    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 set_tests_properties(test_mermaid_renderer PROPERTIES TIMEOUT 120)
 
 # "复制按钮"链路里属于本模块的一段：copy: 链接 → 原文（纯函数）。

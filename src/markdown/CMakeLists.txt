@@ -67,7 +67,7 @@ endif()
 if(NOT TARGET qjsc)
     message(FATAL_ERROR
         "qjsc 目标不存在：markdown 的 JS 载荷需要在构建期用 qjsc 预编译成"
-        "字节码（本模块链接它的产物）。确认 3rdparty/quickjs 的"
+        "字节码（本模块链接它的产物）。确认 3rdparty/quickjs-ng 的"
         " add_subdirectory 先于 src/markdown。")
 endif()
 set(QJSC_CMD "$<TARGET_FILE:qjsc>")
