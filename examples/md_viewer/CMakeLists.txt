@@ -16,6 +16,8 @@ set(ALL_SRCS
     navigation_history.h
     quick_open.cpp
     quick_open.h
+    reader_appearance.cpp
+    reader_appearance.h
     render_settings_panel.cpp
     text_search.cpp
     text_search.h

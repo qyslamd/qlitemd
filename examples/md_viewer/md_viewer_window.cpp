@@ -77,6 +77,7 @@
 #include "markdown_outline_widget.h"
 #include "md_viewer_settings.h"
 #include "quick_open.h"
+#include "reader_appearance.h"
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
 #include "text_search.h"
@@ -619,6 +620,28 @@ void MdViewerWindow::initUi() {
   star_button_->setIcon(TextActionIcon(QStringLiteral("☆"), false));
   star_button_->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
   nav_layout->addWidget(star_button_);
+
+  // 阅读外观：不做成 dock，避免打断阅读；弹出面板直接改当前文档
+  appearance_popup_ = new ReaderAppearancePopup(this);
+  connect(appearance_popup_, &ReaderAppearancePopup::preferencesChanged, this,
+          [this](const ReaderPreferences& preferences) {
+            settings_->reading_font_size = preferences.font_size;
+            settings_->reading_line_height_percent =
+                preferences.line_height_percent;
+            settings_->reading_measure_px = preferences.measure_px;
+            settings_->Save();
+            ApplyReaderAppearance();
+          });
+  appearance_button_ = new QToolButton(nav_widget_);
+  appearance_button_->setObjectName(QStringLiteral("appearanceButton"));
+  appearance_button_->setAutoRaise(true);
+  appearance_button_->setText(QStringLiteral("Aa"));
+  appearance_button_->setToolTip(
+      QStringLiteral("阅读外观（字号、行距、栏宽）"));
+  nav_layout->addWidget(appearance_button_);
+  connect(appearance_button_, &QToolButton::clicked, this,
+          &MdViewerWindow::ShowReaderAppearance);
+
   zoom_out_button_ = add_nav_button(zoom_out_action_, QStringLiteral("zoomOut"),
                                     Qt::ToolButtonTextOnly);
   zoom_reset_button_ = add_nav_button(
@@ -1251,6 +1274,8 @@ void MdViewerWindow::ShowQuickOpen() {
                   ? QStringLiteral("切换到浅色主题")
                   : QStringLiteral("切换到深色主题"),
               QStringLiteral("外观"), QStringLiteral("toggle-theme"));
+  add_command(QStringLiteral("阅读外观…"), QStringLiteral("外观"),
+              QStringLiteral("appearance"));
   add_command(focus_mode_ ? QStringLiteral("退出专注模式")
                           : QStringLiteral("进入专注模式"),
               QStringLiteral("视图"), QStringLiteral("focus-mode"));
@@ -1317,6 +1342,8 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
     open_dir_action_->trigger();
   } else if (id == QLatin1String("toggle-theme")) {
     ToggleTheme();
+  } else if (id == QLatin1String("appearance")) {
+    ShowReaderAppearance();
   } else if (id == QLatin1String("focus-mode")) {
     focus_mode_action_->setChecked(!focus_mode_action_->isChecked());
   } else if (id == QLatin1String("toggle-bookmark")) {
@@ -1464,6 +1491,7 @@ void MdViewerWindow::ApplyReadingStyle() {
     view_->SetThemeStyleSheet(MarkdownTheme::Light, QString());
     view_->SetThemeStyleSheet(MarkdownTheme::Dark, QString());
   }
+  ApplyReaderAppearance();
   UpdateReadingSurface();
 }
 
@@ -1483,6 +1511,38 @@ void MdViewerWindow::UpdateReadingSurface() {
       settings_->transparent_reading;
   view_->SetPageBackground(transparent ? QColor(Qt::transparent)
                                        : ReadingPageColor());
+}
+
+ReaderPreferences MdViewerWindow::CurrentReaderPreferences() const {
+  ReaderPreferences preferences;
+  if (settings_ == nullptr) {
+    return preferences;
+  }
+  preferences.font_size = settings_->reading_font_size;
+  preferences.line_height_percent = settings_->reading_line_height_percent;
+  preferences.measure_px = settings_->reading_measure_px;
+  return preferences;
+}
+
+void MdViewerWindow::ApplyReaderAppearance() {
+  if (view_ == nullptr) {
+    return;
+  }
+  const bool prototype = settings_ != nullptr &&
+                         settings_->reading_style == ReadingStyle::kPrototype;
+  const ReaderPreferences preferences = CurrentReaderPreferences();
+  view_->AppendThemeStyleSheet(MarkdownTheme::Light,
+                               ReaderAppearanceCss(preferences, prototype));
+  view_->AppendThemeStyleSheet(MarkdownTheme::Dark,
+                               ReaderAppearanceCss(preferences, prototype));
+}
+
+void MdViewerWindow::ShowReaderAppearance() {
+  if (appearance_popup_ == nullptr) {
+    return;
+  }
+  appearance_popup_->SetPreferences(CurrentReaderPreferences());
+  appearance_popup_->OpenNear(appearance_button_);
 }
 
 void MdViewerWindow::UpdateChromeVisibility() {

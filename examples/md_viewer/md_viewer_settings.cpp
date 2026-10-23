@@ -16,6 +16,9 @@ constexpr char kKeyDarkTheme[] = "appearance/dark_theme";
 constexpr char kKeyWindowMaterial[] = "appearance/window_material";
 constexpr char kKeyReadingStyle[] = "appearance/reading_style";
 constexpr char kKeyTransparentReading[] = "appearance/transparent_reading";
+constexpr char kKeyReadingFontSize[] = "reading/font_size";
+constexpr char kKeyReadingLineHeight[] = "reading/line_height_percent";
+constexpr char kKeyReadingMeasure[] = "reading/measure_px";
 // 旧键只用于迁移；新版本写它保持降级可读
 constexpr char kKeyWindowBlur[] = "appearance/window_blur";
 constexpr char kKeyCodeLineNumbers[] = "render/code_line_numbers";
@@ -85,6 +88,10 @@ void MdViewerSettings::Load() {
                       ? ReadingStyle::kPrototype
                       : ReadingStyle::kLibraryDefault;
   transparent_reading = settings.value(kKeyTransparentReading, true).toBool();
+  reading_font_size = settings.value(kKeyReadingFontSize, 0).toInt();
+  reading_line_height_percent =
+      settings.value(kKeyReadingLineHeight, 0).toInt();
+  reading_measure_px = settings.value(kKeyReadingMeasure, -1).toInt();
   code_line_numbers = settings.value(kKeyCodeLineNumbers, false).toBool();
   formula_rendering = settings.value(kKeyFormula, true).toBool();
   mermaid_rendering = settings.value(kKeyMermaid, true).toBool();
@@ -113,6 +120,9 @@ void MdViewerSettings::Save() const {
   settings.setValue(kKeyWindowBlur, window_material != WindowMaterial::kNone);
   settings.setValue(kKeyReadingStyle, static_cast<int>(reading_style));
   settings.setValue(kKeyTransparentReading, transparent_reading);
+  settings.setValue(kKeyReadingFontSize, reading_font_size);
+  settings.setValue(kKeyReadingLineHeight, reading_line_height_percent);
+  settings.setValue(kKeyReadingMeasure, reading_measure_px);
   settings.setValue(kKeyCodeLineNumbers, code_line_numbers);
   settings.setValue(kKeyFormula, formula_rendering);
   settings.setValue(kKeyMermaid, mermaid_rendering);

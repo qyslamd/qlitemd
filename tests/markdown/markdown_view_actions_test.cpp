@@ -104,6 +104,38 @@ TEST(MarkdownViewStyleTest, ThemeStyleSheetOverridesPerTheme) {
   EXPECT_TRUE(HtmlOf(view).contains(QStringLiteral("#0d1117")));
 }
 
+TEST(MarkdownViewStyleTest, AppendThemeStyleSheetKeepsBaseAndClears) {
+  MarkdownView view;
+  view.SetThemeStyleSheet(MarkdownTheme::Light,
+                          QStringLiteral("body { color: #010203; }"));
+  view.AppendThemeStyleSheet(MarkdownTheme::Light,
+                             QStringLiteral("body { font-size: 17px; }"));
+  ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));
+  QString html = HtmlOf(view);
+  EXPECT_TRUE(html.contains(QStringLiteral("#010203")));
+  EXPECT_TRUE(html.contains(QStringLiteral("font-size: 17px")));
+
+  {
+    RenderWaiter waiter(&view);
+    view.AppendThemeStyleSheet(MarkdownTheme::Light, QString());
+    ASSERT_TRUE(waiter.Wait());
+  }
+  html = HtmlOf(view);
+  EXPECT_TRUE(html.contains(QStringLiteral("#010203")));
+  EXPECT_FALSE(html.contains(QStringLiteral("font-size: 17px")));
+}
+
+TEST(MarkdownViewStyleTest, AppendThemeStyleSheetLayersOnDefaultTheme) {
+  MarkdownView view;
+  view.AppendThemeStyleSheet(MarkdownTheme::Light,
+                             QStringLiteral("body { letter-spacing: 1px; }"));
+  ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));
+  const QString html = HtmlOf(view);
+  EXPECT_TRUE(html.contains(QStringLiteral("letter-spacing: 1px")));
+  // 内置 light.css 的页面底色仍在：追加层不是整份替换
+  EXPECT_TRUE(html.contains(QStringLiteral("#ffffff")));
+}
+
 TEST(MarkdownViewStyleTest, PageBackgroundAppliesToHtmlSurface) {
   MarkdownView view;
   auto* html = view.findChild<QWidget*>(QStringLiteral("markdownHtml"));

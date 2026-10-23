@@ -37,11 +37,13 @@ class FluentWindowFrame;
 class MarkdownOutlineWidget;
 class MarkdownView;
 class QuickOpenPopup;
+class ReaderAppearancePopup;
 class RenderSettingsPanel;
 class RenderStatusPanel;
 class TextSearch;
 struct DocumentScanResult;
 struct QuickOpenItem;
+struct ReaderPreferences;
 struct SearchHit;
 
 // 独立的 Markdown 查看器：单篇与"整个目录"两种打开方式，目录铺在左侧递归
@@ -127,6 +129,10 @@ class MdViewerWindow : public QMainWindow {
   // 阅读区样式 opt-in：原型 CSS 或库默认；同时刷新页面背景
   void ApplyReadingStyle();
   void UpdateReadingSurface();
+  // 阅读外观（字号/行距/栏宽）：偏好 CSS 以追加层注入，不改基准主题
+  ReaderPreferences CurrentReaderPreferences() const;
+  void ApplyReaderAppearance();
+  void ShowReaderAppearance();
   // 当前主题的页面底色（与 resources/themes/*.css 的 body 对齐）
   QColor ReadingPageColor() const;
   void RememberCurrentPosition();
@@ -175,6 +181,7 @@ class MdViewerWindow : public QMainWindow {
   RenderStatusPanel* render_status_ = nullptr;
   DocumentsPanel* documents_panel_ = nullptr;
   QuickOpenPopup* quick_open_ = nullptr;
+  ReaderAppearancePopup* appearance_popup_ = nullptr;
   // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
   QStringList quick_open_files_;
   QLabel* path_label_ = nullptr;
@@ -223,6 +230,7 @@ class MdViewerWindow : public QMainWindow {
   bool outline_auto_hidden_ = false;
   QWidget* nav_widget_ = nullptr;
   QToolButton* menu_button_ = nullptr;
+  QToolButton* appearance_button_ = nullptr;
   QToolButton* zoom_out_button_ = nullptr;
   QToolButton* zoom_reset_button_ = nullptr;
   QToolButton* zoom_in_button_ = nullptr;

@@ -908,12 +908,30 @@ void MarkdownView::SetThemeStyleSheet(MarkdownTheme theme, const QString& css) {
   }
 }
 
+void MarkdownView::AppendThemeStyleSheet(MarkdownTheme theme,
+                                         const QString& css) {
+  const int index = ThemeIndex(theme);
+  if (theme_style_sheet_appends_[index] == css) {
+    return;
+  }
+  theme_style_sheet_appends_[index] = css;
+  if (theme_ == theme) {
+    ReapplyDocument();
+  }
+}
+
 QString MarkdownView::CssForTheme(MarkdownTheme theme) const {
   const QString& custom = theme_style_sheets_[ThemeIndex(theme)];
-  if (!custom.isEmpty()) {
-    return custom;
+  QString css = custom.isEmpty() ? LoadDefaultCss(theme) : custom;
+  const QString& append = theme_style_sheet_appends_[ThemeIndex(theme)];
+  if (append.isEmpty()) {
+    return css;
   }
-  return LoadDefaultCss(theme);
+  if (!css.isEmpty() && !css.endsWith(QLatin1Char('\n'))) {
+    css += QLatin1Char('\n');
+  }
+  css += append;
+  return css;
 }
 
 void MarkdownView::SetPageBackground(const QColor& color) {

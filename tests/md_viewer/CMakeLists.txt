@@ -77,3 +77,14 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+
+add_unit_test(
+    NAME test_reader_appearance
+    SOURCES reader_appearance_test.cpp
+            ${VIEWER_DIR}/reader_appearance.cpp
+            ${VIEWER_DIR}/reader_appearance.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)

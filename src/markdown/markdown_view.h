@@ -159,6 +159,9 @@ class MarkdownView : public QWidget {
   // 宿主样式：按主题注入完整 CSS；空串清除，回退到 MD_MARKDOWN_CSS/内置
   // 主题。显式设置优先于 MD_MARKDOWN_CSS，且不会触发主题错配 warning
   void SetThemeStyleSheet(MarkdownTheme theme, const QString& css);
+  // 追加样式：拼在主题基准 CSS（显式样式 / MD_MARKDOWN_CSS / 内置主题）
+  // 之后，用于字号、行距这类局部覆盖；空串清除追加层，基准样式不受影响
+  void AppendThemeStyleSheet(MarkdownTheme theme, const QString& css);
   // 页面背景：Qt::transparent 表示透明，其它颜色填充 html viewport。
   // 默认不调用时保持原有行为；透明还需要 CSS 把 html/body 写成 transparent
   void SetPageBackground(const QColor& color);
@@ -329,6 +332,8 @@ class MarkdownView : public QWidget {
   MarkdownTheme theme_ = MarkdownTheme::Light;
   // 宿主按主题注入的 CSS；空 = 走 MD_MARKDOWN_CSS/内置资源
   std::array<QString, kMarkdownThemeCount> theme_style_sheets_{};
+  // 追加层：只在渲染时拼接，不改变 SetThemeStyleSheet 的“整份替换”语义
+  std::array<QString, kMarkdownThemeCount> theme_style_sheet_appends_{};
   QColor page_background_ = Qt::transparent;
   bool page_background_set_ = false;
   // 转储时给每次 ApplyDocument 的源/最终 HTML 编号（仅诊断用）

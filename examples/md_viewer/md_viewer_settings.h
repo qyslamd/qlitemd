@@ -43,6 +43,10 @@ struct MdViewerSettings {
   ReadingStyle reading_style = ReadingStyle::kLibraryDefault;
   // 仅原型样式生效；关闭时用主题页面底色
   bool transparent_reading = true;
+  // 阅读外观：0 / -1 表示跟随样式，不注入覆盖 CSS
+  int reading_font_size = 0;
+  int reading_line_height_percent = 0;
+  int reading_measure_px = -1;
   bool code_line_numbers = false;
   bool formula_rendering = true;
   bool mermaid_rendering = true;
