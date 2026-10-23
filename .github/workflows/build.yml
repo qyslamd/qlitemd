@@ -99,9 +99,23 @@ jobs:
           .\consumer-build\qlitemd_minimal.exe
 
   linux:
-    name: Linux Qt6 (x64)
+    name: Linux Qt6 (x64, ${{ matrix.backend }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: native
+            backend_args: >-
+              -DQLITEMD_SVG_BACKEND=resvg
+              -DQLITEMD_FORMULA_BACKEND=ratex
+              -DQLITEMD_MERMAID_BACKEND=merman
+          - backend: quickjs
+            backend_args: >-
+              -DQLITEMD_SVG_BACKEND=qtsvg
+              -DQLITEMD_FORMULA_BACKEND=quickjs
+              -DQLITEMD_MERMAID_BACKEND=quickjs
 
     steps:
       - name: Check out
@@ -125,6 +139,7 @@ jobs:
           -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
           -DQLITEMD_QT_MAJOR=6
           -DQLITEMD_BUILD_MD_VIEWER=OFF
+          ${{ matrix.backend_args }}
 
       - name: Build
         run: cmake --build build --parallel

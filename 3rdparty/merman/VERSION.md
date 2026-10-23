@@ -2,8 +2,9 @@
 
 | 日期 | merman | Rust | target | 产物 | SHA256 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-22 | 0.9.2 | 1.95.0 (stable-msvc) | x86_64-pc-windows-msvc | bin/x64/merman_ffi.dll | 5cec12a118e1c1056ab068c1d7ee653c7e02bb8d57c7e9ed0edacc560b2d76e6 | VS2019 x64，release profile |
-| 2026-10-22 | 0.9.2 | 1.95.0 (stable-msvc) | i686-pc-windows-msvc | bin/x86/merman_ffi.dll | 18e3a69e7d9e7a6ed0bf7f7cebfcba0f62f694bc93920bd05bbbe7579371ef7a | VS2019 x86，release profile |
+| 2026-10-22 | 0.9.2 | 1.95.0 (stable-msvc) | x86_64-pc-windows-msvc | bin/win-x64/merman_ffi.dll | 5cec12a118e1c1056ab068c1d7ee653c7e02bb8d57c7e9ed0edacc560b2d76e6 | VS2019 x64，release profile |
+| 2026-10-22 | 0.9.2 | 1.95.0 (stable-msvc) | i686-pc-windows-msvc | bin/win-x86/merman_ffi.dll | 18e3a69e7d9e7a6ed0bf7f7cebfcba0f62f694bc93920bd05bbbe7579371ef7a | VS2019 x86，release profile |
+| 2026-10-23 | 0.9.2 | 1.95.0 | x86_64-unknown-linux-gnu | bin/linux-x64/merman_ffi.so | d021927bf1f3cacfc4b53e8a8acd269b3a394fa60e8aefce45e16f8defec81e7 | WSL x64；libmerman_ffi.so 重命名为 merman_ffi.so |
 
 构建命令（x64；x86 换 `--target i686-pc-windows-msvc` 并在
 `vcvars32.bat` 环境中执行）：

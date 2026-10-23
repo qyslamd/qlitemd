@@ -214,6 +214,11 @@ clang-format --dry-run --Werror <file>
   这些载荷（公式走 RaTeX、Mermaid 走 merman），它们只服务其它平台的
   quickjs 回退。
 - `patches/**` 固定使用 LF。
+- 预编原生库（resvg / merman / ratex）按 `<平台>-<架构>` 归档：
+  `3rdparty/<lib>/bin/win-x64|win-x86|linux-x64|linux-arm64/`。
+  Windows 只提供 x64/x86；Linux 目前 x64，后续考虑 arm64。
+  CMake 用 `QLITEMD_PLATFORM_DIR` 选择目录，并在该平台缺产物时
+  自动回退到 quickjs/qtsvg。
 
 ## Git 规则
 
@@ -232,10 +237,8 @@ clang-format --dry-run --Werror <file>
 - 干净 checkout 可能缺少被 vendored `.gitignore` 忽略的源文件；CI 失败
   先检查 `git ls-files` 是否包含必要的 CMake 模板。
 - Qt 6 移除了 `QSettings::setIniCodec`；Qt5/Qt6 共用代码要加版本保护。
-- WSL/Ubuntu Focal 自带的 Qt 5.12.8 低于最低要求 Qt 5.14，官方配置会
-  直接失败。用只改版本号的 Qt5Config shim 验证过库、`md_viewer` 和
-  20/20 测试都能过，但这不是正式支持 Qt 5.12 的结论。Linux CI 使用
-  Qt 6.8.3，只构建库和测试。
+- 最低 Qt 版本已降到 5.12：WSL/Ubuntu Focal 的 Qt 5.12.8 实测可构建
+  库、测试与 `md_viewer`（两种后端都过）。Linux CI 仍使用 Qt 6.8.3。
 - 本机 GitHub HTTPS 可能连不上，SSH 可用；CI 的 Qt 安装在 GitHub
   Runner 上，不使用本机 Qt。
 - `.bat` 必须 CRLF，`.sh` 必须 LF；JS 载荷和补丁文件按

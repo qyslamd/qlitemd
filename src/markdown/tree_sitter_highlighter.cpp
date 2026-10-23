@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QRegularExpression>
 #include <QString>
+#include <QVector>
 #include <QtCore/qglobal.h>  // Q_INIT_RESOURCE
 
 extern "C" {

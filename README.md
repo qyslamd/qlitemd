@@ -188,9 +188,13 @@ Build options:
 - `QLITEMD_QT_MAJOR` — `5` (default) or `6`
 - `QLITEMD_BUILD_MD_VIEWER` — build the example application (default `ON`)
 - `QLITEMD_BUILD_TESTS` — build the test suite (default `ON`)
-- `QLITEMD_SVG_BACKEND` — `resvg` (default on Windows) or `qtsvg`
-- `QLITEMD_MERMAID_BACKEND` — `merman` (default on Windows) or `quickjs`;
-  `merman` requires `QLITEMD_SVG_BACKEND=resvg`
+- `QLITEMD_SVG_BACKEND` — `resvg` or `qtsvg` (falls back to `qtsvg` when
+  no `resvg` binary exists for the platform)
+- `QLITEMD_FORMULA_BACKEND` — `ratex` (native FFI) or `quickjs`
+  (MathJax); falls back to `quickjs` when no `ratex` binary exists
+- `QLITEMD_MERMAID_BACKEND` — `merman` or `quickjs`; `merman` requires
+  `QLITEMD_SVG_BACKEND=resvg` and falls back to `quickjs` when its binary
+  is missing
 
 The native backends are distributed as prebuilt DLLs under
 `3rdparty/resvg/` and `3rdparty/merman/`; a normal build does not require

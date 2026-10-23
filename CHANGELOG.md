@@ -4,6 +4,13 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Formula and Mermaid backends are compile-time choices on every
+  platform: `QLITEMD_FORMULA_BACKEND=ratex|quickjs` and
+  `QLITEMD_MERMAID_BACKEND=merman|quickjs`. Missing native binaries fall
+  back to quickjs/qtsvg automatically.
+- Ship Linux x64 builds of the native backends
+  (`3rdparty/*/bin/linux-x64/lib*.so`), built from the same sources as
+  the Windows DLLs; verified on Qt 5.12.8 in WSL with both backend sets.
 - Windows: render formulas with native RaTeX instead of MathJax in
   QuickJS; Windows builds now ship no JavaScript engine at all. Other
   platforms keep the quickjs-ng fallback.

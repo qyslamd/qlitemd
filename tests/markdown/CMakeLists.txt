@@ -20,7 +20,7 @@ add_unit_test(
 )
 # worker 状态测试包含 markdown_engine_state.h；Windows 走原生后端时
 # 该头不再引用 quickjs.h
-if(NOT WIN32)
+if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_code_highlighter PRIVATE
         ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
@@ -47,10 +47,12 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
-if(NOT WIN32)
+if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_formula_renderer PRIVATE
         ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
+# Linux 首次 fontconfig 扫描 + RaTeX 字体回退可达十余秒，默认 10s 不够
+set_tests_properties(test_formula_renderer PROPERTIES TIMEOUT 120)
 
 # mermaid 的两层后处理是纯字符串→字符串，毫秒级，可逐条断言
 add_unit_test(
@@ -71,7 +73,7 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
-if(NOT WIN32)
+if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_mermaid_renderer PRIVATE
         ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
@@ -117,6 +119,8 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+# 驱动 MarkdownView 渲染公式，受首次字体扫描影响（Linux 上可达十余秒）
+set_tests_properties(test_css_override PROPERTIES TIMEOUT 120)
 
 # 持久缓存：key 组成、命中/损坏/关闭/淘汰/清理。全部用临时目录
 add_unit_test(
@@ -149,8 +153,8 @@ add_unit_test(
 )
 
 # JsRuntime 的错误处理：异常消费、坏字节码、非异常放行。
-# Windows 已无 QuickJS，该目标只在其它平台构建
-if(NOT WIN32)
+# 只有选中 quickjs 后端时才构建该目标
+if(QLITEMD_NEEDS_QUICKJS)
     add_unit_test(
         NAME test_js_runtime
         SOURCES js_runtime_test.cpp
@@ -213,6 +217,7 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+set_tests_properties(test_render_toggles PROPERTIES TIMEOUT 120)
 
 add_unit_test(
     NAME test_markdown_view

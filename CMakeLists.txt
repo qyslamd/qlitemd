@@ -10,6 +10,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(APP_TARGET_PREFIX qlitemd)
 
+# 原生 .so 与可执行文件放在同一目录（见 qlitemd_runtime_dlls），
+# 用 $ORIGIN 让 Linux 加载器从可执行文件所在目录解析依赖
+if(NOT WIN32)
+    set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
+    set(CMAKE_BUILD_RPATH "$ORIGIN")
+endif()
+
 if(MSVC)
     # Keep the runtime consistent with Qt's /MD binaries and make the
     # standard CRT import libraries available to third-party C targets.
@@ -51,15 +58,17 @@ if(NOT QLITEMD_MERMAID_BACKEND MATCHES "^(merman|quickjs)$")
     message(FATAL_ERROR "QLITEMD_MERMAID_BACKEND must be merman or quickjs")
 endif()
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+# 原生库目录按「平台-架构」组织：win-x64 / win-x86 / linux-x64 / linux-arm64
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _qlitemd_processor)
+if(_qlitemd_processor MATCHES "^(aarch64|arm64)$")
+    set(QLITEMD_ARCH arm64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(QLITEMD_ARCH x64)
 else()
     set(QLITEMD_ARCH x86)
 endif()
-
-# 原生后端的预编目录：Windows 用 x64/x86，Linux 用 linux-x64/linux-x86
 if(WIN32)
-    set(QLITEMD_PLATFORM_DIR "${QLITEMD_ARCH}")
+    set(QLITEMD_PLATFORM_DIR "win-${QLITEMD_ARCH}")
 else()
     set(QLITEMD_PLATFORM_DIR "linux-${QLITEMD_ARCH}")
 endif()
@@ -68,14 +77,17 @@ set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")
 set(_qlitemd_merman_dir "${CMAKE_SOURCE_DIR}/3rdparty/merman")
 set(_qlitemd_ratex_dir "${CMAKE_SOURCE_DIR}/3rdparty/ratex")
 
-# 本平台的原生产物是否存在（Windows 是 .dll，Linux 是 .so）
-if(WIN32)
-    set(_qlitemd_native_suffix ".dll")
-else()
-    set(_qlitemd_native_suffix ".so")
-endif()
+# 本平台的原生产物文件名：Windows 是 <name>.dll，Linux 是 lib<name>.so
+function(qlitemd_native_lib_name out_var lib_name)
+    if(WIN32)
+        set(${out_var} "${lib_name}.dll" PARENT_SCOPE)
+    else()
+        set(${out_var} "lib${lib_name}.so" PARENT_SCOPE)
+    endif()
+endfunction()
 function(qlitemd_native_available out_var dir lib_name)
-    if(EXISTS "${dir}/bin/${QLITEMD_PLATFORM_DIR}/${lib_name}${_qlitemd_native_suffix}")
+    qlitemd_native_lib_name(_file_name "${lib_name}")
+    if(EXISTS "${dir}/bin/${QLITEMD_PLATFORM_DIR}/${_file_name}")
         set(${out_var} TRUE PARENT_SCOPE)
     else()
         set(${out_var} FALSE PARENT_SCOPE)
@@ -126,10 +138,11 @@ message(STATUS
 # 只有当前构建确实选中的后端才需要导入与拷贝。
 set(_qlitemd_runtime_libs "")
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
+    qlitemd_native_lib_name(_resvg_file resvg)
     add_library(qlitemd_resvg SHARED IMPORTED)
     set_target_properties(qlitemd_resvg PROPERTIES
         IMPORTED_LOCATION
-            "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg${_qlitemd_native_suffix}"
+            "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_resvg_file}"
         INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_resvg_dir}/include")
     if(WIN32)
         set_target_properties(qlitemd_resvg PROPERTIES
@@ -138,14 +151,15 @@ if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     endif()
     add_library(qlitemd::resvg ALIAS qlitemd_resvg)
     list(APPEND _qlitemd_runtime_libs
-        "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg${_qlitemd_native_suffix}")
+        "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_resvg_file}")
 endif()
 
 if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+    qlitemd_native_lib_name(_merman_file merman_ffi)
     add_library(qlitemd_merman SHARED IMPORTED)
     set_target_properties(qlitemd_merman PROPERTIES
         IMPORTED_LOCATION
-            "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi${_qlitemd_native_suffix}"
+            "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_merman_file}"
         INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_merman_dir}/include")
     if(WIN32)
         set_target_properties(qlitemd_merman PROPERTIES
@@ -154,14 +168,15 @@ if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
     endif()
     add_library(qlitemd::merman ALIAS qlitemd_merman)
     list(APPEND _qlitemd_runtime_libs
-        "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi${_qlitemd_native_suffix}")
+        "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_merman_file}")
 endif()
 
 if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+    qlitemd_native_lib_name(_ratex_file ratex_ffi)
     add_library(qlitemd_ratex SHARED IMPORTED)
     set_target_properties(qlitemd_ratex PROPERTIES
         IMPORTED_LOCATION
-            "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi${_qlitemd_native_suffix}"
+            "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_ratex_file}"
         INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_ratex_dir}/include")
     if(WIN32)
         set_target_properties(qlitemd_ratex PROPERTIES
@@ -170,7 +185,7 @@ if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
     endif()
     add_library(qlitemd::ratex ALIAS qlitemd_ratex)
     list(APPEND _qlitemd_runtime_libs
-        "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi${_qlitemd_native_suffix}")
+        "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_ratex_file}")
 endif()
 
 # Tests and examples use different runtime directories; stage the selected
@@ -194,7 +209,7 @@ if(QLITEMD_QT_MAJOR EQUAL 6)
     find_package(Qt6 REQUIRED COMPONENTS
         Core Gui Widgets Svg Network PrintSupport Test)
 else()
-    find_package(Qt5 5.14 REQUIRED COMPONENTS
+    find_package(Qt5 5.12 REQUIRED COMPONENTS
         Core Gui Widgets Svg Network PrintSupport Test)
 endif()
 
@@ -249,9 +264,6 @@ qlitemd_skip_subdir_install(3rdparty/tree-sitter)
 
 # ------------------------------------------------------ viewer UI deps
 if(QLITEMD_BUILD_MD_VIEWER)
-if(QLITEMD_QT_MAJOR EQUAL 5 AND Qt5_VERSION VERSION_LESS "5.14")
-    message(FATAL_ERROR "QWindowKit requires Qt 5.14 or newer")
-endif()
 set(QWINDOWKIT_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_WIDGETS ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_QUICK OFF CACHE BOOL "" FORCE)
@@ -319,12 +331,8 @@ install(FILES
     "$<TARGET_FILE:tree_sitter_grammars>"
     DESTINATION lib
     COMPONENT Development)
-if(NOT WIN32)
+if(QLITEMD_NEEDS_QUICKJS)
     install(FILES "$<TARGET_FILE:qjs>"
-        DESTINATION lib COMPONENT Development)
-else()
-    install(FILES
-        "${_qlitemd_ratex_dir}/bin/${QLITEMD_ARCH}/ratex_ffi.dll.lib"
         DESTINATION lib COMPONENT Development)
 endif()
 
@@ -381,17 +389,35 @@ install(FILES 3rdparty/merman/LICENSE-APACHE 3rdparty/merman/LICENSE-MIT
     DESTINATION licenses/merman COMPONENT Licenses)
 install(FILES 3rdparty/ratex/LICENSE 3rdparty/ratex/VERSION.md
     DESTINATION licenses/ratex COMPONENT Licenses)
+# 选中的原生后端：Windows 的 DLL 进 bin、导入库进 lib；Linux 的 .so
+# 进 lib（Runtime 组件），消费方通过 config 里的绝对路径链接
+if(_qlitemd_runtime_libs)
+    if(WIN32)
+        install(FILES ${_qlitemd_runtime_libs}
+            DESTINATION bin COMPONENT Runtime)
+    else()
+        install(FILES ${_qlitemd_runtime_libs}
+            DESTINATION lib COMPONENT Runtime)
+    endif()
+endif()
 if(WIN32)
-    install(FILES
-        "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll"
-        "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll"
-        "3rdparty/ratex/bin/${QLITEMD_ARCH}/ratex_ffi.dll"
-        DESTINATION bin COMPONENT Runtime)
-    install(FILES
-        "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll.lib"
-        "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib"
-        "3rdparty/ratex/bin/${QLITEMD_ARCH}/ratex_ffi.dll.lib"
-        DESTINATION lib COMPONENT Development)
+    set(_qlitemd_native_import_libs "")
+    if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
+        list(APPEND _qlitemd_native_import_libs
+            "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg.dll.lib")
+    endif()
+    if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+        list(APPEND _qlitemd_native_import_libs
+            "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi.dll.lib")
+    endif()
+    if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+        list(APPEND _qlitemd_native_import_libs
+            "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi.dll.lib")
+    endif()
+    if(_qlitemd_native_import_libs)
+        install(FILES ${_qlitemd_native_import_libs}
+            DESTINATION lib COMPONENT Development)
+    endif()
 endif()
 install(FILES licenses/mathjax/LICENSE
     DESTINATION licenses/mathjax COMPONENT Licenses)

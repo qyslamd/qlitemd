@@ -38,7 +38,7 @@ find_library(QLITEMD_MD4C_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
-if(NOT WIN32)
+if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
     find_library(QLITEMD_QJS_LIBRARY
         NAMES qjs
         PATHS "${_qlitemd_libdir}"
@@ -56,24 +56,59 @@ find_library(QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY
     NO_DEFAULT_PATH
     REQUIRED)
 
+set(_qlitemd_native_libraries "")
 if(WIN32)
-    if(NOT TARGET qlitemd::ratex)
-        add_library(qlitemd::ratex SHARED IMPORTED)
-        set_target_properties(qlitemd::ratex PROPERTIES
-            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/ratex_ffi.dll"
-            IMPORTED_IMPLIB "${_qlitemd_libdir}/ratex_ffi.dll.lib")
+    if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")
+        if(NOT TARGET qlitemd::ratex)
+            add_library(qlitemd::ratex SHARED IMPORTED)
+            set_target_properties(qlitemd::ratex PROPERTIES
+                IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/ratex_ffi.dll"
+                IMPORTED_IMPLIB "${_qlitemd_libdir}/ratex_ffi.dll.lib")
+        endif()
+        list(APPEND _qlitemd_native_libraries qlitemd::ratex)
     endif()
-    if(NOT TARGET qlitemd::resvg)
-        add_library(qlitemd::resvg SHARED IMPORTED)
-        set_target_properties(qlitemd::resvg PROPERTIES
-            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/resvg.dll"
-            IMPORTED_IMPLIB "${_qlitemd_libdir}/resvg.dll.lib")
+    if("@QLITEMD_SVG_BACKEND@" STREQUAL "resvg")
+        if(NOT TARGET qlitemd::resvg)
+            add_library(qlitemd::resvg SHARED IMPORTED)
+            set_target_properties(qlitemd::resvg PROPERTIES
+                IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/resvg.dll"
+                IMPORTED_IMPLIB "${_qlitemd_libdir}/resvg.dll.lib")
+        endif()
+        list(APPEND _qlitemd_native_libraries qlitemd::resvg)
     endif()
-    if(NOT TARGET qlitemd::merman)
-        add_library(qlitemd::merman SHARED IMPORTED)
-        set_target_properties(qlitemd::merman PROPERTIES
-            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/merman_ffi.dll"
-            IMPORTED_IMPLIB "${_qlitemd_libdir}/merman_ffi.dll.lib")
+    if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
+        if(NOT TARGET qlitemd::merman)
+            add_library(qlitemd::merman SHARED IMPORTED)
+            set_target_properties(qlitemd::merman PROPERTIES
+                IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/merman_ffi.dll"
+                IMPORTED_IMPLIB "${_qlitemd_libdir}/merman_ffi.dll.lib")
+        endif()
+        list(APPEND _qlitemd_native_libraries qlitemd::merman)
+    endif()
+else()
+    if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")
+        find_library(QLITEMD_RATEX_LIBRARY
+            NAMES ratex_ffi
+            PATHS "${_qlitemd_libdir}"
+            NO_DEFAULT_PATH
+            REQUIRED)
+        list(APPEND _qlitemd_native_libraries ${QLITEMD_RATEX_LIBRARY})
+    endif()
+    if("@QLITEMD_SVG_BACKEND@" STREQUAL "resvg")
+        find_library(QLITEMD_RESVG_LIBRARY
+            NAMES resvg
+            PATHS "${_qlitemd_libdir}"
+            NO_DEFAULT_PATH
+            REQUIRED)
+        list(APPEND _qlitemd_native_libraries ${QLITEMD_RESVG_LIBRARY})
+    endif()
+    if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
+        find_library(QLITEMD_MERMAN_LIBRARY
+            NAMES merman_ffi
+            PATHS "${_qlitemd_libdir}"
+            NO_DEFAULT_PATH
+            REQUIRED)
+        list(APPEND _qlitemd_native_libraries ${QLITEMD_MERMAN_LIBRARY})
     endif()
 endif()
 
@@ -86,11 +121,9 @@ set(_qlitemd_link_libraries
     ${QLITEMD_GUMBO_LIBRARY}
     ${QLITEMD_MD4C_LIBRARY}
     ${QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY}
-    ${QLITEMD_TREE_SITTER_CORE_LIBRARY})
-if(WIN32)
-    list(APPEND _qlitemd_link_libraries qlitemd::resvg qlitemd::merman
-        qlitemd::ratex)
-else()
+    ${QLITEMD_TREE_SITTER_CORE_LIBRARY}
+    ${_qlitemd_native_libraries})
+if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
     list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
 endif()
 list(APPEND _qlitemd_link_libraries
