@@ -78,6 +78,23 @@ TEST(MermaidRendererTest, RendersSequenceDiagramToInlineImage) {
   EXPECT_TRUE(tag.contains(QStringLiteral("data:image/png;base64,")));
 }
 
+// 类图依赖 merman 的 resvg-safe 文本回退与宿主度量；标题、构造型和
+// 关系标签都要能出图。
+TEST(MermaidRendererTest, RendersClassDiagramToInlineImage) {
+  const QString tag =
+      MermaidToImgTag(QStringLiteral("classDiagram\n"
+                                     "  class Base {\n"
+                                     "    +Run() void\n"
+                                     "  }\n"
+                                     "  class Child {\n"
+                                     "    -int count\n"
+                                     "  }\n"
+                                     "  Base <|-- Child\n"
+                                     "  Base : <<widget>>\n"));
+  ASSERT_FALSE(tag.isEmpty());
+  EXPECT_TRUE(tag.contains(QStringLiteral("data:image/png;base64,")));
+}
+
 // 结果按源码缓存：同一段源码再来一次应逐字相同。
 // 换一段源码要比出不同**不能只改标签文字**——offscreen 下文字是方框、宽度也
 // 一样，两张图会逐字节相同；改节点数量才是与字体无关的差异

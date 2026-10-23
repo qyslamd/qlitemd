@@ -3,8 +3,9 @@
 **A Qt Widgets Markdown renderer that doesn't need a browser engine.**
 
 md4c parses the document, qlitehtml lays it out, and QuickJS runs
-highlight.js, MathJax and Mermaid. Formula and diagram SVGs are rasterized
-with QPainter, so there is no WebEngine, Chromium or Node.js at runtime.
+highlight.js and MathJax. Mermaid diagrams use native merman-ffi, and
+formula/diagram SVGs are rasterized with resvg. There is no WebEngine,
+Chromium or Node.js at runtime.
 
 [![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -64,8 +65,11 @@ QWindowKit and builds against an installed SDK.
   per-line spans so line numbers stay aligned.
 - **Formulas** — MathJax (TeX to SVG to QPixmap), inline `$...$` and display
   `$$...$$`, with theme-aware colors.
-- **Mermaid diagrams** — the official Mermaid bundle runs in QuickJS with a
-  small DOM shim; SVG is cleaned and rasterized at 2x.
+- **Mermaid diagrams** — merman-ffi parses Mermaid natively and emits
+  `resvg-safe` SVG; no JavaScript runs for diagrams. The legacy
+  QuickJS + mermaid.js backend remains selectable.
+- **SVG rasterization** — resvg handles diagrams and formulas; the legacy
+  QtSvg backend remains selectable.
 - **Themes** — built-in light and dark CSS; `MD_MARKDOWN_CSS` can override the
   stylesheet for live tweaking.
 - **Code block chrome** — language label, copy link and optional line numbers.
@@ -94,9 +98,9 @@ md4c  ->  HTML skeleton + formula/Mermaid placeholders
       |
       v
 MarkdownRenderService (worker pools)
-      |-- highlight.js  ->  highlighted HTML
-      |-- MathJax       ->  SVG  ->  QPainter  ->  PNG
-      `-- Mermaid       ->  SVG  ->  QPainter  ->  PNG
+      |-- highlight.js  ->  highlighted HTML          (QuickJS)
+      |-- MathJax       ->  SVG  ->  resvg  ->  PNG    (QuickJS + resvg)
+      `-- merman-ffi    ->  SVG  ->  resvg  ->  PNG    (native)
       |
       v
 assemble HTML  ->  qlitehtml widget  ->  painted QWidget
@@ -104,12 +108,15 @@ assemble HTML  ->  qlitehtml widget  ->  painted QWidget
 
 Key design choices:
 
-- **Dependency inversion.** The public API knows nothing about QuickJS.
-  Highlighting, formula and Mermaid work are passed in as plain callbacks, so
-  tests can use fakes and hosts can swap engines.
-- **Bytecode, not source.** Five JS payloads are precompiled by `qjsc` at
-  build time. This cuts a first render with formulas and diagrams from about
-  1.57 s to 0.67 s; see the
+- **Dependency inversion.** The public API knows nothing about QuickJS,
+  merman or resvg. Highlighting, formula and Mermaid work are passed in as
+  plain callbacks, so tests can use fakes and hosts can swap engines.
+- **Native Mermaid path.** merman-ffi replaces the QuickJS + mermaid.js
+  bundle for diagrams; MathJax and highlight.js still use QuickJS. On
+  Windows the default is `QLITEMD_MERMAID_BACKEND=merman` with
+  `QLITEMD_SVG_BACKEND=resvg`; both legacy backends remain selectable.
+- **Bytecode for the remaining JS.** MathJax, highlight.js and the optional
+  legacy Mermaid path are precompiled by `qjsc`; see the
   [evaluation](docs/eval/Markdown渲染qjsc预编译评估.md).
 - **Generation filtering.** Every render bumps a request id; stale worker
   results are dropped before they touch the widget, and cancellation
@@ -176,6 +183,13 @@ Build options:
 - `QLITEMD_QT_MAJOR` — `5` (default) or `6`
 - `QLITEMD_BUILD_MD_VIEWER` — build the example application (default `ON`)
 - `QLITEMD_BUILD_TESTS` — build the test suite (default `ON`)
+- `QLITEMD_SVG_BACKEND` — `resvg` (default on Windows) or `qtsvg`
+- `QLITEMD_MERMAID_BACKEND` — `merman` (default on Windows) or `quickjs`;
+  `merman` requires `QLITEMD_SVG_BACKEND=resvg`
+
+The native backends are distributed as prebuilt DLLs under
+`3rdparty/resvg/` and `3rdparty/merman/`; a normal build does not require
+Rust. Linux/WSL currently falls back to `qtsvg` + `quickjs`.
 
 ## Test
 
@@ -191,11 +205,11 @@ cmake --build build
 cmake --install build
 ```
 
-With the default options, the install contains `bin/md_viewer.exe`, the
-`qlitemd_markdown` static library, its static dependency archives, public
-headers, license files and a CMake package config. On Windows, `windeployqt`
-is invoked during install, and the in-tree `FluentUI3Style` and `ExWidgets`
-DLLs are copied next to the viewer.
+With the default options, the install contains `bin/md_viewer.exe`,
+`bin/resvg.dll`, `bin/merman_ffi.dll`, the `qlitemd_markdown` static library,
+its static dependency archives, public headers, license files and a CMake
+package config. On Windows, `windeployqt` is invoked during install, and the
+in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next to the viewer.
 
 Consumers can then use:
 
@@ -276,8 +290,10 @@ maintainers and contributors.
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | Syntax highlighting | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1 (mathjax-full) | TeX to SVG | Apache-2.0 |
-| [Mermaid](https://mermaid.js.org/) | 11.16.0 | Diagrams | MIT |
-| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | Payload extraction / DOM shim | MIT |
+| [merman](https://github.com/Latias94/merman) | 0.9.2 | Native Mermaid rendering | MIT OR Apache-2.0 |
+| [resvg](https://github.com/linebender/resvg) | 0.48.1 | SVG rasterization | Apache-2.0 OR MIT |
+| [Mermaid](https://mermaid.js.org/) | 11.16.0 | Legacy diagram backend | MIT |
+| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | Legacy payload extraction / DOM shim | MIT |
 | [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | Frameless windows (`md_viewer`) | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0 (4a3ff82) | CMake helpers for QWindowKit | MIT |
 | [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI shell (`md_viewer`) | MIT |

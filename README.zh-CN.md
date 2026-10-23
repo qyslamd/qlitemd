@@ -2,9 +2,9 @@
 
 **一个不需要浏览器内核的 Qt Widgets Markdown 渲染器。**
 
-md4c 负责解析，qlitehtml 负责排版，QuickJS 负责运行 highlight.js、
-MathJax 和 Mermaid。公式与图表的 SVG 由 QPainter 光栅化，运行时不需要
-WebEngine、Chromium 或 Node.js。
+md4c 负责解析，qlitehtml 负责排版，QuickJS 负责运行 highlight.js 与
+MathJax；Mermaid 走原生 merman-ffi，公式与图表的 SVG 由 resvg 光栅化。
+运行时不需要 WebEngine、Chromium 或 Node.js。
 
 [![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -61,8 +61,9 @@ FluentUI/QWindowKit，可直接针对已安装的 SDK 构建。
   保证行号对齐。
 - **公式**：MathJax（TeX 转 SVG 再转 QPixmap），支持行内 `$...$` 与
   独立 `$$...$$`，配色跟随主题。
-- **Mermaid 图表**：官方 Mermaid bundle 配合轻量 DOM shim 在 QuickJS
-  中运行；SVG 清理后按 2 倍分辨率光栅化。
+- **Mermaid 图表**：merman-ffi 原生解析并输出 `resvg-safe` SVG，图表
+  路径不执行 JavaScript；旧的 QuickJS + mermaid.js 后端仍可选择。
+- **SVG 光栅化**：图表与公式默认走 resvg；旧的 QtSvg 后端仍可选择。
 - **主题**：内置明暗两套 CSS；可用 `MD_MARKDOWN_CSS` 覆盖样式表，
   方便实时调整。
 - **代码块外框**：语言标签、复制链接和可选行号。
@@ -89,9 +90,9 @@ md4c  ->  HTML 骨架 + 公式/Mermaid 占位符
       |
       v
 MarkdownRenderService（worker 池）
-      |-- highlight.js  ->  高亮后的 HTML
-      |-- MathJax       ->  SVG  ->  QPainter  ->  PNG
-      `-- Mermaid       ->  SVG  ->  QPainter  ->  PNG
+      |-- highlight.js  ->  高亮后的 HTML          (QuickJS)
+      |-- MathJax       ->  SVG  ->  resvg  ->  PNG (QuickJS + resvg)
+      `-- merman-ffi    ->  SVG  ->  resvg  ->  PNG (原生)
       |
       v
 拼装 HTML  ->  qlitehtml 控件  ->  绘制出的 QWidget
@@ -99,10 +100,14 @@ MarkdownRenderService（worker 池）
 
 关键设计：
 
-- **依赖倒置**：公开 API 不认识 QuickJS。高亮、公式和 Mermaid 都通过
-  普通回调传入，测试可以塞假实现，宿主可以替换引擎。
-- **字节码而非源码**：五份 JS 载荷在构建期由 `qjsc` 预编译。含公式和
-  图表的首次渲染从约 1.57 s 降到 0.67 s；见
+- **依赖倒置**：公开 API 不认识 QuickJS、merman 或 resvg。高亮、公式和
+  Mermaid 都通过普通回调传入，测试可以塞假实现，宿主可以替换引擎。
+- **原生 Mermaid 路径**：merman-ffi 替换 QuickJS + mermaid.js；MathJax
+  与 highlight.js 仍走 QuickJS。Windows 默认
+  `QLITEMD_MERMAID_BACKEND=merman` + `QLITEMD_SVG_BACKEND=resvg`，
+  两套旧后端仍可选择。
+- **剩余 JS 走字节码**：MathJax、highlight.js 与可选的旧 Mermaid 路径
+  仍由 `qjsc` 预编译；见
   [评估文档](docs/eval/Markdown渲染qjsc预编译评估.md)。
 - **按代过滤**：每次渲染递增 request id，过期的 worker 结果在接触控件
   之前就被丢弃；取消会中断 QuickJS。
@@ -166,6 +171,12 @@ Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
 - `QLITEMD_QT_MAJOR`：`5`（默认）或 `6`
 - `QLITEMD_BUILD_MD_VIEWER`：构建示例程序（默认 `ON`）
 - `QLITEMD_BUILD_TESTS`：构建测试（默认 `ON`）
+- `QLITEMD_SVG_BACKEND`：`resvg`（Windows 默认）或 `qtsvg`
+- `QLITEMD_MERMAID_BACKEND`：`merman`（Windows 默认）或 `quickjs`；
+  `merman` 要求 `QLITEMD_SVG_BACKEND=resvg`
+
+原生后端以预编 DLL 形式放在 `3rdparty/resvg/` 与 `3rdparty/merman/`，
+普通构建不需要 Rust。Linux/WSL 目前自动回退到 `qtsvg` + `quickjs`。
 
 ## 测试
 
@@ -181,10 +192,11 @@ cmake --build build
 cmake --install build
 ```
 
-默认选项下，安装内容包含 `bin/md_viewer.exe`、`qlitemd_markdown`
-静态库及其静态依赖、公开头文件、许可证文件和 CMake package config。
-Windows 安装阶段会调用 `windeployqt`，并拷贝项目内构建的
-`FluentUI3Style.dll` 和 `ExWidgets.dll`。
+默认选项下，安装内容包含 `bin/md_viewer.exe`、`bin/resvg.dll`、
+`bin/merman_ffi.dll`、`qlitemd_markdown` 静态库及其静态依赖、公开头文件、
+许可证文件和 CMake package config。Windows 安装阶段会调用
+`windeployqt`，并拷贝项目内构建的 `FluentUI3Style.dll` 和
+`ExWidgets.dll`。
 
 消费方可以这样使用：
 
@@ -260,8 +272,10 @@ qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者
 | [gumbo-parser](https://github.com/google/gumbo-parser) | 随 litehtml 内置 | HTML5 解析 | Apache-2.0 |
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | 语法高亮 | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1（mathjax-full） | TeX 转 SVG | Apache-2.0 |
-| [Mermaid](https://mermaid.js.org/) | 11.16.0 | 图表渲染 | MIT |
-| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | 载荷抽取 / DOM shim | MIT |
+| [merman](https://github.com/Latias94/merman) | 0.9.2 | 原生 Mermaid 渲染 | MIT OR Apache-2.0 |
+| [resvg](https://github.com/linebender/resvg) | 0.48.1 | SVG 光栅化 | Apache-2.0 OR MIT |
+| [Mermaid](https://mermaid.js.org/) | 11.16.0 | 旧图表后端 | MIT |
+| [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | 旧载荷抽取 / DOM shim | MIT |
 | [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | 无边框窗口（`md_viewer`） | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0（4a3ff82） | QWindowKit 的 CMake 辅助 | MIT |
 | [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI 外壳（`md_viewer`） | MIT |

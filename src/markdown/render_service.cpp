@@ -48,10 +48,14 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       runtime = &formula.runtime;
       break;
     case MarkdownRenderKind::Mermaid:
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
       runtime = &mermaid.runtime;
+#endif
       break;
   }
-  runtime->SetInterruptFlag(task.cancel_flag.get());
+  if (runtime != nullptr) {
+    runtime->SetInterruptFlag(task.cancel_flag.get());
+  }
   QElapsedTimer render_clock;
   render_clock.start();
 
@@ -82,21 +86,34 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
   }
 
   result.elapsed_ms = render_clock.elapsed();
-  result.js_memory_bytes = runtime->MemoryBytes();
-  if (task.cancel_flag != nullptr &&
-      task.cancel_flag->load(std::memory_order_relaxed)) {
-    // QuickJS 被中断后 runtime 状态不可继续用；下一次任务必须重载
-    result.cancelled = true;
-    result.ok = false;
-    result.rendered.clear();
-    runtime->ResetForReload();
+  if (runtime != nullptr) {
+    result.js_memory_bytes = runtime->MemoryBytes();
+    if (task.cancel_flag != nullptr &&
+        task.cancel_flag->load(std::memory_order_relaxed)) {
+      // QuickJS 被中断后 runtime 状态不可继续用；下一次任务必须重载
+      result.cancelled = true;
+      result.ok = false;
+      result.rendered.clear();
+      runtime->ResetForReload();
+    } else {
+      const MarkdownEngineStatus status = runtime->status();
+      result.engine_load_failed = status.permanently_failed;
+      result.loaded = status.loaded;
+      result.first_load_ms = status.first_load_ms;
+    }
+    runtime->SetInterruptFlag(nullptr);
   } else {
-    const MarkdownEngineStatus status = runtime->status();
+    if (task.cancel_flag != nullptr &&
+        task.cancel_flag->load(std::memory_order_relaxed)) {
+      result.cancelled = true;
+      result.ok = false;
+      result.rendered.clear();
+    }
+    const MarkdownEngineStatus status = MermaidEngineStatus(mermaid);
     result.engine_load_failed = status.permanently_failed;
     result.loaded = status.loaded;
     result.first_load_ms = status.first_load_ms;
   }
-  runtime->SetInterruptFlag(nullptr);
   return result;
 }
 

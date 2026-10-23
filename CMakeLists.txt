@@ -33,6 +33,87 @@ endfunction()
 option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ON)
 option(QLITEMD_BUILD_MD_VIEWER "Build the md_viewer example" ON)
 
+set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
+set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
+set(QLITEMD_MERMAID_BACKEND "merman" CACHE STRING
+    "Mermaid backend: merman or quickjs")
+set_property(CACHE QLITEMD_MERMAID_BACKEND PROPERTY STRINGS merman quickjs)
+if(NOT QLITEMD_SVG_BACKEND MATCHES "^(resvg|qtsvg)$")
+    message(FATAL_ERROR "QLITEMD_SVG_BACKEND must be resvg or qtsvg")
+endif()
+if(NOT QLITEMD_MERMAID_BACKEND MATCHES "^(merman|quickjs)$")
+    message(FATAL_ERROR "QLITEMD_MERMAID_BACKEND must be merman or quickjs")
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman"
+   AND NOT QLITEMD_SVG_BACKEND STREQUAL "resvg")
+    message(FATAL_ERROR
+        "merman backend emits resvg-safe SVG and requires QLITEMD_SVG_BACKEND=resvg")
+endif()
+
+# The native backends are Windows-only in this iteration. Linux/WSL keeps the
+# legacy QtSvg/QuickJS path so the existing CI stays usable.
+if(NOT WIN32)
+    if(QLITEMD_SVG_BACKEND STREQUAL "resvg"
+       OR QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+        message(STATUS
+            "resvg/merman are Windows-only; using qtsvg/quickjs on this platform")
+        set(QLITEMD_SVG_BACKEND qtsvg)
+        set(QLITEMD_MERMAID_BACKEND quickjs)
+    endif()
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(QLITEMD_ARCH x64)
+else()
+    set(QLITEMD_ARCH x86)
+endif()
+
+# Prebuilt native backends. Keep them as imported targets so the rest of the
+# build never needs Rust; upgrade instructions live in their VERSION.md files.
+set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")
+set(_qlitemd_merman_dir "${CMAKE_SOURCE_DIR}/3rdparty/merman")
+if(WIN32)
+    foreach(_file
+        "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
+        "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll.lib"
+        "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+        "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib")
+        if(NOT EXISTS "${_file}")
+            message(FATAL_ERROR "missing prebuilt backend file: ${_file}")
+        endif()
+    endforeach()
+
+    add_library(qlitemd_resvg SHARED IMPORTED)
+    set_target_properties(qlitemd_resvg PROPERTIES
+        IMPORTED_LOCATION "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
+        IMPORTED_IMPLIB "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_resvg_dir}/include")
+    add_library(qlitemd::resvg ALIAS qlitemd_resvg)
+
+    add_library(qlitemd_merman SHARED IMPORTED)
+    set_target_properties(qlitemd_merman PROPERTIES
+        IMPORTED_LOCATION "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+        IMPORTED_IMPLIB "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${_qlitemd_merman_dir}/include")
+    add_library(qlitemd::merman ALIAS qlitemd_merman)
+
+    # Tests and examples use different runtime directories; copy both DLLs to
+    # each so ctest and md_viewer can start without a manually adjusted PATH.
+    add_custom_target(qlitemd_runtime_dlls ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/tests"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
+            "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+            "${CMAKE_BINARY_DIR}/bin"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${_qlitemd_resvg_dir}/bin/${QLITEMD_ARCH}/resvg.dll"
+            "${_qlitemd_merman_dir}/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+            "${CMAKE_BINARY_DIR}/bin/tests"
+        COMMENT "Copy resvg/merman runtime DLLs"
+        VERBATIM)
+endif()
+
 set(QLITEMD_QT_MAJOR 5 CACHE STRING "Qt major version (5 or 6)")
 set(QT_VERSION_MAJOR ${QLITEMD_QT_MAJOR})
 if(QLITEMD_QT_MAJOR EQUAL 6)
@@ -200,6 +281,22 @@ install(FILES 3rdparty/fluentui/THIRD_PARTY_NOTICES.md
     DESTINATION licenses/fluentui COMPONENT Licenses)
 install(DIRECTORY 3rdparty/qlitehtml/LICENSES
     DESTINATION licenses/qlitehtml COMPONENT Licenses)
+install(FILES 3rdparty/resvg/LICENSE-APACHE 3rdparty/resvg/LICENSE-MIT
+    3rdparty/resvg/VERSION.md
+    DESTINATION licenses/resvg COMPONENT Licenses)
+install(FILES 3rdparty/merman/LICENSE-APACHE 3rdparty/merman/LICENSE-MIT
+    3rdparty/merman/THIRD_PARTY_NOTICES.md 3rdparty/merman/VERSION.md
+    DESTINATION licenses/merman COMPONENT Licenses)
+if(WIN32)
+    install(FILES
+        "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll"
+        "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll"
+        DESTINATION bin COMPONENT Runtime)
+    install(FILES
+        "3rdparty/resvg/bin/${QLITEMD_ARCH}/resvg.dll.lib"
+        "3rdparty/merman/bin/${QLITEMD_ARCH}/merman_ffi.dll.lib"
+        DESTINATION lib COMPONENT Development)
+endif()
 install(FILES licenses/mathjax/LICENSE
     DESTINATION licenses/mathjax COMPONENT Licenses)
 install(FILES licenses/mermaid/LICENSE

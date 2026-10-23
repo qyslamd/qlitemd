@@ -9,6 +9,7 @@
 
 #include "js_runtime.h"
 #include "markdown_types.h"
+#include "merman_renderer.h"
 
 // 内部头文件：直接包含 quickjs.h，消费者需自己拿到 qjs 的头文件路径。
 // 一个渲染引擎的运行时状态。同步入口用线程局部默认实例；异步 worker
@@ -28,6 +29,8 @@ struct MermaidEngineState {
   bool initialized = false;
   // then/catch 落定旗子，泵循环只读它
   bool render_settled = false;
+  // 原生后端；QLITEMD_MERMAID_BACKEND=quickjs 时不加载
+  MermanEngine merman;
 };
 
 // 只负责加载 runtime，不更新上下文计数；失败是永久性的，除取消后的

@@ -9,16 +9,17 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QImage>
-#include <QPainter>
 #include <QRegularExpression>
-#include <QSvgRenderer>
+#include <QSizeF>
 
 #include "js_runtime.h"
 #include "markdown_bytecode.h"
 #include "markdown_engine_state.h"
 #include "markdown_render_context_internal.h"
+#include "mermaid_renderer.h"
 #include "render_cache.h"
 #include "render_diagnostics.h"
+#include "svg_rasterizer.h"
 
 namespace {
 
@@ -81,15 +82,6 @@ QString SvgToImgTag(const QString& svg, bool display, const QColor& color,
     }
   }
 
-  QSvgRenderer renderer(bare.toUtf8());
-  if (!renderer.isValid()) {
-    if (diagnostics.trace) {
-      TraceRender(diagnostics,
-                  QStringLiteral("formula svg: QSvgRenderer rejected it"));
-    }
-    return {};
-  }
-
   // MathJax 的 width/height 是 ex 单位；打包时约定 em=16px、ex=8px
   static const QRegularExpression kSizeExpression(
       QStringLiteral("width=\"([\\d.]+)ex\"\\s+height=\"([\\d.]+)ex\""));
@@ -100,9 +92,18 @@ QString SvgToImgTag(const QString& svg, bool display, const QColor& color,
     width = size.captured(1).toDouble() * 8.0;
     height = size.captured(2).toDouble() * 8.0;
   } else {
-    const QSize fallback = renderer.defaultSize();
-    width = fallback.width() / 1000.0 * 16.0;
-    height = fallback.height() / 1000.0 * 16.0;
+    QSizeF intrinsic;
+    QString size_error;
+    if (!SvgIntrinsicSize(bare.toUtf8(), MermaidFontFamily(), &intrinsic,
+                          &size_error)) {
+      if (diagnostics.trace) {
+        TraceRender(diagnostics,
+                    QStringLiteral("formula svg: %1").arg(size_error));
+      }
+      return {};
+    }
+    width = intrinsic.width() / 1000.0 * 16.0;
+    height = intrinsic.height() / 1000.0 * 16.0;
   }
   if (width < 1.0 || height < 1.0) {
     if (diagnostics.trace) {
@@ -121,12 +122,16 @@ QString SvgToImgTag(const QString& svg, bool display, const QColor& color,
   if (area * scale * scale > kMaxRasterPixels) {
     scale = std::sqrt(kMaxRasterPixels / area);
   }
-  QImage image(qRound(width * scale), qRound(height * scale),
-               QImage::Format_ARGB32_Premultiplied);
-  image.fill(Qt::transparent);
-  QPainter painter(&image);
-  renderer.render(&painter, QRectF(0.0, 0.0, width * scale, height * scale));
-  painter.end();
+  QImage image;
+  QString raster_error;
+  if (!RasterizeSvg(bare.toUtf8(), QSizeF(width, height), scale,
+                    MermaidFontFamily(), &image, &raster_error)) {
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("formula png: %1").arg(raster_error));
+    }
+    return {};
+  }
 
   QBuffer buffer;
   buffer.open(QIODevice::WriteOnly);

@@ -16,10 +16,9 @@
 #include <QImage>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QPainter>
 #include <QRegularExpression>
+#include <QSizeF>
 #include <QStringList>
-#include <QSvgRenderer>
 
 #include "js_runtime.h"
 #include "markdown_bytecode.h"
@@ -29,6 +28,7 @@
 #include "mermaid_svg_cleanup.h"
 #include "render_cache.h"
 #include "render_diagnostics.h"
+#include "svg_rasterizer.h"
 
 namespace {
 
@@ -560,12 +560,15 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
     height = match.captured(4).toDouble();
   }
   if (width < 1.0 || height < 1.0) {
-    // 尺寸兜底必须量清理后的 SVG：bare 里还有 <style>/<marker>，QSvgRenderer
-    // 认不了这些节点（"Could not add child element"），defaultSize 未必准
-    QSvgRenderer probe(marked.toUtf8());
-    const QSize size = probe.defaultSize();
-    width = size.width();
-    height = size.height();
+    // 尺寸兜底必须量清理后的 SVG：bare 里还有 <style>/<marker>，
+    // 直接量原始 SVG 未必准
+    QSizeF intrinsic;
+    QString size_error;
+    if (SvgIntrinsicSize(marked.toUtf8(), MermaidFontFamily(), &intrinsic,
+                         &size_error)) {
+      width = intrinsic.width();
+      height = intrinsic.height();
+    }
   }
   if (width < 1.0 || height < 1.0) {
     if (diagnostics.trace) {
@@ -579,27 +582,23 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
   // 2 倍超采样、按 1 倍尺寸摆放：连线与箭头的边缘才是锐的。
   // Format_ARGB32 是 4 字节/像素，大图 2 倍会内存爆（5000×5000 的图 2 倍
   // = 1.6GB）：像素总量封顶 4096×4096（≈67MB 一张），超了自动降倍数
-  QSvgRenderer renderer(marked.toUtf8());
-  if (!renderer.isValid()) {
-    qWarning() << "mermaid: QSvgRenderer rejected the cleaned svg";
-    if (diagnostics.trace) {
-      TraceRender(diagnostics,
-                  QStringLiteral("mermaid svg: QSvgRenderer rejected it"));
-    }
-    return QString();
-  }
   qreal scale = 2.0;
   constexpr qreal kMaxRasterPixels = 4096.0 * 4096.0;
   const qreal area = width * height;
   if (area * scale * scale > kMaxRasterPixels) {
     scale = std::sqrt(kMaxRasterPixels / area);
   }
-  QImage image(qRound(width * scale), qRound(height * scale),
-               QImage::Format_ARGB32_Premultiplied);
-  image.fill(Qt::transparent);
-  QPainter painter(&image);
-  renderer.render(&painter, QRectF(0.0, 0.0, width * scale, height * scale));
-  painter.end();
+  QImage image;
+  QString raster_error;
+  if (!RasterizeSvg(marked.toUtf8(), QSizeF(width, height), scale,
+                    MermaidFontFamily(), &image, &raster_error)) {
+    qWarning() << "mermaid: rasterize failed:" << raster_error;
+    if (diagnostics.trace) {
+      TraceRender(diagnostics,
+                  QStringLiteral("mermaid svg: %1").arg(raster_error));
+    }
+    return QString();
+  }
 
   QBuffer buffer;
   buffer.open(QIODevice::WriteOnly);
@@ -645,11 +644,19 @@ QString FontFingerprint() {
 }  // namespace
 
 bool EnsureMermaidEngine(MermaidEngineState& engine) {
+#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+  return engine.merman.EnsureLoaded();
+#else
   return EnsureLoaded(engine);
+#endif
 }
 
 MarkdownEngineStatus MermaidEngineStatus(const MermaidEngineState& engine) {
+#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+  return MermanEngineStatus(engine.merman);
+#else
   return engine.runtime.status();
+#endif
 }
 
 MarkdownEngineStatus MermaidEngineStatus() {
@@ -660,6 +667,17 @@ QString RenderMermaidOnEngine(MermaidEngineState& engine, const QString& code,
                               MarkdownTheme theme,
                               const MarkdownDiagnostics& diagnostics,
                               QVector<MarkdownRenderArtifact>* artifacts) {
+#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+  QElapsedTimer render_clock;
+  render_clock.start();
+  const QString tag = engine.merman.Render(code, theme, diagnostics, artifacts);
+  if (diagnostics.trace) {
+    TraceRender(diagnostics, QStringLiteral("merman render: %1 ms, %2 bytes")
+                                 .arg(render_clock.elapsed())
+                                 .arg(tag.size()));
+  }
+  return tag;
+#else
   const bool was_loaded = engine.runtime.status().loaded;
   if (!EnsureLoaded(engine) || !EnsureInitialized(engine)) {
     if (diagnostics.trace) {
@@ -684,6 +702,7 @@ QString RenderMermaidOnEngine(MermaidEngineState& engine, const QString& code,
                                  .arg(tag.size()));
   }
   return tag;
+#endif
 }
 
 bool MermaidRendererReady() { return EnsureMermaidEngine(DefaultEngine()); }
@@ -699,9 +718,14 @@ QString MermaidFontFamily() {
 }
 
 QString MermaidRenderVariant(MarkdownTheme theme) {
-  // 主题名进 key；字体指纹让字体更新后的旧图自然失效
-  return QString::fromLatin1(ThemeName(theme)) + QLatin1Char('|') +
-         FontFingerprint();
+  // 主题名进 key；字体指纹让字体更新后的旧图自然失效。后端版本也进 key，
+  // 切换/升级后不会命中旧后端的磁盘图。
+  QString variant = QString::fromLatin1(ThemeName(theme)) + QLatin1Char('|') +
+                    FontFingerprint();
+#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+  variant += QLatin1Char('|') + MermanVersion();
+#endif
+  return variant;
 }
 
 QString MermaidRenderKey(const QString& code, MarkdownTheme theme) {
