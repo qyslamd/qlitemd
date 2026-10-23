@@ -4,17 +4,22 @@
 //
 // 无头跑：offscreen 平台不建真窗口；QPrinter(PdfFormat) 也不需要真打印机，
 // 直接往临时文件写。这里不验"排出来长什么样"——像素验收需要真实界面环境
+#include <QAbstractScrollArea>
 #include <QApplication>
 #include <QByteArray>
+#include <QColor>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QMetaObject>
+#include <QPalette>
 #include <QPrinter>
 #include <QStandardPaths>
 #include <QString>
 #include <QTemporaryDir>
+#include <QWidget>
 
 #include <gtest/gtest.h>
 
@@ -61,6 +66,64 @@ bool SetContentAndWait(MarkdownView& view, const QString& markdown,
   RenderWaiter waiter(&view);
   view.SetContent(markdown, base_dir);
   return waiter.Wait();
+}
+
+QString HtmlOf(MarkdownView& view) {
+  QWidget* html = view.findChild<QWidget*>(QStringLiteral("markdownHtml"));
+  if (html == nullptr) {
+    return {};
+  }
+  QString text;
+  QMetaObject::invokeMethod(html, "html", Q_RETURN_ARG(QString, text));
+  return text;
+}
+
+TEST(MarkdownViewStyleTest, ThemeStyleSheetOverridesPerTheme) {
+  MarkdownView view;
+  view.SetThemeStyleSheet(MarkdownTheme::Light,
+                          QStringLiteral("body { color: #010203; }"));
+  view.SetThemeStyleSheet(MarkdownTheme::Dark,
+                          QStringLiteral("body { color: #040506; }"));
+  ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));
+  EXPECT_TRUE(HtmlOf(view).contains(QStringLiteral("#010203")));
+
+  {
+    RenderWaiter waiter(&view);
+    view.SetTheme(MarkdownTheme::Dark);
+    ASSERT_TRUE(waiter.Wait());
+  }
+  const QString dark_html = HtmlOf(view);
+  EXPECT_TRUE(dark_html.contains(QStringLiteral("#040506")));
+  EXPECT_FALSE(dark_html.contains(QStringLiteral("#010203")));
+
+  {
+    RenderWaiter waiter(&view);
+    view.SetThemeStyleSheet(MarkdownTheme::Dark, QString());
+    ASSERT_TRUE(waiter.Wait());
+  }
+  EXPECT_TRUE(HtmlOf(view).contains(QStringLiteral("#0d1117")));
+}
+
+TEST(MarkdownViewStyleTest, PageBackgroundAppliesToHtmlSurface) {
+  MarkdownView view;
+  auto* html = view.findChild<QWidget*>(QStringLiteral("markdownHtml"));
+  ASSERT_NE(html, nullptr);
+  auto* area = qobject_cast<QAbstractScrollArea*>(html);
+  ASSERT_NE(area, nullptr);
+
+  view.SetPageBackground(Qt::transparent);
+  EXPECT_FALSE(html->autoFillBackground());
+  EXPECT_TRUE(html->testAttribute(Qt::WA_TranslucentBackground));
+  EXPECT_EQ(html->palette().color(QPalette::Base), QColor(Qt::transparent));
+  EXPECT_FALSE(area->viewport()->autoFillBackground());
+  EXPECT_TRUE(area->viewport()->testAttribute(Qt::WA_TranslucentBackground));
+
+  view.SetPageBackground(QColor(QStringLiteral("#123456")));
+  EXPECT_TRUE(html->autoFillBackground());
+  EXPECT_FALSE(html->testAttribute(Qt::WA_TranslucentBackground));
+  EXPECT_EQ(html->palette().color(QPalette::Base),
+            QColor(QStringLiteral("#123456")));
+  EXPECT_TRUE(area->viewport()->autoFillBackground());
 }
 
 TEST(MarkdownViewActionsTest, FindHits) {

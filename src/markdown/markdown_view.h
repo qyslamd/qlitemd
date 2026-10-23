@@ -1,10 +1,12 @@
 #ifndef FILE_MARKDOWN_MARKDOWN_VIEW_H_
 #define FILE_MARKDOWN_MARKDOWN_VIEW_H_
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <variant>
 
+#include <QColor>
 #include <QElapsedTimer>
 #include <QHash>
 #include <QPixmap>
@@ -14,6 +16,7 @@
 #include <QWidget>
 
 #include "markdown_render_tasks.h"
+#include "markdown_theme.h"
 #include "markdown_to_html.h"
 #include "markdown_types.h"
 
@@ -153,6 +156,12 @@ class MarkdownView : public QWidget {
   // 公式/Mermaid 配色，可能配色错位——切换时打一次 qWarning
   void SetTheme(MarkdownTheme theme);
   MarkdownTheme theme() const { return theme_; }
+  // 宿主样式：按主题注入完整 CSS；空串清除，回退到 MD_MARKDOWN_CSS/内置
+  // 主题。显式设置优先于 MD_MARKDOWN_CSS，且不会触发主题错配 warning
+  void SetThemeStyleSheet(MarkdownTheme theme, const QString& css);
+  // 页面背景：Qt::transparent 表示透明，其它颜色填充 html viewport。
+  // 默认不调用时保持原有行为；透明还需要 CSS 把 html/body 写成 transparent
+  void SetPageBackground(const QColor& color);
   // 缩放（0.3~5.0）。连续调用只在停手 150ms 后应用一次，避免每档都整篇重排；
   // 换文档/查找/锚点跳转会先把挂起的缩放落地
   void SetZoomFactor(qreal factor);
@@ -250,6 +259,8 @@ class MarkdownView : public QWidget {
   void CommitRender(quint64 request_id);
   // 重渲染并保留垂直滚动位置（开关切换用）
   void ReapplyDocument();
+  QString CssForTheme(MarkdownTheme theme) const;
+  void ApplyPageBackground();
   void ShowMessage(const QString& text);
   void ClearDocument();
   void WatchCurrentFile();
@@ -316,6 +327,10 @@ class MarkdownView : public QWidget {
   bool formula_rendering_enabled_ = true;
   bool mermaid_rendering_enabled_ = true;
   MarkdownTheme theme_ = MarkdownTheme::Light;
+  // 宿主按主题注入的 CSS；空 = 走 MD_MARKDOWN_CSS/内置资源
+  std::array<QString, kMarkdownThemeCount> theme_style_sheets_{};
+  QColor page_background_ = Qt::transparent;
+  bool page_background_set_ = false;
   // 转储时给每次 ApplyDocument 的源/最终 HTML 编号（仅诊断用）
   int dump_apply_index_ = 0;
 

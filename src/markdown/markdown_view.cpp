@@ -4,6 +4,7 @@
 
 #include <QBuffer>
 #include <QClipboard>
+#include <QColor>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDebug>
@@ -16,6 +17,7 @@
 #include <QImageReader>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QPalette>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -556,7 +558,7 @@ void MarkdownView::ShowPlaceholder(const QString& text) {
                        .arg(content_height)
                        .arg(content_height)
                        .arg(text.toHtmlEscaped()),
-                   LoadDefaultCss(theme_)));
+                   CssForTheme(theme_)));
 }
 
 void MarkdownView::ScrollToAnchor(const QString& anchor) {
@@ -886,11 +888,62 @@ void MarkdownView::SetTheme(MarkdownTheme theme) {
   if (theme_ == theme) {
     return;
   }
-  if (theme != MarkdownTheme::Light && !CssOverridePath().isEmpty()) {
+  // 宿主按主题提供了完整 CSS 时，环境变量覆盖不参与，不需要 warning
+  if (theme != MarkdownTheme::Light && !CssOverridePath().isEmpty() &&
+      theme_style_sheets_[ThemeIndex(theme)].isEmpty()) {
     WarnThemeCssMismatch();
   }
   theme_ = theme;
   ReapplyDocument();
+}
+
+void MarkdownView::SetThemeStyleSheet(MarkdownTheme theme, const QString& css) {
+  const int index = ThemeIndex(theme);
+  if (theme_style_sheets_[index] == css) {
+    return;
+  }
+  theme_style_sheets_[index] = css;
+  if (theme_ == theme) {
+    ReapplyDocument();
+  }
+}
+
+QString MarkdownView::CssForTheme(MarkdownTheme theme) const {
+  const QString& custom = theme_style_sheets_[ThemeIndex(theme)];
+  if (!custom.isEmpty()) {
+    return custom;
+  }
+  return LoadDefaultCss(theme);
+}
+
+void MarkdownView::SetPageBackground(const QColor& color) {
+  if (page_background_set_ && page_background_ == color) {
+    return;
+  }
+  page_background_ = color;
+  page_background_set_ = true;
+  ApplyPageBackground();
+}
+
+void MarkdownView::ApplyPageBackground() {
+  if (html_ == nullptr) {
+    return;
+  }
+  const bool transparent = page_background_.alpha() == 0;
+  auto apply = [&](QWidget* widget) {
+    if (widget == nullptr) {
+      return;
+    }
+    QPalette palette = widget->palette();
+    palette.setColor(QPalette::Base, page_background_);
+    palette.setColor(QPalette::Window, page_background_);
+    widget->setPalette(palette);
+    widget->setAutoFillBackground(!transparent);
+    widget->setAttribute(Qt::WA_TranslucentBackground, transparent);
+  };
+  apply(this);
+  apply(html_);
+  apply(html_->viewport());
 }
 
 MarkdownRendererStatus MarkdownView::renderer_status() const {
@@ -1294,7 +1347,7 @@ void MarkdownView::CommitRender(quint64 request_id) {
       },
       options);
   pending_timings_.assemble_ms = assemble_clock.elapsed();
-  const QString final_html = WrapDocument(body, LoadDefaultCss(theme_));
+  const QString final_html = WrapDocument(body, CssForTheme(theme_));
 
   document_stats_.source_chars = markdown_.size();
   document_stats_.html_chars = final_html.size();
@@ -1486,7 +1539,7 @@ void MarkdownView::ShowMessage(const QString& text) {
   html_->setZoomFactorWithoutRender(zoom_);
   html_->setHtml(WrapDocument(
       QStringLiteral("<p class=\"error\">%1</p>").arg(text.toHtmlEscaped()),
-      LoadDefaultCss(theme_)));
+      CssForTheme(theme_)));
   if (had_outline) {
     emit outlineChanged();
   }
