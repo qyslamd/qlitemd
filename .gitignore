@@ -1,5 +1,6 @@
 build/
 build-*/
+build_*/
 install/
 dist/
 stage/
@@ -12,3 +13,5 @@ temp/
 .vs/
 .vscode/
 CMakeUserPresets.json
+# Local conversation memory; never part of the library.
+docs/memory/
