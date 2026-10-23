@@ -68,6 +68,11 @@ else()
     set(QLITEMD_ARCH x86)
 endif()
 
+# 日志自报家门：CI 与本地排查不用反推缓存里到底配了哪个后端
+message(STATUS
+    "qlitemd backends: SVG=${QLITEMD_SVG_BACKEND}, "
+    "Mermaid=${QLITEMD_MERMAID_BACKEND}, arch=${QLITEMD_ARCH}")
+
 # Prebuilt native backends. Keep them as imported targets so the rest of the
 # build never needs Rust; upgrade instructions live in their VERSION.md files.
 set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")

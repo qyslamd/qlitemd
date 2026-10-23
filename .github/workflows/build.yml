@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   windows:
-    name: Windows Qt${{ matrix.qt_major }} (${{ matrix.msvc_arch }})
+    name: Windows Qt${{ matrix.qt_major }} (${{ matrix.msvc_arch }}, resvg)
     runs-on: windows-2022
     timeout-minutes: 45
     strategy:
@@ -63,7 +63,9 @@ jobs:
           $output = & cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=RelWithDebInfo `
             "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" `
-            "-DQLITEMD_QT_MAJOR=${{ matrix.qt_major }}" 2>&1 |
+            "-DQLITEMD_QT_MAJOR=${{ matrix.qt_major }}" `
+            -DQLITEMD_SVG_BACKEND=resvg `
+            -DQLITEMD_MERMAID_BACKEND=merman 2>&1 |
             Tee-Object -FilePath configure.log
           if ($LASTEXITCODE -ne 0) {
             $tail = ($output | Select-Object -Last 15) -join "%0A"
