@@ -256,11 +256,8 @@ clang-format --dry-run --Werror <file>
   构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
   并把 exe 对应的 PDB 打成 zip。
 - 安装包脚本是 `installer/md_viewer.iss`；使用 Inno Setup 6.x。
-- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe`、
-  `qlitemd-md_viewer-<version>-x64-pdb.zip`、`qlitemd-sdk-<version>-x64.zip`。
-- SDK 包 = Development + Licenses + 三个原生 DLL（resvg/merman/ratex），
-  发布 workflow 会用 `examples/minimal` 对解包后的 SDK 做一次
-  configure/link/run 验证。
+- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe` 和
+  `qlitemd-md_viewer-<version>-x64-pdb.zip`。
 - 发布构建固定 Rust 后端：`resvg + ratex + merman`，不打 QuickJS。
 
 ## 变更流程

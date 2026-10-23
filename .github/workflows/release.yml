@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   windows-x64:
-    name: Windows Qt5 x64 installer + SDK
+    name: Windows Qt5 x64 installer
     runs-on: windows-2022
     timeout-minutes: 45
 
@@ -72,41 +72,6 @@ jobs:
           cmake --install build --prefix stage --component Runtime
           cmake --install build --prefix stage --component Licenses
 
-      # SDK：静态库 + 公开头 + package config + 原生 DLL，供 MSVC 使用方
-      # 直接 find_package(qlitemd CONFIG REQUIRED)。
-      - name: Install SDK
-        shell: pwsh
-        run: |
-          cmake --install build --prefix sdk-stage --component Development
-          cmake --install build --prefix sdk-stage --component Licenses
-          New-Item -ItemType Directory -Force sdk-stage/bin | Out-Null
-          Copy-Item stage/bin/resvg.dll sdk-stage/bin/ -Force
-          Copy-Item stage/bin/merman_ffi.dll sdk-stage/bin/ -Force
-          Copy-Item stage/bin/ratex_ffi.dll sdk-stage/bin/ -Force
-
-      - name: Verify SDK consumer
-        shell: pwsh
-        run: |
-          cmake -S examples/minimal -B sdk-consumer -G Ninja `
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
-            "-DCMAKE_PREFIX_PATH=$env:GITHUB_WORKSPACE/sdk-stage;$env:QT_ROOT_DIR"
-          cmake --build sdk-consumer
-          $env:PATH = "$env:GITHUB_WORKSPACE/sdk-stage/bin;$env:QT_ROOT_DIR/bin;$env:PATH"
-          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR/plugins"
-          ./sdk-consumer/qlitemd_minimal.exe
-
-      - name: Package SDK
-        shell: pwsh
-        run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          $dist = Join-Path $env:GITHUB_WORKSPACE 'dist'
-          New-Item -ItemType Directory -Force $dist | Out-Null
-          $sdk_dir = Join-Path $dist "qlitemd-sdk-$version-x64"
-          if (Test-Path $sdk_dir) { Remove-Item -Recurse -Force $sdk_dir }
-          Copy-Item -Recurse sdk-stage $sdk_dir
-          Compress-Archive -Path "$sdk_dir/*" `
-            -DestinationPath "$dist/qlitemd-sdk-$version-x64.zip" -Force
-
       - name: Build installer
         shell: pwsh
         run: |
@@ -152,7 +117,6 @@ jobs:
           path: |
             dist/*-setup.exe
             dist/*-pdb.zip
-            dist/qlitemd-sdk-*.zip
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -161,4 +125,3 @@ jobs:
           files: |
             dist/*-setup.exe
             dist/*-pdb.zip
-            dist/qlitemd-sdk-*.zip
