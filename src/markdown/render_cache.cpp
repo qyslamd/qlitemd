@@ -21,7 +21,8 @@ namespace {
 
 // 只覆盖 C++ 后处理逻辑的变化：改了清理/内联/画图逻辑就加一。
 // v2：条目从 base64 tag 文本换成 CachedImage 二进制
-constexpr int kRenderPipelineVersion = 2;
+// v3：SVG 按 intrinsic/target 缩放，修复 pt 单位公式右侧裁切
+constexpr int kRenderPipelineVersion = 3;
 
 // 每写 N 条才做一次目录扫描；上限小（测试）时每次写都查
 int PruneCheckEvery(const RenderCacheConfig& config) {

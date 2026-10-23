@@ -4,6 +4,8 @@
 #include <QDateTime>
 #include <QDir>
 #include <QGuiApplication>
+#include <QImage>
+#include <QSizeF>
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
@@ -14,6 +16,7 @@
 #include "markdown_engine_state.h"
 #include "markdown_theme.h"
 #include "markdown_types.h"
+#include "svg_rasterizer.h"
 
 // 公式渲染核心（RenderFormulaOnEngine）的端到端判据：加载 qrc 里的 MathJax
 // 载荷 → QuickJS 里 tex→svg → 栅格化成 PNG 产物。整条链路要么全通要么全不通，
@@ -62,6 +65,34 @@ testing::AssertionResult ValidImage(const RenderedImage& image) {
            << " 小于摆放 " << image.layout_width << "x" << image.layout_height;
   }
   return testing::AssertionSuccess();
+}
+
+// SVG 的 width/height 可能带 pt/ex 单位，resvg 的 intrinsic size 与
+// viewBox 不一致；必须按目标位图/intrinsic 比例缩放，否则右侧内容会
+// 被裁掉。这里用右边缘的矩形钉住这个回归。
+TEST(SvgRasterizerTest, PtUnitsFillTargetWithoutClipping) {
+  const QByteArray svg =
+      "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 20\" "
+      "width=\"100pt\" height=\"20pt\">"
+      "<rect x=\"90\" y=\"0\" width=\"10\" height=\"20\" "
+      "fill=\"#000000\"/></svg>";
+  QImage image;
+  QString error;
+  ASSERT_TRUE(
+      RasterizeSvg(svg, QSizeF(100, 20), 2.0, QString(), &image, &error))
+      << error.toStdString();
+  ASSERT_EQ(image.size(), QSize(200, 40));
+
+  bool right_ink = false;
+  for (int y = 0; y < image.height() && !right_ink; ++y) {
+    for (int x = 180; x < image.width(); ++x) {
+      if (image.pixelColor(x, y).alpha() > 0) {
+        right_ink = true;
+        break;
+      }
+    }
+  }
+  EXPECT_TRUE(right_ink) << "pt 单位的 SVG 右侧被裁掉了";
 }
 
 TEST(FormulaRendererTest, RendersInlineFormulaToImage) {

@@ -115,9 +115,20 @@ bool RasterizeSvg(const QByteArray& svg, const QSizeF& logical_size,
   }
   QImage rendered(width, height, QImage::Format_RGBA8888_Premultiplied);
   rendered.fill(0);
+  // SVG 的 width/height 可能带 pt/ex 等单位，resvg 的 intrinsic size 因此
+  // 不等于 viewBox 尺寸；按 intrinsic 到目标位图的比值缩放，避免把
+  // 公式/图表右侧裁掉。px 单位下该比值就是调用方传入的 scale。
+  const resvg_size intrinsic = resvg_get_image_size(tree);
+  if (intrinsic.width <= 0.0f || intrinsic.height <= 0.0f) {
+    resvg_tree_destroy(tree);
+    if (error != nullptr) {
+      *error = QStringLiteral("resvg intrinsic size is empty");
+    }
+    return false;
+  }
   resvg_transform transform = resvg_transform_identity();
-  transform.a = static_cast<float>(scale);
-  transform.d = static_cast<float>(scale);
+  transform.a = static_cast<float>(width) / intrinsic.width;
+  transform.d = static_cast<float>(height) / intrinsic.height;
   resvg_render(tree, transform, static_cast<uint32_t>(width),
                static_cast<uint32_t>(height),
                reinterpret_cast<char*>(rendered.bits()));
