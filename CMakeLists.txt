@@ -244,6 +244,8 @@ install(FILES
     "$<TARGET_FILE:gumbo>"
     "$<TARGET_FILE:md4c>"
     "$<TARGET_FILE:qjs>"
+    "$<TARGET_FILE:tree_sitter_core>"
+    "$<TARGET_FILE:tree_sitter_grammars>"
     DESTINATION lib
     COMPONENT Development)
 
