@@ -260,10 +260,13 @@ title bar that merges the menu, navigation, zoom and search, a right-hand
 outline, segmented sidebar tabs with inline bookmark stars, focus mode,
 Mica/acrylic window materials, a status bar with document count and build
 backend labels, an opt-in prototype reading style (left-aligned page with
-a 760px text measure, cards, transparent surface) with a breadcrumb, and a
-large-file confirmation. The existing zoom, recent files, image
-preview/save-as, formula and Mermaid source inspection, HTML/PDF export and
-render-status panel remain. It is also the reference
+a 760px text measure, cards, transparent surface) with a breadcrumb, a
+Ctrl+P quick-open palette for headings, recent files, documents and
+commands, adjustable reader typography and measure, a welcome page with
+recent documents and reading progress, a keyboard-accessible image
+lightbox, and a large-file confirmation. The existing zoom, recent files,
+image preview/save-as, formula and Mermaid source inspection, HTML/PDF
+export and render-status panel remain. It is also the reference
 integration for host-side policy such as link handling and settings.
 
 ## Layout

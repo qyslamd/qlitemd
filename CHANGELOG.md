@@ -4,6 +4,22 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Add a Ctrl+P quick-open palette that searches the current document's
+  headings, recent documents, document-set files and common commands,
+  with fuzzy ranking and Enter/click activation.
+- Add an opt-in reader appearance popup (`Aa`) for font size, line
+  height and measure, persisted under `reading/*` and injected through
+  the new `MarkdownView::AppendThemeStyleSheet()`. The append layer
+  keeps the base theme, `MD_MARKDOWN_CSS` and explicit host CSS intact.
+- Show a welcome page when no document is open, with open actions, the
+  five most recent files and shortcut hints. Add a reading progress
+  line, a floating back-to-top button and an estimated reading time;
+  `MarkdownView::DocumentHeight()`/`ViewportHeight()` expose the needed
+  metrics.
+- Replace the plain image preview dialog with a full-window lightbox:
+  wheel zoom, drag pan, double-click fit/100%, plus source and save
+  actions for formulas/Mermaid. `MarkdownView::GeneratedImageUrls()`
+  exposes those tokens so keyboards can reach diagrams from quick open.
 - Change the opt-in prototype reading layout from a centered 700 px
   column to a left-aligned page: headings, body text, lists and quotes
   cap at 760 px, while Mermaid diagrams, code blocks and tables use the
