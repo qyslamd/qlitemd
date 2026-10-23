@@ -31,11 +31,39 @@ Markdown -> md4c -> qlitehtml/litehtml -> QWidget
 维护者负责需求、架构取舍、审查与最终验证。提交历史不添加 AI 共同作者
 署名，也不使用默认的 Claude 署名。
 
+### 为了避免 AI Agent 在 Windows 上和 `cmd` `powershell` `pwsh`斗智斗勇的说明
+大多数的 AI Agent 默认习惯使用 bash 的环境来处理脚本。在 windows 上，通常只有 cmd 和旧版本的 powershell
+因此。
+- 默认编写 `pwsh` 脚本或者 `python` 脚本来处理
+- 除非是参考资料给的文件，否则统一使用`UTF-8`编码
+- MSVC编译器也统一增加编译器选项 /utf-8 
+- 只要链接了 Qt 的 共享库的的可执行程序，在执行它们之前，必须这样做：
+  设置和Qt构建版本相匹配的两个环境变量：
+  - `PATH`:X:\path\to\qmake.exe\..\
+  - `QT_PLUGIN_PATH`:X:\path\to\qmake.exe\..\plugins
+  - 举个例子：
+  ```bat
+  @echo off
+  setlocal
+
+  set "PATH=D:/Qt22/5.15.2/msvc2019/bin;%PATH%"
+  set "QT_PLUGIN_PATH=D:/Qt22/5.15.2/msvc2019/plugins"
+
+  chcp 65001 >nul
+
+  cd /d "D:\trae_workspace\qlitemd\build_qt515_resvg_x86\bin"
+
+  rem Explicit .\ prefix: with NoDefaultCurrentDirectoryInExePath in effect,
+  rem a bare filename is not resolved from the current directory.
+  .\md_viewer.exe  %*
+  ```
+
 ## 常用命令
 
 ### 构建
 
 Windows 下先在 Visual Studio 开发者命令行中准备 MSVC 环境。
+本地开发、验证与发布统一使用 `RelWithDebInfo`。
 
 ```bash
 cmake -S . -B build -G Ninja \
