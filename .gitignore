@@ -13,5 +13,7 @@ temp/
 .vs/
 .vscode/
 CMakeUserPresets.json
+# CodeGraph local index; never part of the library.
+.codegraph/
 # Local conversation memory; never part of the library.
 docs/memory/
