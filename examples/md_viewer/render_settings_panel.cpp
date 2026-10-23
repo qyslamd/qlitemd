@@ -137,7 +137,7 @@ void RenderSettingsPanel::initUi() {
   reading_style_->setObjectName(QStringLiteral("readingStyleCombo"));
   reading_style_->addItem(QStringLiteral("库默认"),
                           static_cast<int>(ReadingStyle::kLibraryDefault));
-  reading_style_->addItem(QStringLiteral("原型（700px + 卡片）"),
+  reading_style_->addItem(QStringLiteral("原型（左对齐 + 卡片）"),
                           static_cast<int>(ReadingStyle::kPrototype));
   reading_style_->setToolTip(
       QStringLiteral("原型阅读样式为 opt-in；库默认样式保持不变"));

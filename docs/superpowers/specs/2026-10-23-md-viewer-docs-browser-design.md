@@ -319,8 +319,8 @@ struct SearchHit {          // 单条命中
   `SetPageBackground(color)`，宿主可按主题注入 CSS、选择透明/不透明
   页面。`md_viewer` 提供 opt-in 的原型阅读样式
   （`examples/md_viewer/resources/themes/viewer-light.css` /
-  `viewer-dark.css`：700px 阅读列、卡片、透明页面）和阅读区上方
-  面包屑；库默认样式不变。
+  `viewer-dark.css`：左对齐阅读页，正文限 760px，图表/代码/表格
+  全宽，卡片，透明页面）和阅读区上方面包屑；库默认样式不变。
 - 深色主题：FluentUI 的局部 palette 不会跟随 `qApp->setPalette`，
   切主题时显式把 `style()->standardPalette()` 压给 qApp，并递归刷新
   状态栏、侧栏、大纲和阅读区的 palette。页面背景由

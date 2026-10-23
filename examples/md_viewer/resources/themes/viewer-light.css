@@ -12,9 +12,13 @@ body {
 }
 
 .md-page {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 42px 40px 72px;
+  margin: 0;
+  padding: 42px 40px 72px 96px;
+}
+
+/* 正文保持可读列宽，图表/代码/表格使用页面全宽 */
+h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote {
+  max-width: 760px;
 }
 
 h1 {

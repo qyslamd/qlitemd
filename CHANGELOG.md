@@ -4,6 +4,11 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Change the opt-in prototype reading layout from a centered 700 px
+  column to a left-aligned page: headings, body text, lists and quotes
+  cap at 760 px, while Mermaid diagrams, code blocks and tables use the
+  full reader width. Wide sequence diagrams were previously scaled down
+  to about 620 px and became unreadable; 2x sampling could not help.
 - md_viewer now targets documentation-set reading: a recursive tree that
   only shows directories containing `.md`/`.markdown`, a filename/path
   filter, file-level bookmarks with a Ctrl+D star, and global full-text
@@ -24,9 +29,9 @@ All notable changes to qlitemd are documented here.
   entries miss; `SvgRasterizerTest.PtUnitsFillTargetWithoutClipping` pins it.
 - Add `MarkdownView::SetThemeStyleSheet()` and `SetPageBackground()`:
   hosts can inject per-theme CSS and choose an opaque or transparent page
-  fill. `md_viewer` gains an opt-in prototype reading style (700px column,
-  cards, transparent surface) with a breadcrumb; the library default style
-  and the existing `MD_MARKDOWN_CSS` tweak path remain unchanged.
+  fill. `md_viewer` gains an opt-in prototype reading style (cards,
+  transparent surface) with a breadcrumb; the library default style and
+  the existing `MD_MARKDOWN_CSS` tweak path remain unchanged.
 - Align `md_viewer` with the UI prototype: outline moved to a right-hand
   column, segmented sidebar tabs with icons, filter above the tabs, a
   single-column document tree with folder/file icons, per-folder counts,
