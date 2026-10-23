@@ -66,6 +66,9 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+# markdown_engine_state.h 是内部头，直接包含 quickjs.h
+target_include_directories(test_mermaid_renderer PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rdparty/quickjs)
 set_tests_properties(test_mermaid_renderer PROPERTIES TIMEOUT 120)
 
 # "复制按钮"链路里属于本模块的一段：copy: 链接 → 原文（纯函数）。

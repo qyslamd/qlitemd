@@ -13,13 +13,15 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QStringList>
+#include <QtEndian>
 
 #include "markdown_bytecode.h"
 
 namespace {
 
-// 只覆盖 C++ 后处理逻辑的变化：改了清理/内联/画图逻辑就加一
-constexpr int kRenderPipelineVersion = 1;
+// 只覆盖 C++ 后处理逻辑的变化：改了清理/内联/画图逻辑就加一。
+// v2：条目从 base64 tag 文本换成 CachedImage 二进制
+constexpr int kRenderPipelineVersion = 2;
 
 // 每写 N 条才做一次目录扫描；上限小（测试）时每次写都查
 int PruneCheckEvery(const RenderCacheConfig& config) {
@@ -162,40 +164,66 @@ QString MakeRenderCacheKey(const QString& kind, const QString& payload,
   return QString::fromLatin1(hash.result().toHex());
 }
 
+namespace {
+
+// 条目布局：magic[8] + layout_w[i32le] + layout_h[i32le] + png_len[i32le]
+// + PNG 字节。自包含，无 sidecar
+constexpr char kImageMagic[8] = {'Q', 'L', 'I', 'T', 'I', 'M', 'G', '1'};
+constexpr int kImageHeaderSize = 8 + 3 * 4;
+
+void AppendInt32(QByteArray* out, qint32 value) {
+  char raw[4];
+  qToLittleEndian(value, raw);
+  out->append(raw, 4);
+}
+
+qint32 ReadInt32(const char* data) { return qFromLittleEndian<qint32>(data); }
+
+}  // namespace
+
 bool LoadRenderCacheEntry(const RenderCacheConfig& config, const QString& kind,
-                          const QString& key, QString* tag) {
-  if (!config.enabled || tag == nullptr) {
+                          const QString& key, CachedImage* image) {
+  if (!config.enabled || image == nullptr) {
     return false;
   }
   const QString directory = KindDirectory(config, kind);
   if (directory.isEmpty()) {
     return false;
   }
-  const QString path = QDir(directory).filePath(key + QStringLiteral(".txt"));
+  const QString path = QDir(directory).filePath(key + QStringLiteral(".bin"));
   QFile file(path);
   if (!file.open(QIODevice::ReadOnly)) {
     return false;
   }
   const qint64 size = file.size();
-  // 空文件、超过单条预算、非 <img 开头或截断的内容都按 miss 处理，
-  // 删掉让下一次写入覆盖
-  const bool bad_size =
-      size <= 0 || (config.max_bytes > 0 && size > config.max_bytes);
+  // 空文件、超过单条预算、magic/长度不符都按 miss 处理，删掉让下一次
+  // 写入覆盖（v1 的 .txt base64 条目因此自然淘汰）
+  const bool bad_size = size <= kImageHeaderSize ||
+                        (config.max_bytes > 0 && size > config.max_bytes);
   const QByteArray data = bad_size ? QByteArray() : file.readAll();
-  const QString text = QString::fromUtf8(data);
-  if (bad_size || !text.startsWith(QLatin1String("<img")) ||
-      !text.endsWith(QLatin1Char('>'))) {
+  if (bad_size || std::memcmp(data.constData(), kImageMagic, 8) != 0) {
     file.close();
     QFile::remove(path);
     return false;
   }
-  *tag = text;
+  const qint32 width = ReadInt32(data.constData() + 8);
+  const qint32 height = ReadInt32(data.constData() + 12);
+  const qint32 png_len = ReadInt32(data.constData() + 16);
+  if (width < 1 || height < 1 || png_len < 1 ||
+      qint64(png_len) != size - kImageHeaderSize) {
+    file.close();
+    QFile::remove(path);
+    return false;
+  }
+  image->png_bytes = data.mid(kImageHeaderSize, png_len);
+  image->layout_width = width;
+  image->layout_height = height;
   return true;
 }
 
 void StoreRenderCacheEntry(const RenderCacheConfig& config, const QString& kind,
-                           const QString& key, const QString& tag) {
-  if (!config.enabled || tag.isEmpty()) {
+                           const QString& key, const CachedImage& image) {
+  if (!config.enabled || image.isNull()) {
     return;
   }
   const QString directory = KindDirectory(config, kind);
@@ -203,12 +231,18 @@ void StoreRenderCacheEntry(const RenderCacheConfig& config, const QString& kind,
     qWarning() << "markdown: cannot create render cache directory" << directory;
     return;
   }
-  QSaveFile file(QDir(directory).filePath(key + QStringLiteral(".txt")));
+  QByteArray data;
+  data.reserve(kImageHeaderSize + image.png_bytes.size());
+  data.append(kImageMagic, 8);
+  AppendInt32(&data, image.layout_width);
+  AppendInt32(&data, image.layout_height);
+  AppendInt32(&data, static_cast<qint32>(image.png_bytes.size()));
+  data.append(image.png_bytes);
+  QSaveFile file(QDir(directory).filePath(key + QStringLiteral(".bin")));
   if (!file.open(QIODevice::WriteOnly)) {
     qWarning() << "markdown: cannot write render cache entry";
     return;
   }
-  const QByteArray data = tag.toUtf8();
   if (file.write(data) != data.size() || !file.commit()) {
     qWarning() << "markdown: render cache commit failed";
     return;

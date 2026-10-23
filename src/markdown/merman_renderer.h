@@ -19,9 +19,10 @@ class MermanEngine {
 
   bool EnsureLoaded();
   MarkdownEngineStatus status() const;
-  QString Render(const QString& code, MarkdownTheme theme,
-                 const MarkdownDiagnostics& diagnostics,
-                 QVector<MarkdownRenderArtifact>* artifacts = nullptr);
+  // isNull() = 失败。产物带位图与 PNG，GUI 直接 QPixmap::fromImage
+  RenderedImage Render(const QString& code, MarkdownTheme theme,
+                       const MarkdownDiagnostics& diagnostics,
+                       QVector<MarkdownRenderArtifact>* artifacts = nullptr);
 
  private:
   struct Impl;

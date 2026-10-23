@@ -44,7 +44,9 @@ TEST(RenderContextTest, SetOptionsTrimsExistingEntriesImmediately) {
       MarkdownRenderContextAccess::State(context);
   for (int i = 0; i < 4; ++i) {
     state.highlight_cache.Insert(QString::number(i), QStringLiteral("v"));
-    state.formula_cache.Insert(QString::number(i), QStringLiteral("v"));
+    // formula_cache 是 png-only 驻留：内容不重要，字节参与成本
+    state.formula_cache.Insert(QString::number(i),
+                               CachedImage{QByteArrayLiteral("png"), 2, 1});
   }
   EXPECT_EQ(state.highlight_cache.entries.size(), 4);
   EXPECT_EQ(state.formula_cache.entries.size(), 4);

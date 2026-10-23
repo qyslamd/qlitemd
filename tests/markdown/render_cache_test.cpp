@@ -10,8 +10,8 @@
 
 #include "markdown_types.h"
 
-// 持久缓存的判据：key 随输入变化、命中/损坏/关闭/淘汰/清理。目录一律用
-// 临时目录，绝不碰用户真实的 CacheLocation
+// 持久缓存的判据：key 随输入变化、命中/损坏/关闭/淘汰/清理、二进制条目
+// round-trip。目录一律用临时目录，绝不碰用户真实的 CacheLocation
 namespace {
 
 RenderCacheConfig ConfigFor(const QString& root) {
@@ -27,7 +27,16 @@ QStringList CacheFiles(const QString& root, const QString& kind) {
   return QDir(QDir(root).filePath(kind)).entryList(QDir::Files);
 }
 
-const QString kTag = QStringLiteral("<img src=\"data:image/png;base64,AA\">");
+// 内容无所谓（缓存层不做 PNG 校验），关键是有字节
+const QByteArray kPng = QByteArrayLiteral("\x89PNG\r\n\x1a\n fake-bytes");
+
+CachedImage SampleImage() {
+  CachedImage image;
+  image.png_bytes = kPng;
+  image.layout_width = 13;
+  image.layout_height = 7;
+  return image;
+}
 
 }  // namespace
 
@@ -58,13 +67,18 @@ TEST(RenderCacheTest, StoresAndLoadsEntry) {
   const QString key = MakeRenderCacheKey(
       QStringLiteral("formula"), QStringLiteral("x"), QStringLiteral("v"));
 
-  StoreRenderCacheEntry(config, QStringLiteral("formula"), key, kTag);
+  StoreRenderCacheEntry(config, QStringLiteral("formula"), key, SampleImage());
   ASSERT_EQ(CacheFiles(dir.path(), QStringLiteral("formula")).size(), 1);
+  // v2 起条目是二进制 .bin；v1 的 .txt 命名随流水线版本一并淘汰
+  EXPECT_EQ(CacheFiles(dir.path(), QStringLiteral("formula")).at(0),
+            key + QStringLiteral(".bin"));
 
-  QString loaded;
+  CachedImage loaded;
   EXPECT_TRUE(
       LoadRenderCacheEntry(config, QStringLiteral("formula"), key, &loaded));
-  EXPECT_EQ(loaded, kTag);
+  EXPECT_EQ(loaded.png_bytes, kPng);
+  EXPECT_EQ(loaded.layout_width, 13);
+  EXPECT_EQ(loaded.layout_height, 7);
 }
 
 TEST(RenderCacheTest, CorruptEntriesBecomeMissesAndAreRemoved) {
@@ -75,16 +89,42 @@ TEST(RenderCacheTest, CorruptEntriesBecomeMissesAndAreRemoved) {
       QStringLiteral("formula"), QStringLiteral("x"), QStringLiteral("v"));
   const QString path =
       QDir(QDir(dir.path()).filePath(QStringLiteral("formula")))
-          .filePath(key + QStringLiteral(".txt"));
+          .filePath(key + QStringLiteral(".bin"));
   ASSERT_TRUE(QDir().mkpath(QFileInfo(path).absolutePath()));
 
-  // 非 <img 内容
+  // magic 不符（含 v1 的 base64 文本条目）
   {
     QFile file(path);
     ASSERT_TRUE(file.open(QIODevice::WriteOnly));
-    file.write("junk");
+    file.write("<img src=\"data:image/png;base64,AA\">");
   }
-  QString loaded;
+  CachedImage loaded;
+  EXPECT_FALSE(
+      LoadRenderCacheEntry(config, QStringLiteral("formula"), key, &loaded));
+  EXPECT_FALSE(QFile::exists(path));
+
+  // 截断：header 合法但 PNG 长度对不上
+  {
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write("QLITIMG1");
+    const char ints[12] = {13, 0, 0, 0, 7, 0, 0, 0, 99, 0, 0, 0};
+    file.write(ints, 12);
+    file.write("short");
+  }
+  EXPECT_FALSE(
+      LoadRenderCacheEntry(config, QStringLiteral("formula"), key, &loaded));
+  EXPECT_FALSE(QFile::exists(path));
+
+  // 非法摆放尺寸
+  {
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write("QLITIMG1");
+    const char ints[12] = {0, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0};
+    file.write(ints, 12);
+    file.write("abcd");
+  }
   EXPECT_FALSE(
       LoadRenderCacheEntry(config, QStringLiteral("formula"), key, &loaded));
   EXPECT_FALSE(QFile::exists(path));
@@ -99,7 +139,7 @@ TEST(RenderCacheTest, CorruptEntriesBecomeMissesAndAreRemoved) {
   EXPECT_FALSE(QFile::exists(path));
 }
 
-TEST(RenderCacheTest, EmptyTagIsNeverStored) {
+TEST(RenderCacheTest, NullImageIsNeverStored) {
   QTemporaryDir dir;
   ASSERT_TRUE(dir.isValid());
   const RenderCacheConfig config = ConfigFor(dir.path());
@@ -107,7 +147,7 @@ TEST(RenderCacheTest, EmptyTagIsNeverStored) {
       config, QStringLiteral("formula"),
       MakeRenderCacheKey(QStringLiteral("formula"), QStringLiteral("x"),
                          QStringLiteral("v")),
-      QString());
+      CachedImage{});
   EXPECT_TRUE(CacheFiles(dir.path(), QStringLiteral("formula")).isEmpty());
 }
 
@@ -118,11 +158,11 @@ TEST(RenderCacheTest, DisabledCacheSkipsDisk) {
   config.enabled = false;
   const QString key = MakeRenderCacheKey(
       QStringLiteral("formula"), QStringLiteral("x"), QStringLiteral("v"));
-  StoreRenderCacheEntry(config, QStringLiteral("formula"), key, kTag);
+  StoreRenderCacheEntry(config, QStringLiteral("formula"), key, SampleImage());
   EXPECT_FALSE(
       QDir(QDir(dir.path()).filePath(QStringLiteral("formula"))).exists());
 
-  QString loaded;
+  CachedImage loaded;
   EXPECT_FALSE(
       LoadRenderCacheEntry(config, QStringLiteral("formula"), key, &loaded));
 }
@@ -136,7 +176,8 @@ TEST(RenderCacheTest, PrunesDownToEightyPercent) {
   for (int i = 0; i < 8; ++i) {
     const QString key = MakeRenderCacheKey(
         QStringLiteral("formula"), QString::number(i), QStringLiteral("v"));
-    StoreRenderCacheEntry(config, QStringLiteral("formula"), key, kTag);
+    StoreRenderCacheEntry(config, QStringLiteral("formula"), key,
+                          SampleImage());
   }
   EXPECT_LE(CacheFiles(dir.path(), QStringLiteral("formula")).size(),
             config.max_entries);
@@ -182,14 +223,14 @@ TEST(RenderCacheTest, ClearKeepsForeignFilesInExplicitDirectory) {
   ASSERT_TRUE(
       QDir().mkpath(QDir(dir.path()).filePath(QStringLiteral("mermaid"))));
   {
-    QFile formula(QDir(dir.path()).filePath(QStringLiteral("formula/a.txt")));
+    QFile formula(QDir(dir.path()).filePath(QStringLiteral("formula/a.bin")));
     ASSERT_TRUE(formula.open(QIODevice::WriteOnly));
-    formula.write(kTag.toUtf8());
+    formula.write("x");
   }
   {
-    QFile mermaid(QDir(dir.path()).filePath(QStringLiteral("mermaid/b.txt")));
+    QFile mermaid(QDir(dir.path()).filePath(QStringLiteral("mermaid/b.bin")));
     ASSERT_TRUE(mermaid.open(QIODevice::WriteOnly));
-    mermaid.write(kTag.toUtf8());
+    mermaid.write("x");
   }
   const QString foreign = QDir(dir.path()).filePath(QStringLiteral("keep.txt"));
   {

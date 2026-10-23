@@ -279,9 +279,9 @@ QByteArray EngineOptions(MarkdownTheme theme) {
   return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-QString MermanSvgToImgTag(const QString& svg,
-                          const MarkdownDiagnostics& diagnostics,
-                          QVector<MarkdownRenderArtifact>* artifacts) {
+RenderedImage MermanSvgToImage(const QString& svg,
+                               const MarkdownDiagnostics& diagnostics,
+                               QVector<MarkdownRenderArtifact>* artifacts) {
   static std::atomic<int> dump_index{0};
   const int index = dump_index.fetch_add(1, std::memory_order_relaxed) + 1;
 
@@ -291,7 +291,7 @@ QString MermanSvgToImgTag(const QString& svg,
     if (diagnostics.trace) {
       TraceRender(diagnostics, QStringLiteral("merman svg: no <svg> root"));
     }
-    return QString();
+    return {};
   }
   const QString bare = svg.mid(start, end - start + 6);
   const QString raw_name = QStringLiteral("mermaid/%1-merman.svg").arg(index);
@@ -317,7 +317,7 @@ QString MermanSvgToImgTag(const QString& svg,
         TraceRender(diagnostics,
                     QStringLiteral("merman svg: %1").arg(size_error));
       }
-      return QString();
+      return {};
     }
     width = intrinsic.width();
     height = intrinsic.height();
@@ -328,7 +328,7 @@ QString MermanSvgToImgTag(const QString& svg,
           diagnostics,
           QStringLiteral("merman svg: bad size %1x%2").arg(width).arg(height));
     }
-    return QString();
+    return {};
   }
 
   qreal scale = 2.0;
@@ -346,7 +346,7 @@ QString MermanSvgToImgTag(const QString& svg,
       TraceRender(diagnostics,
                   QStringLiteral("merman svg: %1").arg(raster_error));
     }
-    return QString();
+    return {};
   }
 
   QBuffer buffer;
@@ -355,18 +355,18 @@ QString MermanSvgToImgTag(const QString& svg,
     if (diagnostics.trace) {
       TraceRender(diagnostics, QStringLiteral("merman png: save failed"));
     }
-    return QString();
+    return {};
   }
   const QString png_name = QStringLiteral("mermaid/%1-merman.png").arg(index);
   if (DumpEnabled(diagnostics, png_name)) {
     AddArtifact(diagnostics, png_name, buffer.data(), artifacts);
   }
-  return QStringLiteral(
-             "<img class=\"mermaid\" src=\"data:image/png;base64,%1\" "
-             "width=\"%2\" height=\"%3\">")
-      .arg(QString::fromLatin1(buffer.data().toBase64()))
-      .arg(qRound(width))
-      .arg(qRound(height));
+  RenderedImage out;
+  out.image = std::move(image);
+  out.png_bytes = buffer.data();
+  out.layout_width = qRound(width);
+  out.layout_height = qRound(height);
+  return out;
 }
 
 }  // namespace
@@ -463,15 +463,15 @@ MarkdownEngineStatus MermanEngine::status() const {
   return status;
 }
 
-QString MermanEngine::Render(const QString& code, MarkdownTheme theme,
-                             const MarkdownDiagnostics& diagnostics,
-                             QVector<MarkdownRenderArtifact>* artifacts) {
+RenderedImage MermanEngine::Render(const QString& code, MarkdownTheme theme,
+                                   const MarkdownDiagnostics& diagnostics,
+                                   QVector<MarkdownRenderArtifact>* artifacts) {
   if (!EnsureLoaded()) {
     if (diagnostics.trace) {
       TraceRender(diagnostics,
                   QStringLiteral("merman: not loaded: %1").arg(impl_->error));
     }
-    return QString();
+    return {};
   }
   static std::atomic<uint64_t> diagram_id{0};
   const QByteArray source = code.toUtf8();
@@ -501,7 +501,7 @@ QString MermanEngine::Render(const QString& code, MarkdownTheme theme,
     }
     qWarning() << "merman render failed:" << error;
     impl_->api.result_free(&result);
-    return QString();
+    return {};
   }
   const QString svg = BufferToString(result.data);
   impl_->api.result_free(&result);
@@ -509,9 +509,9 @@ QString MermanEngine::Render(const QString& code, MarkdownTheme theme,
     if (diagnostics.trace) {
       TraceRender(diagnostics, QStringLiteral("merman render: empty svg"));
     }
-    return QString();
+    return {};
   }
-  return MermanSvgToImgTag(svg, diagnostics, artifacts);
+  return MermanSvgToImage(svg, diagnostics, artifacts);
 }
 
 MarkdownEngineStatus MermanEngineStatus(const MermanEngine& engine) {

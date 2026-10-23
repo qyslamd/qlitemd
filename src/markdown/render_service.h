@@ -10,9 +10,11 @@
 
 struct MarkdownRenderResult {
   MarkdownRenderTask task;
-  QString rendered;
-  // ok 表示引擎调用是否成功。Highlight 失败时 rendered 仍是可用的纯转义
-  // 兜底，不要仅凭 ok=false 丢弃 rendered
+  QString rendered;     // 仅 Highlight：失败时仍是可用的纯转义兜底，
+                        // 不要仅凭 ok=false 丢弃 rendered
+  RenderedImage image;  // 仅 Formula/Mermaid：isNull() = 失败或取消
+  // ok 表示引擎调用是否成功。Formula/Mermaid 等价于 !image.isNull()；
+  // Highlight 失败时 rendered 仍有兜底值
   bool ok = false;
   bool cancelled = false;
   bool engine_load_failed = false;

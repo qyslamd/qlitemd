@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <variant>
 
 #include <QElapsedTimer>
 #include <QHash>
@@ -53,12 +54,13 @@ struct MarkdownImageInfo {
   bool display = false;
 };
 
-// 把渲染器产出的 <img src="data:image/png;base64,..."> 的 src 换成 token。
-// 成功返回替换后的 tag 并写 pixmap_out；失败原样返回 renderer_tag，
-// pixmap_out 为空。只改 src 属性值，class/width/height 与属性顺序不动。
-// 上限：PNG 字节与像素字节均 64MiB，单边 32767
-QString TokenizeImageTag(const QString& renderer_tag, const QString& token,
-                         QPixmap* pixmap_out);
+// 当前文档 pin 住的图片：位图供 provider 绘制；png_bytes 非空时导出直写
+// （worker 编的那次 PNG 就是落盘那次），为空（跨代缓存命中路径）则导出
+// 回退 QPixmap 重编码
+struct PinnedImage {
+  QPixmap pixmap;
+  QByteArray png_bytes;
+};
 
 // Markdown 预览控件：加载 .md、套内置样式渲染、跟随文件变化重载。
 // 只做"渲染"这一件事——链接点击原样抛出（copy: 的代码块复制链接除外，那
@@ -195,8 +197,7 @@ class MarkdownView : public QWidget {
   MarkdownRenderContext& render_context();
   const MarkdownRenderContext& render_context() const;
   // 清本视图的公式/Mermaid 内存缓存与跨 ApplyDocument 图片缓存；
-  // 当前文档已生成的 token 仍保留，PDF 导出不会缺图。
-  // 全局 ClearFormulaCache() 清的是进程默认上下文，对视图无效
+  // 当前文档已生成的 token 仍保留，PDF 导出不会缺图
   void ClearRenderCaches();
   // 持久化渲染缓存（默认开）：公式/Mermaid 的最终 <img> 落在
   // QStandardPaths::CacheLocation/markdown-render；SetRenderCacheDirectory
@@ -255,10 +256,13 @@ class MarkdownView : public QWidget {
   void OnFileChanged();
   void OnReloadTick();
   void SetZoom(qreal factor);
-  // 注册 renderer tag：命中跨文档缓存就直接用，否则解码一次再 token 化。
-  // 当前文档的 token 一律 pin 进 document_pixmaps_，provider 只读这一层
-  QString RegisterImageTag(const QString& token, const QString& renderer_tag,
-                           QHash<QString, QPixmap>* pixmaps);
+  // 由 worker 产物生成 token 图并拼 <img>：命中跨文档缓存就直接复用，
+  // 否则 fromImage 一次。image 的位图/PNG 都来自本代渲染或缓存解码，
+  // GUI 线程不再有 base64/PNG 解码以外的字符串手术。当前文档的 token
+  // 一律 pin 进 document_pixmaps_，provider 只读这一层
+  QString RegisterImage(const QString& token, const RenderedImage& image,
+                        const QString& css_class,
+                        QHash<QString, PinnedImage>* pixmaps);
   // 定时器到点：应用最后一档缩放
   void ApplyPendingZoom();
   // 立刻应用挂起的缩放（查找/锚点跳转前调用）
@@ -295,8 +299,8 @@ class MarkdownView : public QWidget {
   QHash<QString, QString> code_blocks_;
   // 标题 slug → 元素 id，供页内锚点反查；同样每次 ApplyDocument 重建
   QHash<QString, QString> heading_ids_;
-  // 当前文档的图片 token → pixmap；ApplyDocument 开头清空，provider 只读它
-  QHash<QString, QPixmap> document_pixmaps_;
+  // 当前文档的图片 token → pin 图；ApplyDocument 开头清空，provider 只读它
+  QHash<QString, PinnedImage> document_pixmaps_;
   // 当前文档的 mj: token → 公式/Mermaid 源码
   QHash<QString, MarkdownImageInfo> image_info_;
   // 本次文档的标题大纲；与 heading_ids_ 同源
@@ -324,7 +328,9 @@ class MarkdownView : public QWidget {
   bool reload_notify_on_load_ = false;
   std::optional<int> pending_scroll_;
   MarkdownParseResult pending_parse_;
-  QHash<QString, QString> pending_rendered_;  // identity -> tag/html
+  // identity -> 高亮 HTML 或渲染图（判别以 task.kind 为准，variant 只做
+  // "存对了没有"的断言）
+  QHash<QString, std::variant<QString, RenderedImage>> pending_rendered_;
   int pending_total_ = 0;
   int pending_completed_ = 0;
   int pending_in_flight_ = 0;

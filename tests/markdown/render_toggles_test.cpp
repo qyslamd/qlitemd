@@ -127,50 +127,6 @@ TEST(ImageTokenTest, TokenIsStableAndUrlSafe) {
             MakeImageToken(QStringLiteral("f/"), QStringLiteral("D#ff0000|y")));
 }
 
-TEST(ImageTokenTest, TokenizesPngAndPreservesAttributes) {
-  QImage image(2, 2, QImage::Format_ARGB32_Premultiplied);
-  image.fill(Qt::red);
-  QByteArray png;
-  QBuffer buffer(&png);
-  ASSERT_TRUE(buffer.open(QIODevice::WriteOnly));
-  ASSERT_TRUE(image.save(&buffer, "PNG"));
-  const QString tag =
-      QStringLiteral(
-          "<img class=\"mermaid\" src=\"data:image/png;base64,%1\" "
-          "width=\"2\" height=\"2\">")
-          .arg(QString::fromLatin1(png.toBase64()));
-
-  QPixmap pixmap;
-  const QString token = QStringLiteral("mj:m/abc");
-  const QString out = TokenizeImageTag(tag, token, &pixmap);
-  EXPECT_FALSE(pixmap.isNull());
-  EXPECT_FALSE(out.contains(QStringLiteral("data:image/png")));
-  EXPECT_TRUE(out.contains(QStringLiteral("src=\"mj:m/abc\"")));
-  EXPECT_TRUE(out.contains(QStringLiteral("class=\"mermaid\"")));
-  EXPECT_TRUE(out.contains(QStringLiteral("width=\"2\"")));
-  EXPECT_TRUE(out.contains(QStringLiteral("height=\"2\"")));
-}
-
-TEST(ImageTokenTest, InvalidTagsFallBackUnchanged) {
-  QPixmap pixmap;
-  EXPECT_TRUE(
-      TokenizeImageTag(QString(), QStringLiteral("mj:f/x"), &pixmap).isEmpty());
-  EXPECT_TRUE(pixmap.isNull());
-
-  const QString corrupt = QStringLiteral(
-      "<img src=\"data:image/png;base64,AAAA\" "
-      "width=\"2\" height=\"2\">");
-  EXPECT_EQ(TokenizeImageTag(corrupt, QStringLiteral("mj:f/x"), &pixmap),
-            corrupt);
-  EXPECT_TRUE(pixmap.isNull());
-
-  const QString not_png = QStringLiteral(
-      "<img src=\"file:///tmp/a.png\" width=\"2\" height=\"2\">");
-  EXPECT_EQ(TokenizeImageTag(not_png, QStringLiteral("mj:f/x"), &pixmap),
-            not_png);
-  EXPECT_TRUE(pixmap.isNull());
-}
-
 TEST(RenderTogglesTest, LineNumbersToggleChangesStructure) {
   MarkdownView view;
   RenderWaiter first(&view);
@@ -333,6 +289,39 @@ TEST(RenderTogglesTest, PersistentCacheCanBeConfiguredAndCleared) {
   view.SetContent(QStringLiteral("$y$\n"), QString());
   ASSERT_TRUE(second.Wait());
   EXPECT_FALSE(QDir(formula_dir).exists()) << "关闭后不应再写盘";
+}
+
+// 导出接的是 worker 的原始 PNG（pin 层 png_bytes 直写）：落盘字节以 PNG
+// 头开头，HTML 里的 <img> 仍带 token 换出的相对资源引用与摆放尺寸
+TEST(ExportHtmlTest, WritesOriginalPngBytesAndTagShape) {
+  MarkdownView view;
+  RenderWaiter wait(&view);
+  view.SetContent(QStringLiteral("$$\frac{a}{b}$$\n"), QString());
+  ASSERT_TRUE(wait.Wait());
+  ASSERT_TRUE(HtmlOf(view).contains(QStringLiteral("mj:f/")));
+
+  QTemporaryDir dir;
+  ASSERT_TRUE(dir.isValid());
+  const QString html_path = dir.filePath(QStringLiteral("out.html"));
+  ASSERT_TRUE(view.ExportHtml(html_path));
+
+  QDir assets(dir.filePath(QStringLiteral("out_files")));
+  const QStringList pngs = assets.entryList(
+      QStringList() << QStringLiteral("formula-*.png"), QDir::Files);
+  ASSERT_EQ(pngs.size(), 1);
+  QFile asset(assets.filePath(pngs.at(0)));
+  ASSERT_TRUE(asset.open(QIODevice::ReadOnly));
+  EXPECT_TRUE(
+      asset.readAll().startsWith(QByteArrayLiteral("\x89PNG\r\n\x1a\n")))
+      << "导出的必须是 PNG 原始字节，不是二次编码";
+
+  QFile html_file(html_path);
+  ASSERT_TRUE(html_file.open(QIODevice::ReadOnly | QIODevice::Text));
+  const QString html = QString::fromUtf8(html_file.readAll());
+  EXPECT_TRUE(html.contains(QStringLiteral("src=\"out_files/formula-")))
+      << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("width=\""))) << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("height=\""))) << html.toStdString();
 }
 
 }  // namespace

@@ -4,6 +4,14 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Replace the base64 `<img>` pipeline with a `RenderedImage` struct:
+  workers hand the view a decoded bitmap plus original PNG bytes, the
+  view assembles `mj:`-token tags directly (no base64/PNG decode on the
+  GUI thread), and the persistent cache stores binary entries (pipeline
+  v2; v1 text entries miss once and are pruned).
+- Remove the synchronous `FormulaToImgTag`/`MermaidToImgTag` facade and
+  the global `ClearFormulaCache`/`ClearMermaidCache`/`*RendererReady`
+  helpers; embedders render through `MarkdownView`.
 - Add a native Mermaid backend based on merman-ffi; the legacy
   QuickJS + mermaid.js path remains selectable with
   `QLITEMD_MERMAID_BACKEND=quickjs`.

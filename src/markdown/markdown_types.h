@@ -4,7 +4,35 @@
 #include <functional>
 
 #include <QByteArray>
+#include <QImage>
 #include <QString>
+
+// worker 的渲染产物。image 是 2x 超采样位图；layout_* 是 1x 摆放尺寸
+// （来自 SVG viewBox / ex 换算），与 image.width/height 刻意不同。
+// png_bytes 与 image 同源：磁盘/内存缓存与导出直接用，避免重新编码。
+// 只在 worker→GUI 的结果通道里存在，落地即拆成 CachedImage/PinnedImage
+struct RenderedImage {
+  QImage image;
+  QByteArray png_bytes;
+  int layout_width = 0;
+  int layout_height = 0;
+  bool isNull() const {
+    return image.isNull() || png_bytes.isEmpty() || layout_width < 1 ||
+           layout_height < 1;
+  }
+};
+
+// 渲染产物的驻留形态（内存缓存/磁盘缓存）：只留 PNG 与摆放尺寸，
+// 位图按需 QImage::fromData 重建——位图是 PNG 的数倍，驻留它会把
+// 缓存内存放大数倍
+struct CachedImage {
+  QByteArray png_bytes;
+  int layout_width = 0;
+  int layout_height = 0;
+  bool isNull() const {
+    return png_bytes.isEmpty() || layout_width < 1 || layout_height < 1;
+  }
+};
 
 // 大纲条目：level 是 1..6，text 是去掉内联标签后的纯文本，anchor 是最终
 // slug（重名标题带 -1/-2 后缀），可直接传给 MarkdownView::ScrollToAnchor()

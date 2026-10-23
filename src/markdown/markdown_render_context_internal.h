@@ -11,34 +11,41 @@
 
 #include "markdown_render_context.h"
 
-// 渲染器内部的字符串缓存（高亮/公式 tag/Mermaid tag）。失败结果也缓存
-// 空串：同一个坏输入不该每次编辑都重试。FIFO 淘汰，上限由上下文选项控制
-struct RenderStringCache {
-  QHash<QString, QString> entries;
+// 各驻留形态的内存估算：QString 按 UTF-16 2 字节/字符；CachedImage 按
+// PNG 字节。供状态面板展示
+inline qint64 CacheCost(const QString& text) {
+  return static_cast<qint64>(text.size()) * 2;
+}
+
+inline qint64 CacheCost(const CachedImage& image) {
+  return image.png_bytes.size();
+}
+
+// 渲染器内部的结果缓存（高亮 HTML / 公式与 Mermaid 的 png-only 驻留）。
+// 失败结果也缓存空值：同一个坏输入不该每次编辑都重试。FIFO 淘汰，
+// 上限由上下文选项控制
+template <typename T>
+struct RenderCache {
+  QHash<QString, T> entries;
   QList<QString> order;
   int max_entries = 256;
-  // QString 底层是 UTF-16，按 2 字节/字符估算，供状态面板展示
   qint64 bytes = 0;
 
-  static qint64 Cost(const QString& text) {
-    return static_cast<qint64>(text.size()) * 2;
-  }
-
-  const QString* Find(const QString& key) const {
+  const T* Find(const QString& key) const {
     const auto it = entries.constFind(key);
     return it == entries.constEnd() ? nullptr : &it.value();
   }
 
-  void Insert(const QString& key, const QString& value) {
+  void Insert(const QString& key, const T& value) {
     const auto it = entries.constFind(key);
     if (it != entries.constEnd()) {
-      bytes -= Cost(key) + Cost(it.value());
+      bytes -= CacheCost(key) + CacheCost(it.value());
     } else {
       order.append(key);
-      bytes += Cost(key);
+      bytes += CacheCost(key);
     }
     entries.insert(key, value);
-    bytes += Cost(value);
+    bytes += CacheCost(value);
     Trim();
   }
 
@@ -48,7 +55,7 @@ struct RenderStringCache {
       const QString key = order.takeFirst();
       const auto it = entries.constFind(key);
       if (it != entries.constEnd()) {
-        bytes -= Cost(key) + Cost(it.value());
+        bytes -= CacheCost(key) + CacheCost(it.value());
         entries.remove(key);
       }
     }
@@ -63,6 +70,9 @@ struct RenderStringCache {
   qint64 ByteSize() const { return bytes; }
 };
 
+using RenderStringCache = RenderCache<QString>;
+using RenderImageCache = RenderCache<CachedImage>;
+
 // token → 已解码的 pixmap 与 token 化后的 img tag。宿主只按 token 查。
 struct PixmapCacheEntry {
   QPixmap pixmap;
@@ -74,8 +84,9 @@ struct MarkdownRenderContextState {
   // 诊断配置只存在 options 里，避免两份状态漂移
   MarkdownRenderContextOptions options;
   RenderStringCache highlight_cache;
-  RenderStringCache formula_cache;
-  RenderStringCache mermaid_cache;
+  // 公式/Mermaid 驻留 png-only 形态；GUI 线程专用（worker 不碰 context）
+  RenderImageCache formula_cache;
+  RenderImageCache mermaid_cache;
   // 公式/图表图片，跨 ApplyDocument 复用；当前文档的 pin 在 MarkdownView
   QCache<QString, PixmapCacheEntry> pixmap_cache;
   MarkdownContextStatus highlight_stats;

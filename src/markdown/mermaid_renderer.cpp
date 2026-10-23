@@ -513,8 +513,9 @@ QString RenderMermaidSvg(MermaidEngineState& engine, const QString& code,
 
 // 后处理三层，顺序不可颠倒：CleanSvg（文本定标）→ InlineSvgCss（CSS 内联 +
 // 字体族强制）→ InlineSvgMarkers（marker 展开，颜色来自上一步内联的规则）
-QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
-                    QVector<MarkdownRenderArtifact>* artifacts) {
+RenderedImage SvgToImage(const QString& svg,
+                         const MarkdownDiagnostics& diagnostics,
+                         QVector<MarkdownRenderArtifact>* artifacts) {
   // worker 并发时用原子序号，避免产物同名互相覆盖
   static std::atomic<int> dump_index{0};
   // 与 formula 的索引对齐：都从 1 开始
@@ -527,7 +528,7 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
     if (diagnostics.trace) {
       TraceRender(diagnostics, QStringLiteral("mermaid svg: no <svg> root"));
     }
-    return QString();
+    return {};
   }
   const QString bare = svg.mid(start, end - start + 6);
 
@@ -546,7 +547,7 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
       TraceRender(diagnostics,
                   QStringLiteral("mermaid svg: markers/css inlining empty"));
     }
-    return QString();
+    return {};
   }
 
   // 尺寸从 viewBox 读：mermaid 的根元素写的是 width="100%"
@@ -576,7 +577,7 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
           diagnostics,
           QStringLiteral("mermaid svg: bad size %1x%2").arg(width).arg(height));
     }
-    return QString();
+    return {};
   }
 
   // 2 倍超采样、按 1 倍尺寸摆放：连线与箭头的边缘才是锐的。
@@ -597,7 +598,7 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
       TraceRender(diagnostics,
                   QStringLiteral("mermaid svg: %1").arg(raster_error));
     }
-    return QString();
+    return {};
   }
 
   QBuffer buffer;
@@ -606,17 +607,17 @@ QString SvgToImgTag(const QString& svg, const MarkdownDiagnostics& diagnostics,
     if (diagnostics.trace) {
       TraceRender(diagnostics, QStringLiteral("mermaid png: save failed"));
     }
-    return QString();  // PNG 编不出：返回空，原图位退回代码块
+    return {};  // PNG 编不出：返回空，原图位退回代码块
   }
   DumpStageBytes(diagnostics, index, QStringLiteral("png"), buffer.data(),
                  artifacts);
 
-  return QStringLiteral(
-             "<img class=\"mermaid\" src=\"data:image/png;base64,%1\" "
-             "width=\"%2\" height=\"%3\">")
-      .arg(QString::fromLatin1(buffer.data().toBase64()))
-      .arg(qRound(width))
-      .arg(qRound(height));
+  RenderedImage out;
+  out.image = std::move(image);
+  out.png_bytes = buffer.data();
+  out.layout_width = qRound(width);
+  out.layout_height = qRound(height);
+  return out;
 }
 
 // 字体指纹：族名 + 16px 下的关键度量。字体更新或 fallback 变化都会改变
@@ -663,20 +664,21 @@ MarkdownEngineStatus MermaidEngineStatus() {
   return MermaidEngineStatus(DefaultEngine());
 }
 
-QString RenderMermaidOnEngine(MermaidEngineState& engine, const QString& code,
-                              MarkdownTheme theme,
-                              const MarkdownDiagnostics& diagnostics,
-                              QVector<MarkdownRenderArtifact>* artifacts) {
+RenderedImage RenderMermaidOnEngine(
+    MermaidEngineState& engine, const QString& code, MarkdownTheme theme,
+    const MarkdownDiagnostics& diagnostics,
+    QVector<MarkdownRenderArtifact>* artifacts) {
 #if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
   QElapsedTimer render_clock;
   render_clock.start();
-  const QString tag = engine.merman.Render(code, theme, diagnostics, artifacts);
+  RenderedImage image =
+      engine.merman.Render(code, theme, diagnostics, artifacts);
   if (diagnostics.trace) {
     TraceRender(diagnostics, QStringLiteral("merman render: %1 ms, %2 bytes")
                                  .arg(render_clock.elapsed())
-                                 .arg(tag.size()));
+                                 .arg(image.png_bytes.size()));
   }
-  return tag;
+  return image;
 #else
   const bool was_loaded = engine.runtime.status().loaded;
   if (!EnsureLoaded(engine) || !EnsureInitialized(engine)) {
@@ -694,22 +696,15 @@ QString RenderMermaidOnEngine(MermaidEngineState& engine, const QString& code,
   render_clock.start();
   const QString svg =
       RenderMermaidSvg(engine, ApplyThemeDirective(code, theme), diagnostics);
-  const QString tag =
-      svg.isEmpty() ? QString() : SvgToImgTag(svg, diagnostics, artifacts);
+  RenderedImage image =
+      svg.isEmpty() ? RenderedImage{} : SvgToImage(svg, diagnostics, artifacts);
   if (diagnostics.trace) {
     TraceRender(diagnostics, QStringLiteral("mermaid render: %1 ms, %2 bytes")
                                  .arg(render_clock.elapsed())
-                                 .arg(tag.size()));
+                                 .arg(image.png_bytes.size()));
   }
-  return tag;
+  return image;
 #endif
-}
-
-bool MermaidRendererReady() { return EnsureMermaidEngine(DefaultEngine()); }
-
-void ClearMermaidCache() {
-  MarkdownRenderContextAccess::State(DefaultRenderContext())
-      .mermaid_cache.Clear();
 }
 
 QString MermaidFontFamily() {
@@ -730,60 +725,4 @@ QString MermaidRenderVariant(MarkdownTheme theme) {
 
 QString MermaidRenderKey(const QString& code, MarkdownTheme theme) {
   return MermaidRenderVariant(theme) + QLatin1Char('|') + code;
-}
-
-QString MermaidToImgTag(MarkdownRenderContext& context, const QString& code,
-                        MarkdownTheme theme, QString* cache_key) {
-  MarkdownRenderContextState& state =
-      MarkdownRenderContextAccess::State(context);
-  const QString variant = QString::fromLatin1(ThemeName(theme)) +
-                          QLatin1Char('|') + FontFingerprint();
-  const QString key = MermaidRenderKey(code, theme);
-  if (cache_key != nullptr) {
-    *cache_key = key;
-  }
-  const MarkdownDiagnostics& diagnostics = state.options.diagnostics;
-  if (const QString* cached = state.mermaid_cache.Find(key)) {
-    ++state.mermaid_stats.memory_cache_hits;
-    if (diagnostics.trace) {
-      TraceRender(diagnostics,
-                  QStringLiteral("mermaid cache hit: %1").arg(code.left(60)));
-    }
-    return *cached;
-  }
-  ++state.mermaid_stats.memory_cache_misses;
-  const RenderCacheConfig cache_config =
-      MakeRenderCacheConfig(state.options, QStringLiteral("mermaid"));
-  QString disk_key;
-  if (cache_config.enabled) {
-    disk_key = MakeRenderCacheKey(QStringLiteral("mermaid"), code, variant);
-    QString disk_tag;
-    if (LoadRenderCacheEntry(cache_config, QStringLiteral("mermaid"), disk_key,
-                             &disk_tag)) {
-      ++state.mermaid_stats.disk_cache_hits;
-      if (diagnostics.trace) {
-        TraceRender(diagnostics,
-                    QStringLiteral("mermaid disk hit: %1").arg(code.left(60)));
-      }
-      state.mermaid_cache.Insert(key, disk_tag);
-      return disk_tag;
-    }
-    ++state.mermaid_stats.disk_cache_misses;
-  }
-  ++state.mermaid_stats.renders;
-  const QString tag =
-      RenderMermaidOnEngine(DefaultEngine(), code, theme, diagnostics);
-  if (tag.isEmpty()) {
-    ++state.mermaid_stats.failures;
-  }
-  state.mermaid_cache.Insert(key, tag);
-  if (!tag.isEmpty() && !disk_key.isEmpty()) {
-    StoreRenderCacheEntry(cache_config, QStringLiteral("mermaid"), disk_key,
-                          tag);
-  }
-  return tag;
-}
-
-QString MermaidToImgTag(const QString& code) {
-  return MermaidToImgTag(DefaultRenderContext(), code, MarkdownTheme::Light);
 }

@@ -72,16 +72,15 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       break;
     }
     case MarkdownRenderKind::Formula:
-      result.rendered = RenderFormulaOnEngine(
-          formula, task.payload, task.display, task.formula_color,
-          task.diagnostics, &result.artifacts);
-      result.ok = !result.rendered.isEmpty();
+      result.image = RenderFormulaOnEngine(formula, task.payload, task.display,
+                                           task.formula_color, task.diagnostics,
+                                           &result.artifacts);
+      result.ok = !result.image.isNull();
       break;
     case MarkdownRenderKind::Mermaid:
-      result.rendered =
-          RenderMermaidOnEngine(mermaid, task.payload, task.theme,
-                                task.diagnostics, &result.artifacts);
-      result.ok = !result.rendered.isEmpty();
+      result.image = RenderMermaidOnEngine(mermaid, task.payload, task.theme,
+                                           task.diagnostics, &result.artifacts);
+      result.ok = !result.image.isNull();
       break;
   }
 
@@ -94,6 +93,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       result.cancelled = true;
       result.ok = false;
       result.rendered.clear();
+      result.image = RenderedImage{};
       runtime->ResetForReload();
     } else {
       const MarkdownEngineStatus status = runtime->status();

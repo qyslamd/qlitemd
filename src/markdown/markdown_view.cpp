@@ -239,64 +239,18 @@ QString MakeImageToken(const QString& prefix, const QString& cache_key) {
   return QStringLiteral("mj:") + prefix + QString::fromLatin1(digest);
 }
 
-QString TokenizeImageTag(const QString& renderer_tag, const QString& token,
-                         QPixmap* pixmap_out) {
-  if (pixmap_out != nullptr) {
-    *pixmap_out = QPixmap();
+// 驻留形态 → 待提交形态。PNG 解码失败时 image 为空，产物整体按失败处理；
+// 这是缓存命中路径唯一的一次 PNG 解码，fresh 渲染路径不经过这里
+RenderedImage DecodeCachedImage(const CachedImage& cached) {
+  RenderedImage out;
+  if (cached.isNull()) {
+    return out;
   }
-  // 只认渲染器自己产出的双引号 src，避免误改正文里的其他属性
-  const int src_pos = renderer_tag.indexOf(QLatin1String("src=\""));
-  if (src_pos < 0) {
-    return renderer_tag;
-  }
-  const int value_start = src_pos + 5;
-  const int value_end = renderer_tag.indexOf(QLatin1Char('"'), value_start);
-  if (value_end < 0) {
-    return renderer_tag;
-  }
-  static const QString kPngPrefix = QStringLiteral("data:image/png;base64,");
-  const QString src = renderer_tag.mid(value_start, value_end - value_start);
-  if (!src.startsWith(kPngPrefix)) {
-    return renderer_tag;
-  }
-
-  constexpr qint64 kMaxImageBytes = 64LL * 1024 * 1024;
-  const qint64 encoded_len = src.size() - kPngPrefix.size();
-  // base64 4 字符对应 3 字节；解码前先按编码长度拒绝，避免内存先吃进去
-  const qint64 max_encoded = (kMaxImageBytes / 3 + 1) * 4;
-  if (encoded_len > max_encoded) {
-    qWarning() << "markdown: image data URI exceeds the 64MB decode limit";
-    return renderer_tag;
-  }
-  const QByteArray png =
-      QByteArray::fromBase64(src.mid(kPngPrefix.size()).toLatin1());
-  if (png.isEmpty() || png.size() > kMaxImageBytes) {
-    return renderer_tag;
-  }
-
-  QBuffer buffer;
-  buffer.setData(png);
-  if (!buffer.open(QIODevice::ReadOnly)) {
-    return renderer_tag;
-  }
-  QImageReader reader(&buffer, "PNG");
-  const QSize size = reader.size();
-  constexpr int kMaxSide = 32767;
-  if (!size.isValid() || size.width() > kMaxSide || size.height() > kMaxSide ||
-      qint64(size.width()) * size.height() * 4 > kMaxImageBytes) {
-    qWarning() << "markdown: image dimensions exceed the render limit:" << size;
-    return renderer_tag;
-  }
-  const QImage image = reader.read();
-  if (image.isNull()) {
-    return renderer_tag;
-  }
-  if (pixmap_out != nullptr) {
-    *pixmap_out = QPixmap::fromImage(image);
-  }
-  QString token_tag = renderer_tag;
-  token_tag.replace(value_start, value_end - value_start, token);
-  return token_tag;
+  out.image = QImage::fromData(cached.png_bytes);
+  out.png_bytes = cached.png_bytes;
+  out.layout_width = cached.layout_width;
+  out.layout_height = cached.layout_height;
+  return out;
 }
 
 // 实现见头文件注释（两道闸）。留在自由函数里是为了可测：资源回调是
@@ -407,7 +361,7 @@ void MarkdownView::initUi() {
       qWarning() << "markdown: pixmap provider miss for" << url;
       return QPixmap();
     }
-    return *it;
+    return it->pixmap;
   });
   // 缩放快捷键与 Ctrl+C 要做成控件的内置能力：Wheel 发到 viewport、
   // KeyPress 发到 widget 本身，两处都装（见 eventFilter）
@@ -562,8 +516,7 @@ bool MarkdownView::LoadFile(const QString& path) {
   // 换文件才丢缓存：同一文件的重载（watchdog）要留住复用价值；SetContent
   // 是编辑器路径，每次清会把"改一个字重算全部公式"的代价请回来——那条路由
   // 宿主自己按需调 ClearRenderCaches()（或
-  // render_context().ClearMemoryCaches()）。全局 ClearFormulaCache() 清的是
-  // 进程默认上下文，对视图无效
+  // render_context().ClearMemoryCaches()）
   if (path != current_file_) {
     context_->ClearMemoryCaches();
   }
@@ -763,7 +716,12 @@ bool MarkdownView::ExportHtml(const QString& html_path, QString* error) const {
     const QUrl url = ResolveImageUrl(src, committed_base_dir_);
     if (url.scheme() == QLatin1String("mj")) {
       const QString token = QString::fromLatin1(url.toEncoded());
-      const QByteArray png = PixmapToPng(document_pixmaps_.value(token));
+      const PinnedImage pinned = document_pixmaps_.value(token);
+      // 新渲图走 worker 编的原始 PNG 直写；跨代缓存命中图无 png，
+      // 退回 QPixmap 重编码（与旧行为一致）
+      const QByteArray png = !pinned.png_bytes.isEmpty()
+                                 ? pinned.png_bytes
+                                 : PixmapToPng(pinned.pixmap);
       if (png.isEmpty()) {
         fatal_asset = true;
         return QString();
@@ -832,7 +790,7 @@ bool MarkdownView::ExportHtml(const QString& html_path, QString* error) const {
 
 QPixmap MarkdownView::ImagePixmap(const QUrl& url) const {
   if (url.scheme() == QLatin1String("mj")) {
-    return document_pixmaps_.value(QString::fromLatin1(url.toEncoded()));
+    return document_pixmaps_.value(QString::fromLatin1(url.toEncoded())).pixmap;
   }
   QByteArray bytes;
   if (url.scheme() == QLatin1String("data")) {
@@ -1036,27 +994,37 @@ void MarkdownView::StartRender(quint64 request_id) {
     task.diagnostics = diagnostics;
     const QString identity = RenderIdentity(task.kind, task.cache_key);
     MarkdownContextStatus* stats = nullptr;
-    const QString* memory_hit = nullptr;
+    const QString* memory_html = nullptr;
+    const CachedImage* memory_image = nullptr;
     if (task.kind == MarkdownRenderKind::Highlight) {
       stats = &state.highlight_stats;
-      memory_hit = state.highlight_cache.Find(task.cache_key);
+      memory_html = state.highlight_cache.Find(task.cache_key);
     } else if (task.kind == MarkdownRenderKind::Formula) {
       stats = &state.formula_stats;
-      memory_hit = state.formula_cache.Find(task.cache_key);
+      memory_image = state.formula_cache.Find(task.cache_key);
     } else {
       stats = &state.mermaid_stats;
-      memory_hit = state.mermaid_cache.Find(task.cache_key);
+      memory_image = state.mermaid_cache.Find(task.cache_key);
     }
 
-    QString cached;
+    std::variant<QString, RenderedImage> cached;
     bool hit = false;
-    if (memory_hit != nullptr) {
-      cached = *memory_hit;
-      hit = true;
-      ++stats->memory_cache_hits;
+    if (task.kind == MarkdownRenderKind::Highlight) {
+      if (memory_html != nullptr) {
+        cached = *memory_html;
+        hit = true;
+        ++stats->memory_cache_hits;
+      } else {
+        ++stats->memory_cache_misses;
+      }
     } else {
-      ++stats->memory_cache_misses;
-      if (task.kind != MarkdownRenderKind::Highlight) {
+      // 失败产物也缓存（null CachedImage）：同一个坏输入不重试
+      if (memory_image != nullptr) {
+        hit = true;
+        ++stats->memory_cache_hits;
+        cached = DecodeCachedImage(*memory_image);
+      } else {
+        ++stats->memory_cache_misses;
         const QString kind_name = task.kind == MarkdownRenderKind::Formula
                                       ? QStringLiteral("formula")
                                       : QStringLiteral("mermaid");
@@ -1076,16 +1044,16 @@ void MarkdownView::StartRender(quint64 request_id) {
             disk_key = MakeRenderCacheKey(kind_name, task.payload,
                                           MermaidRenderVariant(task.theme));
           }
-          QString disk_tag;
+          CachedImage disk_image;
           if (LoadRenderCacheEntry(cache_config, kind_name, disk_key,
-                                   &disk_tag)) {
+                                   &disk_image)) {
             ++stats->disk_cache_hits;
-            cached = disk_tag;
             hit = true;
-            RenderStringCache* memory_cache =
+            RenderImageCache* memory_cache =
                 task.kind == MarkdownRenderKind::Formula ? &state.formula_cache
                                                          : &state.mermaid_cache;
-            memory_cache->Insert(task.cache_key, disk_tag);
+            memory_cache->Insert(task.cache_key, disk_image);
+            cached = DecodeCachedImage(disk_image);
           } else {
             ++stats->disk_cache_misses;
           }
@@ -1094,7 +1062,7 @@ void MarkdownView::StartRender(quint64 request_id) {
     }
 
     if (hit) {
-      pending_rendered_.insert(identity, cached);
+      pending_rendered_.insert(identity, std::move(cached));
       ++pending_completed_;
     } else {
       ++stats->renders;
@@ -1139,9 +1107,9 @@ void MarkdownView::OnTaskFinished(quint64 request_id,
       MarkdownRenderContextAccess::State(*context_);
   const QString identity =
       RenderIdentity(result.task.kind, result.task.cache_key);
-  pending_rendered_.insert(identity, result.rendered);
 
   if (result.task.kind == MarkdownRenderKind::Highlight) {
+    pending_rendered_.insert(identity, result.rendered);
     if (!result.ok) {
       ++state.highlight_stats.failures;
     } else {
@@ -1157,11 +1125,14 @@ void MarkdownView::OnTaskFinished(quint64 request_id,
       highlight_engine_status_.permanently_failed = true;
     }
   } else if (result.task.kind == MarkdownRenderKind::Formula) {
-    if (result.rendered.isEmpty()) {
+    pending_rendered_.insert(identity, result.image);
+    if (result.image.isNull()) {
       ++state.formula_stats.failures;
     }
-    state.formula_cache.Insert(result.task.cache_key, result.rendered);
-    if (!result.rendered.isEmpty()) {
+    const CachedImage cached{result.image.png_bytes, result.image.layout_width,
+                             result.image.layout_height};
+    state.formula_cache.Insert(result.task.cache_key, cached);
+    if (!result.image.isNull()) {
       const QString variant = result.task.formula_color.isValid()
                                   ? result.task.formula_color.name()
                                   : QStringLiteral("legacy");
@@ -1173,7 +1144,7 @@ void MarkdownView::OnTaskFinished(quint64 request_id,
           MakeRenderCacheConfig(state.options, QStringLiteral("formula"));
       if (cache_config.enabled) {
         StoreRenderCacheEntry(cache_config, QStringLiteral("formula"), disk_key,
-                              result.rendered);
+                              cached);
       }
     }
     if (result.loaded) {
@@ -1186,11 +1157,14 @@ void MarkdownView::OnTaskFinished(quint64 request_id,
       formula_engine_status_.permanently_failed = true;
     }
   } else {
-    if (result.rendered.isEmpty()) {
+    pending_rendered_.insert(identity, result.image);
+    if (result.image.isNull()) {
       ++state.mermaid_stats.failures;
     }
-    state.mermaid_cache.Insert(result.task.cache_key, result.rendered);
-    if (!result.rendered.isEmpty()) {
+    const CachedImage cached{result.image.png_bytes, result.image.layout_width,
+                             result.image.layout_height};
+    state.mermaid_cache.Insert(result.task.cache_key, cached);
+    if (!result.image.isNull()) {
       const QString disk_key =
           MakeRenderCacheKey(QStringLiteral("mermaid"), result.task.payload,
                              MermaidRenderVariant(result.task.theme));
@@ -1198,7 +1172,7 @@ void MarkdownView::OnTaskFinished(quint64 request_id,
           MakeRenderCacheConfig(state.options, QStringLiteral("mermaid"));
       if (cache_config.enabled) {
         StoreRenderCacheEntry(cache_config, QStringLiteral("mermaid"), disk_key,
-                              result.rendered);
+                              cached);
       }
     }
     if (result.loaded) {
@@ -1244,7 +1218,7 @@ void MarkdownView::CommitRender(quint64 request_id) {
   QHash<QString, QString> code_blocks;
   QHash<QString, QString> heading_ids;
   QVector<MarkdownHeading> outline;
-  QHash<QString, QPixmap> pixmaps;
+  QHash<QString, PinnedImage> pixmaps;
   QHash<QString, MarkdownImageInfo> image_info;
   MarkdownRenderOptions options;
   options.code_line_numbers = code_line_numbers_;
@@ -1268,13 +1242,20 @@ void MarkdownView::CommitRender(quint64 request_id) {
             break;
         }
         const auto it = pending_rendered_.constFind(RenderIdentity(kind, key));
-        if (it == pending_rendered_.constEnd() || it.value().isEmpty()) {
+        if (it == pending_rendered_.constEnd()) {
           return QString();
         }
         if (kind == MarkdownRenderKind::Formula) {
           const QString token = MakeImageToken(QStringLiteral("f/"), key);
-          const QString tag = RegisterImageTag(token, it.value(), &pixmaps);
-          if (tag.contains(token)) {
+          const auto& image = std::get<RenderedImage>(it.value());
+          if (image.isNull()) {
+            return QString();  // 渲染失败，调用方按原文兜底
+          }
+          const QString tag = RegisterImage(
+              token, image,
+              display ? QStringLiteral(" class=\"math-display\"") : QString(),
+              &pixmaps);
+          if (!tag.isEmpty()) {
             MarkdownImageInfo info;
             info.kind = MarkdownImageKind::kFormula;
             info.source = payload.trimmed();
@@ -1285,8 +1266,13 @@ void MarkdownView::CommitRender(quint64 request_id) {
         }
         if (kind == MarkdownRenderKind::Mermaid) {
           const QString token = MakeImageToken(QStringLiteral("m/"), key);
-          const QString tag = RegisterImageTag(token, it.value(), &pixmaps);
-          if (tag.contains(token)) {
+          const auto& image = std::get<RenderedImage>(it.value());
+          if (image.isNull()) {
+            return QString();  // 渲染失败，调用方按原文兜底
+          }
+          const QString tag = RegisterImage(
+              token, image, QStringLiteral(" class=\"mermaid\""), &pixmaps);
+          if (!tag.isEmpty()) {
             MarkdownImageInfo info;
             info.kind = MarkdownImageKind::kMermaid;
             info.source = payload;
@@ -1294,7 +1280,7 @@ void MarkdownView::CommitRender(quint64 request_id) {
           }
           return tag;
         }
-        return it.value();
+        return std::get<QString>(it.value());
       };
   QElapsedTimer assemble_clock;
   assemble_clock.start();
@@ -1443,35 +1429,40 @@ void MarkdownView::CancelPendingRender() {
   }
 }
 
-QString MarkdownView::RegisterImageTag(const QString& token,
-                                       const QString& renderer_tag,
-                                       QHash<QString, QPixmap>* pixmaps) {
-  if (renderer_tag.isEmpty()) {
+QString MarkdownView::RegisterImage(const QString& token,
+                                    const RenderedImage& image,
+                                    const QString& css_class,
+                                    QHash<QString, PinnedImage>* pixmaps) {
+  if (image.isNull()) {
     return QString();  // 渲染失败，调用方按原文兜底
   }
   MarkdownRenderContextState& state =
       MarkdownRenderContextAccess::State(*context_);
   if (const PixmapCacheEntry* cached = state.pixmap_cache.object(token)) {
     ++state.image_stats.image_cache_hits;
-    pixmaps->insert(token, cached->pixmap);
+    // 跨代命中：缓存条目没有 png_bytes，pin 层置空，导出回退重编码
+    pixmaps->insert(token, PinnedImage{cached->pixmap, QByteArray()});
     return cached->img_tag;
   }
   ++state.image_stats.image_cache_misses;
 
-  QPixmap pixmap;
-  const QString token_tag = TokenizeImageTag(renderer_tag, token, &pixmap);
-  if (pixmap.isNull()) {
-    return token_tag;  // 原样返回 data URI，交给 DataCallback
-  }
+  // 调用方已判过 isNull：这里必然能出图，GUI 全程零解码零 base64
+  const QPixmap pixmap = QPixmap::fromImage(image.image);
+  const QString img_tag = QStringLiteral(
+                              "<img%1 src=\"%2\" width=\"%3\" "
+                              "height=\"%4\">")
+                              .arg(css_class, token)
+                              .arg(image.layout_width)
+                              .arg(image.layout_height);
   constexpr qint64 kMaxCost = std::numeric_limits<int>::max();
-  const qint64 cost = qint64(pixmap.width()) * pixmap.height() * 4 +
-                      qint64(token_tag.size()) * 2;
-  auto* entry = new PixmapCacheEntry{pixmap, token_tag};
+  const qint64 cost =
+      qint64(pixmap.width()) * pixmap.height() * 4 + qint64(img_tag.size()) * 2;
+  auto* entry = new PixmapCacheEntry{pixmap, img_tag};
   // insert 失败时 QCache 已删除 entry，之后不能再碰它；pin 层仍保证当前文档可用
   state.pixmap_cache.insert(token, entry,
                             static_cast<int>(qMin(cost, kMaxCost)));
-  pixmaps->insert(token, pixmap);
-  return token_tag;
+  pixmaps->insert(token, PinnedImage{pixmap, image.png_bytes});
+  return img_tag;
 }
 
 void MarkdownView::ShowMessage(const QString& text) {

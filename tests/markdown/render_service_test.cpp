@@ -92,8 +92,7 @@ TEST(RenderServiceTest, RunsHighlightAndFormulaOnWorkers) {
       highlight_ok =
           result.ok && result.rendered.contains(QStringLiteral("<span"));
     } else if (result.task.kind == MarkdownRenderKind::Formula) {
-      formula_ok =
-          result.ok && result.rendered.startsWith(QStringLiteral("<img"));
+      formula_ok = result.ok && !result.image.isNull();
     }
   }
   EXPECT_TRUE(highlight_ok);
@@ -134,8 +133,9 @@ TEST(RenderServiceTest, CancelSilencesBatchAndAllowsNext) {
   const MarkdownRenderResult result =
       qvariant_cast<MarkdownRenderResult>(finished.at(0).at(1));
   EXPECT_EQ(result.task.request_id, 12u);
-  EXPECT_TRUE(result.rendered.startsWith(QStringLiteral("<img")))
-      << result.rendered.toStdString();
+  EXPECT_FALSE(result.image.isNull());
+  EXPECT_TRUE(result.image.png_bytes.startsWith(
+      QByteArrayLiteral("\x89PNG\r\n\x1a\n")));
 }
 
 // mermaid worker：引擎状态确实在 worker 线程里创建、字体路径可用
@@ -153,8 +153,9 @@ TEST(RenderServiceTest, RunsMermaidOnWorker) {
   QTRY_VERIFY_WITH_TIMEOUT(finished.count() == 1, 30000);
   const MarkdownRenderResult result =
       qvariant_cast<MarkdownRenderResult>(finished.at(0).at(1));
-  EXPECT_TRUE(result.rendered.startsWith(QStringLiteral("<img")))
-      << result.rendered.toStdString();
+  EXPECT_FALSE(result.image.isNull());
+  EXPECT_GE(result.image.image.width(), result.image.layout_width)
+      << "2x 超采样下位图尺寸不应小于摆放尺寸";
 }
 
 }  // namespace

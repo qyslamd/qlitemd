@@ -47,13 +47,14 @@ QString RenderHighlightOnEngine(HighlightEngineState& engine,
                                 const QString& code, const QString& language,
                                 const MarkdownDiagnostics& diagnostics,
                                 bool* failed);
-// 同上：空串 = 失败或取消，返回结果不写缓存
-// artifacts 非空时只收集待落盘产物，不直接写文件；空指针保持同步旧行为
-QString RenderFormulaOnEngine(
+// 同上：isNull() = 失败或取消，返回结果不写缓存。产物带位图与 PNG，
+// GUI 直接 QPixmap::fromImage，缓存/导出直接用 png_bytes
+// artifacts 非空时只收集待落盘产物，不直接写文件
+RenderedImage RenderFormulaOnEngine(
     FormulaEngineState& engine, const QString& tex, bool display,
     const QColor& color, const MarkdownDiagnostics& diagnostics,
     QVector<MarkdownRenderArtifact>* artifacts = nullptr);
-QString RenderMermaidOnEngine(
+RenderedImage RenderMermaidOnEngine(
     MermaidEngineState& engine, const QString& code, MarkdownTheme theme,
     const MarkdownDiagnostics& diagnostics,
     QVector<MarkdownRenderArtifact>* artifacts = nullptr);

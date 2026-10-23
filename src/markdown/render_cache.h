@@ -31,12 +31,14 @@ QString RenderCacheRoot(const RenderCacheConfig& config);
 QString MakeRenderCacheKey(const QString& kind, const QString& payload,
                            const QString& variant);
 
+// 条目是自包含二进制：8B magic + layout_w/h/png_len（各 4B 小端）+ PNG。
+// magic 不符（含 v1 的 base64 tag 文本格式）按 miss 处理并删文件
 bool LoadRenderCacheEntry(const RenderCacheConfig& config, const QString& kind,
-                          const QString& key, QString* tag);
+                          const QString& key, CachedImage* image);
 
-// 空 tag（渲染失败）不落盘；QSaveFile 原子替换，失败只记日志
+// 空 image（渲染失败）不落盘；QSaveFile 原子替换，失败只记日志
 void StoreRenderCacheEntry(const RenderCacheConfig& config, const QString& kind,
-                           const QString& key, const QString& tag);
+                           const QString& key, const CachedImage& image);
 
 // 只删本模块的 formula/ 与 mermaid/ 子目录，不动根目录里的其他文件
 void ClearRenderCacheDirectory(const RenderCacheConfig& config);
