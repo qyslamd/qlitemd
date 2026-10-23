@@ -27,6 +27,11 @@ const TSLanguage* tree_sitter_python(void);
 const TSLanguage* tree_sitter_rust(void);
 }
 
+// Q_INIT_RESOURCE 展开成块作用域的 extern 声明，必须留在全局命名空间：
+// 放进匿名命名空间会得到内部链接，GCC 链接期报 undefined reference
+// （MSVC 宽容，Windows 构建不暴露）
+static void EnsureHighlightResources() { Q_INIT_RESOURCE(markdown_res); }
+
 namespace {
 
 // 捕获名 → 主题 CSS 短类名。集合是主题样式表（resources/themes/*.css）
@@ -198,7 +203,7 @@ const char* const kScmSuffix = ".scm";
 const QHash<QString, LanguageInfo>& Registry() {
   static const QHash<QString, LanguageInfo> registry = [] {
     // 幂等：单元测试直调高亮器时，主题路径可能还没初始化过 qrc
-    Q_INIT_RESOURCE(markdown_res);
+    EnsureHighlightResources();
 
     struct Entry {
       const char* name;
