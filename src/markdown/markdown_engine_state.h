@@ -10,13 +10,13 @@
 #include "js_runtime.h"
 #include "markdown_types.h"
 #include "merman_renderer.h"
+#include "tree_sitter_highlighter.h"
 
 // 内部头文件：直接包含 quickjs.h，消费者需自己拿到 qjs 的头文件路径。
-// 一个渲染引擎的运行时状态。同步入口用线程局部默认实例；异步 worker
-// 各自持有一份，渲染函数只碰传入的 state，不碰上下文缓存
+// 高亮已是 native tree-sitter（无 JS 运行时）；TSParser 不可跨线程，
+// 每个 worker/同步入口各持一份 parser 缓存，渲染函数只碰传入的 state
 struct HighlightEngineState {
-  JsRuntime runtime;
-  JSValue highlight_fn = JS_UNDEFINED;
+  TreeSitterParserCache parsers;
 };
 
 struct FormulaEngineState {
@@ -35,7 +35,6 @@ struct MermaidEngineState {
 
 // 只负责加载 runtime，不更新上下文计数；失败是永久性的，除取消后的
 // ResetForReload() 外不会重试
-bool EnsureHighlightEngine(HighlightEngineState& engine);
 bool EnsureFormulaEngine(FormulaEngineState& engine);
 bool EnsureMermaidEngine(MermaidEngineState& engine);
 

@@ -42,7 +42,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
   JsRuntime* runtime = nullptr;
   switch (task.kind) {
     case MarkdownRenderKind::Highlight:
-      runtime = &highlight.runtime;
+      // native tree-sitter：无 JS 运行时，不可中断由解析时长兜底
       break;
     case MarkdownRenderKind::Formula:
       runtime = &formula.runtime;
@@ -108,8 +108,13 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       result.cancelled = true;
       result.ok = false;
       result.rendered.clear();
+      result.image = RenderedImage{};
     }
-    const MarkdownEngineStatus status = MermaidEngineStatus(mermaid);
+    // 走到这里的都是 native 路径：高亮恒就绪，merman 查引擎状态
+    const MarkdownEngineStatus status =
+        task.kind == MarkdownRenderKind::Highlight
+            ? HighlightEngineStatus(highlight)
+            : MermaidEngineStatus(mermaid);
     result.engine_load_failed = status.permanently_failed;
     result.loaded = status.loaded;
     result.first_load_ms = status.first_load_ms;

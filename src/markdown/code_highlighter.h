@@ -5,8 +5,8 @@
 
 class MarkdownRenderContext;
 
-// 源码文本 → 带高亮 <span> 的 HTML 片段。实现在 QuickJS 里跑 highlight.js
-// （载荷在 qrc，66KB，配方见 resources/highlight_entry.js 头注释），qrc 初始化
+// 源码文本 → 带高亮 <span> 的 HTML 片段。实现是 native tree-sitter
+// （tree_sitter_highlighter.h，query 在 qrc 的 /markdown/ts/ 下），qrc 初始化
 // 由本模块内部完成，宿主不需要做任何事。
 //
 // 类名是与主题样式表（resources/themes/*.css）的唯一契约：kw/str/num/cmt

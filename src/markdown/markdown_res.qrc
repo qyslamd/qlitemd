@@ -5,8 +5,20 @@
         <file alias="markdown_default.css">../../resources/themes/light.css</file>
         <file alias="themes/light.css">../../resources/themes/light.css</file>
         <file alias="themes/dark.css">../../resources/themes/dark.css</file>
-        <!-- 五份 JS 载荷已改由 qjsc 在构建期预编译成字节码 C 数组（见
-             CMakeLists.txt 的 qjsc 段与 markdown_bytecode.h），不再进 qrc。
-             评估数据见 docs/eval/Markdown渲染qjsc预编译评估.md -->
+        <!-- 语法高亮的 tree-sitter highlights query（原 highlight.min.js 已
+             被 native tree-sitter 高亮器替换，见 tree_sitter_highlighter.h）；
+             cpp 的 query 会与 c 的拼接（grammar 继承） -->
+        <file alias="ts/bash.scm">../../3rdparty/tree-sitter-lang/bash/queries/highlights.scm</file>
+        <file alias="ts/batch.scm">../../3rdparty/tree-sitter-lang/batch/queries/highlights.scm</file>
+        <file alias="ts/c.scm">../../3rdparty/tree-sitter-lang/c/queries/highlights.scm</file>
+        <file alias="ts/cpp.scm">../../3rdparty/tree-sitter-lang/cpp/queries/highlights.scm</file>
+        <file alias="ts/css.scm">../../3rdparty/tree-sitter-lang/css/queries/highlights.scm</file>
+        <file alias="ts/go.scm">../../3rdparty/tree-sitter-lang/go/queries/highlights.scm</file>
+        <file alias="ts/html.scm">../../3rdparty/tree-sitter-lang/html/queries/highlights.scm</file>
+        <file alias="ts/java.scm">../../3rdparty/tree-sitter-lang/java/queries/highlights.scm</file>
+        <file alias="ts/javascript.scm">../../3rdparty/tree-sitter-lang/javascript/queries/highlights.scm</file>
+        <file alias="ts/json.scm">../../3rdparty/tree-sitter-lang/json/queries/highlights.scm</file>
+        <file alias="ts/python.scm">../../3rdparty/tree-sitter-lang/python/queries/highlights.scm</file>
+        <file alias="ts/rust.scm">../../3rdparty/tree-sitter-lang/rust/queries/highlights.scm</file>
     </qresource>
 </RCC>

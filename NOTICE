@@ -23,7 +23,6 @@ components. Their licenses remain in effect for those components.
   (source under 3rdparty/tree-sitter-lang)
 - MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
 - Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
-- highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
 - mermaidx: MIT; Copyright (c) 2023-present Mohammad Raziei
 
 Qt is an external dependency and is not vendored. Qt 5.15 is available

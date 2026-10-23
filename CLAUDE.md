@@ -12,7 +12,8 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 
 ```text
 Markdown -> md4c -> qlitehtml/litehtml -> QWidget
-                  \-> QuickJS: highlight.js / MathJax
+                  \-> tree-sitter: 语法高亮（原生）
+                  \-> QuickJS: MathJax
                   \-> merman-ffi: Mermaid（原生）
                   \-> resvg: 公式/图表 SVG 光栅化
 ```
@@ -203,7 +204,7 @@ clang-format --dry-run --Werror <file>
 - `3rdparty/fluentui/.gitignore` 忽略了 `/cmake`；新增的
   `*Config.cmake.in` 必须用 `git add -f` 强制加入，否则干净 checkout
   会在 configure 阶段失败。
-- `resources/` 下五份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
+- `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
   不要做行尾转换，也不要直接编辑压缩后的文件。
 - `patches/**` 固定使用 LF。
 

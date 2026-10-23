@@ -171,6 +171,10 @@ set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
 add_subdirectory(3rdparty/quickjs-ng)
 qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 
+# ------------------------------------------------- tree-sitter (native)
+add_subdirectory(3rdparty/tree-sitter)
+qlitemd_skip_subdir_install(3rdparty/tree-sitter)
+
 # ------------------------------------------------------ viewer UI deps
 if(QLITEMD_BUILD_MD_VIEWER)
 if(QLITEMD_QT_MAJOR EQUAL 5 AND Qt5_VERSION VERSION_LESS "5.14")

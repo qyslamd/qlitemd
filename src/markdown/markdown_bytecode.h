@@ -14,9 +14,6 @@
 // 字节码与 QuickJS 版本、位数、编译开关绑定：只在同一构建树内由同一次
 // 构建的 qjsc 生成，不跨构建目录复用、不入库
 extern "C" {
-extern const uint32_t md_hl_size;  // highlight.min.js
-extern const uint8_t md_hl[];
-
 extern const uint32_t md_mj_size;  // mathjax-svg.min.js
 extern const uint8_t md_mj[];
 
