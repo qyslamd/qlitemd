@@ -12,9 +12,10 @@ bool MermanEngine::EnsureLoaded() { return false; }
 
 MarkdownEngineStatus MermanEngine::status() const { return {}; }
 
-QString MermanEngine::Render(const QString& /*code*/, MarkdownTheme /*theme*/,
-                             const MarkdownDiagnostics& /*diagnostics*/,
-                             QVector<MarkdownRenderArtifact>* /*artifacts*/) {
+RenderedImage MermanEngine::Render(const QString& /*code*/,
+                                   MarkdownTheme /*theme*/,
+                                   const MarkdownDiagnostics& /*diagnostics*/,
+                                   QVector<MarkdownRenderArtifact>* /*artifacts*/) {
   return {};
 }
 
