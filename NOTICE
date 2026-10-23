@@ -17,6 +17,10 @@ components. Their licenses remain in effect for those components.
 - GoogleTest: BSD-3-Clause
 - resvg: Apache-2.0 OR MIT (prebuilt DLL under 3rdparty/resvg)
 - merman: MIT OR Apache-2.0 (prebuilt DLL under 3rdparty/merman)
+- tree-sitter: MIT (source under 3rdparty/tree-sitter)
+- tree-sitter language grammars (bash, batch, c, cpp, css, go, html,
+  java, javascript, json, python, rust): MIT
+  (source under 3rdparty/tree-sitter-lang)
 - MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
 - Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
 - highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
