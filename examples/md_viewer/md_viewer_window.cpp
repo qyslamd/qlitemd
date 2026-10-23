@@ -34,9 +34,6 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QFontMetrics>
-#include <QGraphicsPixmapItem>
-#include <QGraphicsScene>
-#include <QGraphicsView>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QKeySequence>
@@ -77,6 +74,7 @@
 
 #include "document_index.h"
 #include "documents_panel.h"
+#include "image_lightbox.h"
 #include "markdown_outline_widget.h"
 #include "md_viewer_settings.h"
 #include "quick_open.h"
@@ -152,77 +150,6 @@ QIcon TextActionIcon(const QString& text, bool active) {
   painter.drawText(pixmap.rect(), Qt::AlignCenter, text);
   return QIcon(pixmap);
 }
-
-class ImageView final : public QGraphicsView {
- public:
-  explicit ImageView(QWidget* parent = nullptr) : QGraphicsView(parent) {
-    setDragMode(QGraphicsView::ScrollHandDrag);
-    setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    setResizeAnchor(QGraphicsView::AnchorViewCenter);
-    setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-  }
-
- protected:
-  void wheelEvent(QWheelEvent* event) override {
-    const qreal factor = event->angleDelta().y() >= 0 ? 1.15 : (1.0 / 1.15);
-    scale(factor, factor);
-    event->accept();
-  }
-};
-
-class ImagePreviewDialog final : public QDialog {
- public:
-  explicit ImagePreviewDialog(const QPixmap& pixmap, QWidget* parent = nullptr)
-      : QDialog(parent) {
-    setObjectName(QStringLiteral("imagePreviewDialog"));
-    setWindowTitle(QStringLiteral("图片预览"));
-    resize(900, 700);
-
-    auto* layout = new QVBoxLayout(this);
-    view_ = new ImageView(this);
-    view_->setObjectName(QStringLiteral("imagePreviewView"));
-    scene_ = new QGraphicsScene(this);
-    item_ = scene_->addPixmap(pixmap);
-    view_->setScene(scene_);
-    layout->addWidget(view_, 1);
-
-    auto* buttons = new QHBoxLayout;
-    auto* fit = new QPushButton(QStringLiteral("适应窗口"), this);
-    fit->setObjectName(QStringLiteral("imagePreviewFit"));
-    auto* actual = new QPushButton(QStringLiteral("100%"), this);
-    actual->setObjectName(QStringLiteral("imagePreviewActual"));
-    auto* close = new QPushButton(QStringLiteral("关闭"), this);
-    close->setObjectName(QStringLiteral("imagePreviewClose"));
-    buttons->addWidget(fit);
-    buttons->addWidget(actual);
-    buttons->addStretch(1);
-    buttons->addWidget(close);
-    layout->addLayout(buttons);
-
-    connect(fit, &QPushButton::clicked, this, [this] { FitImage(); });
-    connect(actual, &QPushButton::clicked, this, [this] { ActualSize(); });
-    connect(close, &QPushButton::clicked, this, &QDialog::accept);
-    QTimer::singleShot(0, this, [this] { FitImage(); });
-  }
-
- private:
-  void FitImage() {
-    if (item_ != nullptr) {
-      view_->fitInView(item_, Qt::KeepAspectRatio);
-    }
-  }
-
-  void ActualSize() {
-    view_->resetTransform();
-    if (item_ != nullptr) {
-      view_->centerOn(item_);
-    }
-  }
-
-  ImageView* view_ = nullptr;
-  QGraphicsScene* scene_ = nullptr;
-  QGraphicsPixmapItem* item_ = nullptr;
-};
 
 class SourceDialog final : public QDialog {
  public:
@@ -1350,6 +1277,11 @@ void MdViewerWindow::ShowQuickOpen() {
               QStringLiteral("export-pdf"));
   add_command(QStringLiteral("刷新文档树"), QStringLiteral("视图"),
               QStringLiteral("refresh-root"));
+  if (view_->has_document() && !view_->is_rendering() &&
+      !view_->GeneratedImageUrls().isEmpty()) {
+    add_command(QStringLiteral("预览公式/图表"), QStringLiteral("阅读"),
+                QStringLiteral("preview-image"));
+  }
   add_command(QStringLiteral("缩小"), QStringLiteral("缩放"),
               QStringLiteral("zoom-out"));
   add_command(QStringLiteral("重置缩放"), QStringLiteral("缩放"),
@@ -1404,6 +1336,11 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
     ToggleTheme();
   } else if (id == QLatin1String("appearance")) {
     ShowReaderAppearance();
+  } else if (id == QLatin1String("preview-image")) {
+    const QVector<QUrl> images = view_->GeneratedImageUrls();
+    if (!images.isEmpty()) {
+      ShowImagePreview(images.first());
+    }
   } else if (id == QLatin1String("focus-mode")) {
     focus_mode_action_->setChecked(!focus_mode_action_->isChecked());
   } else if (id == QLatin1String("toggle-bookmark")) {
@@ -2163,13 +2100,7 @@ void MdViewerWindow::ExportHtml() {
       QStringLiteral("已导出：%1").arg(QFileInfo(path).fileName()), 5000);
 }
 
-void MdViewerWindow::OpenImage(const QUrl& url) {
-  if (view_->ImageInfo(url).has_value()) {
-    ShowImageSource(url);
-    return;
-  }
-  ShowImagePreview(url);
-}
+void MdViewerWindow::OpenImage(const QUrl& url) { ShowImagePreview(url); }
 
 void MdViewerWindow::ShowImageContextMenu(const QPoint& global_pos,
                                           const QUrl& url) {
@@ -2235,8 +2166,29 @@ void MdViewerWindow::ShowImagePreview(const QUrl& url) {
     statusBar()->showMessage(QStringLiteral("这张图片无法预览"), 3000);
     return;
   }
-  ImagePreviewDialog dialog(pixmap, this);
+  const std::optional<MarkdownImageInfo> info = view_->ImageInfo(url);
+  QString title = QStringLiteral("图片预览");
+  if (info.has_value()) {
+    title = info->kind == MarkdownImageKind::kFormula
+                ? QStringLiteral("公式预览")
+                : QStringLiteral("Mermaid 图表");
+  }
+  ImageLightbox dialog(pixmap, title, info.has_value(), this);
+  int pending_action = 0;
+  connect(&dialog, &ImageLightbox::sourceRequested, &dialog, [&] {
+    pending_action = 1;
+    dialog.accept();
+  });
+  connect(&dialog, &ImageLightbox::saveRequested, &dialog, [&] {
+    pending_action = 2;
+    dialog.accept();
+  });
   dialog.exec();
+  if (pending_action == 1) {
+    ShowImageSource(url);
+  } else if (pending_action == 2) {
+    SaveImageAs(url);
+  }
 }
 
 void MdViewerWindow::ShowImageSource(const QUrl& url) {

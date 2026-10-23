@@ -112,3 +112,14 @@ add_unit_test(
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
+
+add_unit_test(
+    NAME test_image_lightbox
+    SOURCES image_lightbox_test.cpp
+            ${VIEWER_DIR}/image_lightbox.cpp
+            ${VIEWER_DIR}/image_lightbox.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)

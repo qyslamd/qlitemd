@@ -322,6 +322,15 @@ TEST(MarkdownViewActionsTest, ImageInfoMapsFormulaToken) {
   EXPECT_FALSE(view.ImagePixmap(token).isNull());
 }
 
+TEST(MarkdownViewActionsTest, GeneratedImageUrlsIncludeFormula) {
+  MarkdownView view;
+  ASSERT_TRUE(SetContentAndWait(view, QStringLiteral("$x^2$\n"), QString()));
+  const QVector<QUrl> urls = view.GeneratedImageUrls();
+  ASSERT_FALSE(urls.isEmpty());
+  EXPECT_TRUE(view.ImageInfo(urls.first()).has_value());
+  EXPECT_FALSE(view.ImagePixmap(urls.first()).isNull());
+}
+
 TEST(MarkdownViewActionsTest, ExportHtmlCopiesImagesAndRewritesTokens) {
   QTemporaryDir dir;
   ASSERT_TRUE(dir.isValid());

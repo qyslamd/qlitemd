@@ -827,6 +827,15 @@ std::optional<MarkdownImageInfo> MarkdownView::ImageInfo(
   return it.value();
 }
 
+QVector<QUrl> MarkdownView::GeneratedImageUrls() const {
+  QVector<QUrl> urls;
+  urls.reserve(image_info_.size());
+  for (auto it = image_info_.constBegin(); it != image_info_.constEnd(); ++it) {
+    urls.append(QUrl(it.key()));
+  }
+  return urls;
+}
+
 void MarkdownView::Print(QPrinter* printer) {
   if (printer == nullptr || rendering_) {
     return;

@@ -136,6 +136,9 @@ class MarkdownView : public QWidget {
   QPixmap ImagePixmap(const QUrl& url) const;
   // mj: 图片对应的源码；普通图片返回 nullopt
   std::optional<MarkdownImageInfo> ImageInfo(const QUrl& url) const;
+  // 当前文档的公式/Mermaid 图片 URL，可直接传给 ImagePixmap/ImageInfo。
+  // 宿主用它提供键盘访问入口；普通 <img> 不在其中
+  QVector<QUrl> GeneratedImageUrls() const;
   // 打印/导出 PDF：QPrinter 由宿主自备（本控件不碰文件系统与输出格式）。
   // 控件按 print 媒体重排一遍再逐页绘制——分页是按页高切片的，跨页的长
   // 元素会被切在页缝上

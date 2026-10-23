@@ -335,6 +335,15 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   list_->setItemDelegate(new QuickOpenDelegate(list_));
   list_->setAttribute(Qt::WA_TranslucentBackground);
   list_->viewport()->setAutoFillBackground(false);
+  // 鼠标点击也要能执行；Enter 走 eventFilter，双击走 itemActivated
+  auto activate_item = [this](QListWidgetItem* item) {
+    if (item != nullptr) {
+      list_->setCurrentItem(item);
+    }
+    ActivateCurrent();
+  };
+  connect(list_, &QListWidget::itemClicked, this, activate_item);
+  connect(list_, &QListWidget::itemActivated, this, activate_item);
   layout->addWidget(list_, 1);
 
   empty_label_ = new QLabel(QStringLiteral("没有匹配项"), panel);

@@ -8,6 +8,8 @@ set(ALL_SRCS
     document_index.h
     documents_panel.cpp
     documents_panel.h
+    image_lightbox.cpp
+    image_lightbox.h
     md_viewer_settings.cpp
     md_viewer_settings.h
     md_viewer_window.cpp
