@@ -1,0 +1,205 @@
+/* md_viewer 原型阅读区（深色）。通过 SetThemeStyleSheet 注入；
+   html/body 保持透明，页面底色由 SetPageBackground 控制 */
+
+html, body { background-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI Variable Text", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.78;
+  color: #e6edf3;
+}
+
+.md-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 42px 40px 72px;
+}
+
+h1 {
+  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 30px;
+  line-height: 1.25;
+  margin: 0 0 10px;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+h2 {
+  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 20px;
+  margin: 34px 0 10px;
+  padding-top: 6px;
+}
+
+h3 { font-size: 16px; margin: 24px 0 8px; }
+h4, h5, h6 { font-size: 15px; margin: 20px 0 6px; }
+
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 22px; }
+li { margin: 4px 0; }
+
+a { color: #4cc2ff; }
+
+code {
+  background: #21262d;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  color: #e6edf3;
+}
+
+pre {
+  background: #161b22;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #30363d;
+  margin: 18px 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 12.8px;
+  line-height: 1.65;
+  color: #e6edf3;
+}
+
+blockquote {
+  margin: 18px 0;
+  padding: 10px 16px;
+  border-left: 3px solid #4cc2ff;
+  background: #12283c;
+  border-radius: 0 8px 8px 0;
+  color: #9da7b3;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13.5px;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid #30363d;
+}
+
+th { background: transparent; color: #9da7b3; font-weight: 600; }
+
+hr { border: 0; border-top: 1px solid #30363d; margin: 18px 0; }
+img { max-width: 100%; }
+
+.code-wrap {
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  margin: 18px 0;
+  background: #161b22;
+  overflow: hidden;
+}
+
+.code-header {
+  background: #21262d;
+  border-bottom: 1px solid #30363d;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  color: #6e7681;
+  line-height: 20px;
+}
+
+.code-lang {
+  color: #9da7b3;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-weight: 600;
+}
+
+a.copy-btn {
+  float: right;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #6e7681;
+  font-size: 11.5px;
+  line-height: 20px;
+}
+
+.code-wrap pre {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 14px 16px;
+  background: #161b22;
+}
+
+.md-code {
+  width: 100%;
+  background: #161b22;
+  border-collapse: collapse;
+}
+
+.md-code td {
+  border: none;
+  padding: 0;
+  vertical-align: top;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12.8px;
+  line-height: 21px;
+  color: #e6edf3;
+}
+
+.md-code .md-code-ln {
+  width: 1%;
+  padding: 0 10px 0 12px;
+  text-align: right;
+  color: #6e7681;
+  white-space: nowrap;
+}
+
+.md-code .md-code-line {
+  padding: 0 12px 0 4px;
+  padding-left: 2em;
+  text-indent: -2em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.math-display {
+  display: block;
+  margin: 20px auto;
+  padding: 22px 18px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+}
+
+.math-src { color: #f85149; }
+
+.mermaid-wrap {
+  text-align: center;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: #161b22;
+}
+
+img.mermaid { max-width: 100%; height: auto; }
+
+.error { color: #f85149; }
+
+.kw, .ty { color: #e8a06a; }
+.bi, .fn, .tt { color: #c3a1f0; }
+.lit, .num, .meta, .attr, .sel { color: #79c0ff; }
+.var, .sym { color: #ffa657; }
+.str, .re { color: #7fd3a6; }
+.cmt { color: #6e7681; }
+.tag { color: #7ee787; }
+.op { color: #e6edf3; }

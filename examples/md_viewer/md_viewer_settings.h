@@ -11,6 +11,11 @@ enum class WindowMaterial {
   kNone = 2,
 };
 
+enum class ReadingStyle {
+  kLibraryDefault = 0,
+  kPrototype = 1,
+};
+
 // md_viewer 的最小设置：标准配置目录下的 md_viewer.ini。
 // 只存这个示例自己需要的项，不引入应用级配置体系。
 struct MdViewerSettings {
@@ -34,6 +39,10 @@ struct MdViewerSettings {
   QByteArray dock_state;
   bool dark_theme = false;
   WindowMaterial window_material = WindowMaterial::kAuto;
+  // opt-in：默认库样式；原型样式由用户主动启用
+  ReadingStyle reading_style = ReadingStyle::kLibraryDefault;
+  // 仅原型样式生效；关闭时用主题页面底色
+  bool transparent_reading = true;
   bool code_line_numbers = false;
   bool formula_rendering = true;
   bool mermaid_rendering = true;

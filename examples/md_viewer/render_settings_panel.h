@@ -27,6 +27,9 @@ class RenderSettingsPanel : public QWidget {
   void SetTheme(MarkdownTheme theme);
   // 启动时按持久化设置同步材质下拉框，不触发重新应用
   void SetWindowMaterial(WindowMaterial material);
+  // 启动时按持久化设置同步阅读区选项，不触发重新应用
+  void SetReadingStyle(ReadingStyle style);
+  void SetTransparentReading(bool enabled);
 
  signals:
   void statusMessage(const QString& message);
@@ -34,6 +37,9 @@ class RenderSettingsPanel : public QWidget {
   void themeChanged(MarkdownTheme theme);
   // Windows：窗口背景材质（Mica/亚克力/关闭）
   void windowMaterialChanged(WindowMaterial material);
+  // 阅读区样式 opt-in 与透明页面
+  void readingStyleChanged(ReadingStyle style);
+  void transparentReadingChanged(bool enabled);
 
  private:
   void initUi();
@@ -41,6 +47,7 @@ class RenderSettingsPanel : public QWidget {
   void ApplyDiagnostics();
   void BrowseCacheDirectory();
   void BrowseDumpDirectory();
+  void UpdateReadingControls();
   // 开关默认文字跟状态走（Fluent Gallery 同款写法）
   QCheckBox* CreateSwitch(bool checked);
 
@@ -48,6 +55,8 @@ class RenderSettingsPanel : public QWidget {
   QComboBox* theme_ = nullptr;
   // 仅 Windows 创建
   QComboBox* window_material_ = nullptr;
+  QComboBox* reading_style_ = nullptr;
+  QCheckBox* transparent_reading_ = nullptr;
   QCheckBox* code_line_numbers_ = nullptr;
   QCheckBox* formula_rendering_ = nullptr;
   QCheckBox* mermaid_rendering_ = nullptr;

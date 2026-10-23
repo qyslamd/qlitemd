@@ -8,5 +8,7 @@
         <file>resources/svg/star-filled.svg</file>
         <file>resources/svg/menu.svg</file>
         <file>resources/svg/status-dot.svg</file>
+        <file>resources/themes/viewer-light.css</file>
+        <file>resources/themes/viewer-dark.css</file>
     </qresource>
 </RCC>

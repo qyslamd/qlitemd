@@ -3,6 +3,7 @@
 
 #include <optional>
 
+#include <QColor>
 #include <QMainWindow>
 #include <QPoint>
 #include <QSet>
@@ -118,6 +119,11 @@ class MdViewerWindow : public QMainWindow {
   // FluentUI 局部 palette 不会随 qApp->setPalette 自动刷新，切主题后
   // 显式把新调色板压给外壳控件和正文页
   void RefreshChromePalette();
+  // 阅读区样式 opt-in：原型 CSS 或库默认；同时刷新页面背景
+  void ApplyReadingStyle();
+  void UpdateReadingSurface();
+  // 当前主题的页面底色（与 resources/themes/*.css 的 body 对齐）
+  QColor ReadingPageColor() const;
   void RememberCurrentPosition();
   void RefreshRoot();
   void OpenLastFile();
@@ -163,6 +169,7 @@ class MdViewerWindow : public QMainWindow {
   RenderStatusPanel* render_status_ = nullptr;
   DocumentsPanel* documents_panel_ = nullptr;
   QLabel* path_label_ = nullptr;
+  QLabel* breadcrumb_ = nullptr;
   QLabel* zoom_label_ = nullptr;
   QLabel* status_ready_label_ = nullptr;
   QLabel* document_count_label_ = nullptr;

@@ -17,6 +17,7 @@
 #include <QCloseEvent>
 #include <QColor>
 #include <QDateTime>
+#include <QDebug>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDir>
@@ -24,6 +25,7 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
@@ -116,6 +118,15 @@ QStringList DroppablePaths(const QMimeData* mime) {
     }
   }
   return paths;
+}
+
+QString LoadTextResource(const QString& path) {
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qWarning() << "md_viewer: cannot read resource" << path;
+    return {};
+  }
+  return QString::fromUtf8(file.readAll());
 }
 
 // 没有图标资源，就把字母/箭头画进 QPixmap：激活态用高亮色加粗
@@ -301,7 +312,28 @@ void MdViewerWindow::initUi() {
   view_->SetFormulaRenderingEnabled(settings_->formula_rendering);
   view_->SetMermaidRenderingEnabled(settings_->mermaid_rendering);
   view_->SetPersistentRenderCacheEnabled(settings_->persistent_cache);
-  setCentralWidget(view_);
+
+  // 阅读区顶部面包屑；正文仍由 MarkdownView 独占剩余空间
+  auto* reader = new QWidget(this);
+  reader->setObjectName(QStringLiteral("readerContainer"));
+  auto* reader_layout = new QVBoxLayout(reader);
+  reader_layout->setContentsMargins(0, 0, 0, 0);
+  reader_layout->setSpacing(0);
+  breadcrumb_ = new QLabel(reader);
+  breadcrumb_->setObjectName(QStringLiteral("readingBreadcrumb"));
+  breadcrumb_->setContentsMargins(16, 6, 16, 6);
+  breadcrumb_->setForegroundRole(QPalette::PlaceholderText);
+  breadcrumb_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+  breadcrumb_->setTextInteractionFlags(Qt::NoTextInteraction);
+  QFont crumb_font = font();
+  if (crumb_font.pointSizeF() > 0.0) {
+    crumb_font.setPointSizeF(qMax(8.0, crumb_font.pointSizeF() - 1.0));
+  }
+  breadcrumb_->setFont(crumb_font);
+  breadcrumb_->hide();
+  reader_layout->addWidget(breadcrumb_);
+  reader_layout->addWidget(view_, 1);
+  setCentralWidget(reader);
 
   // 递归文档树 / 书签 / 搜索结果的侧栏
   document_dock_ = new QDockWidget(QStringLiteral("文档"), this);
@@ -341,6 +373,8 @@ void MdViewerWindow::initUi() {
   settings_dock->setMinimumWidth(280);
   render_settings_ = new RenderSettingsPanel(view_, settings_dock);
   render_settings_->SetWindowMaterial(settings_->window_material);
+  render_settings_->SetReadingStyle(settings_->reading_style);
+  render_settings_->SetTransparentReading(settings_->transparent_reading);
   settings_dock->setWidget(render_settings_);
   addDockWidget(Qt::RightDockWidgetArea, settings_dock);
   // 同上：渲染设置默认收起
@@ -593,6 +627,7 @@ void MdViewerWindow::initUi() {
   root_rescan_timer_->setInterval(300);
 
   ApplyWindowMaterial(settings_->window_material, /*announce=*/false);
+  ApplyReadingStyle();
   UpdateChromeVisibility();
   UpdateBookmarkUi();
   RefreshRecentMenu();
@@ -609,6 +644,26 @@ void MdViewerWindow::initSignals() {
   connect(render_settings_, &RenderSettingsPanel::windowMaterialChanged, this,
           [this](WindowMaterial material) {
             ApplyWindowMaterial(material, /*announce=*/true);
+          });
+  connect(render_settings_, &RenderSettingsPanel::readingStyleChanged, this,
+          [this](ReadingStyle style) {
+            settings_->reading_style = style;
+            settings_->Save();
+            ApplyReadingStyle();
+            statusBar()->showMessage(style == ReadingStyle::kPrototype
+                                         ? QStringLiteral("阅读样式：原型")
+                                         : QStringLiteral("阅读样式：库默认"),
+                                     2000);
+          });
+  connect(render_settings_, &RenderSettingsPanel::transparentReadingChanged,
+          this, [this](bool enabled) {
+            settings_->transparent_reading = enabled;
+            settings_->Save();
+            UpdateReadingSurface();
+            statusBar()->showMessage(enabled
+                                         ? QStringLiteral("阅读区：透明")
+                                         : QStringLiteral("阅读区：主题底色"),
+                                     2000);
           });
   connect(back_action_, &QAction::triggered, this, &MdViewerWindow::GoBack);
   connect(forward_action_, &QAction::triggered, this,
@@ -1084,6 +1139,10 @@ void MdViewerWindow::OpenLastFile() {
     }
     return;
   }
+  if (breadcrumb_ != nullptr) {
+    breadcrumb_->clear();
+    breadcrumb_->hide();
+  }
   documents_panel_->SetRootMissing(
       QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
 }
@@ -1125,6 +1184,7 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   // 面板是被动同步方，用 QSignalBlocker 防止再发一次 themeChanged
   render_settings_->SetTheme(theme);
   RefreshChromePalette();
+  UpdateReadingSurface();
   // 星标图标按调色板绘制，换肤后要重画
   UpdateBookmarkUi();
   statusBar()->showMessage(theme == MarkdownTheme::Dark
@@ -1180,6 +1240,7 @@ void MdViewerWindow::ApplyWindowMaterial(WindowMaterial material,
   Q_UNUSED(announce);
 #endif
   RefreshChromePalette();
+  UpdateReadingSurface();
 }
 
 void MdViewerWindow::UpdateMaterialActions() {
@@ -1208,22 +1269,46 @@ void MdViewerWindow::RefreshChromePalette() {
   apply_palette(statusBar(), app_palette);
   apply_palette(document_dock_, app_palette);
   apply_palette(outline_dock_, app_palette);
-  if (view_ != nullptr) {
-    // 正文页背景与 resources/themes/*.css 的 body 一致；短文档下方
-    // 不再露出 Fluent 窗口底
-    QPalette page_palette = app_palette;
-    const QColor page = view_->theme() == MarkdownTheme::Dark
-                            ? QColor(0x0d, 0x11, 0x17)
-                            : QColor(0xff, 0xff, 0xff);
-    page_palette.setColor(QPalette::Base, page);
-    page_palette.setColor(QPalette::Window, page);
-    apply_palette(view_, page_palette);
-    view_->setAutoFillBackground(true);
-    if (QWidget* html =
-            view_->findChild<QWidget*>(QStringLiteral("markdownHtml"))) {
-      html->setAutoFillBackground(true);
-    }
+  if (breadcrumb_ != nullptr) {
+    breadcrumb_->setPalette(app_palette);
+    breadcrumb_->setForegroundRole(QPalette::PlaceholderText);
   }
+}
+
+void MdViewerWindow::ApplyReadingStyle() {
+  if (view_ == nullptr || settings_ == nullptr) {
+    return;
+  }
+  if (settings_->reading_style == ReadingStyle::kPrototype) {
+    view_->SetThemeStyleSheet(MarkdownTheme::Light,
+                              LoadTextResource(QStringLiteral(
+                                  ":/resources/themes/viewer-light.css")));
+    view_->SetThemeStyleSheet(
+        MarkdownTheme::Dark,
+        LoadTextResource(QStringLiteral(":/resources/themes/viewer-dark.css")));
+  } else {
+    view_->SetThemeStyleSheet(MarkdownTheme::Light, QString());
+    view_->SetThemeStyleSheet(MarkdownTheme::Dark, QString());
+  }
+  UpdateReadingSurface();
+}
+
+QColor MdViewerWindow::ReadingPageColor() const {
+  if (view_ != nullptr && view_->theme() == MarkdownTheme::Dark) {
+    return QColor(0x0d, 0x11, 0x17);
+  }
+  return QColor(0xff, 0xff, 0xff);
+}
+
+void MdViewerWindow::UpdateReadingSurface() {
+  if (view_ == nullptr || settings_ == nullptr) {
+    return;
+  }
+  const bool transparent =
+      settings_->reading_style == ReadingStyle::kPrototype &&
+      settings_->transparent_reading;
+  view_->SetPageBackground(transparent ? QColor(Qt::transparent)
+                                       : ReadingPageColor());
 }
 
 void MdViewerWindow::UpdateChromeVisibility() {
@@ -1312,6 +1397,10 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
   displayed_file_ = absolute_path;
   // 标题栏标签跟 windowTitle 走：根目录 / 相对路径，和原型的面包屑一致
   setWindowTitle(DocumentDisplayTitle(root_dir_, absolute_path));
+  if (breadcrumb_ != nullptr) {
+    breadcrumb_->setText(DocumentDisplayTitle(root_dir_, absolute_path));
+    breadcrumb_->show();
+  }
   // 状态栏放完整路径；过长时中间省略，文件名仍可见
   const QString status_path = QDir::toNativeSeparators(absolute_path);
   path_label_->setText(QFontMetrics(path_label_->font())

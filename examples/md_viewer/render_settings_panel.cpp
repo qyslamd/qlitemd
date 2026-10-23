@@ -129,6 +129,28 @@ void RenderSettingsPanel::initUi() {
 #endif
   outer->addWidget(appearance_card);
 
+  // 阅读区：原型样式 opt-in；透明页面只对原型样式生效
+  QVBoxLayout* reading = nullptr;
+  QWidget* reading_card = NewCard(body, QStringLiteral("阅读区"), &reading);
+  reading->addWidget(new QLabel(QStringLiteral("样式"), reading_card));
+  reading_style_ = new QComboBox(reading_card);
+  reading_style_->setObjectName(QStringLiteral("readingStyleCombo"));
+  reading_style_->addItem(QStringLiteral("库默认"),
+                          static_cast<int>(ReadingStyle::kLibraryDefault));
+  reading_style_->addItem(QStringLiteral("原型（700px + 卡片）"),
+                          static_cast<int>(ReadingStyle::kPrototype));
+  reading_style_->setToolTip(
+      QStringLiteral("原型阅读样式为 opt-in；库默认样式保持不变"));
+  reading->addWidget(reading_style_);
+  transparent_reading_ = CreateSwitch(true);
+  transparent_reading_->setObjectName(
+      QStringLiteral("transparentReadingCheck"));
+  AddSwitchRow(reading, reading_card, QStringLiteral("透明阅读区"),
+               transparent_reading_,
+               QStringLiteral("仅原型样式生效；透出 Mica/窗口底色，"
+                              "关闭后使用主题页面色"));
+  outer->addWidget(reading_card);
+
   // 内容
   QVBoxLayout* content = nullptr;
   QWidget* content_card = NewCard(body, QStringLiteral("内容"), &content);
@@ -192,6 +214,7 @@ void RenderSettingsPanel::initUi() {
   outer->addStretch(1);
   scroll->setWidget(body);
   panel_layout->addWidget(scroll);
+  UpdateReadingControls();
 }
 
 void RenderSettingsPanel::SetTheme(MarkdownTheme theme) {
@@ -219,6 +242,37 @@ void RenderSettingsPanel::SetWindowMaterial(WindowMaterial material) {
 #endif
 }
 
+void RenderSettingsPanel::SetReadingStyle(ReadingStyle style) {
+  if (reading_style_ == nullptr) {
+    return;
+  }
+  const int index = reading_style_->findData(static_cast<int>(style));
+  if (index < 0) {
+    return;
+  }
+  const QSignalBlocker blocker(reading_style_);
+  reading_style_->setCurrentIndex(index);
+  UpdateReadingControls();
+}
+
+void RenderSettingsPanel::SetTransparentReading(bool enabled) {
+  if (transparent_reading_ == nullptr) {
+    return;
+  }
+  const QSignalBlocker blocker(transparent_reading_);
+  transparent_reading_->setChecked(enabled);
+  transparent_reading_->setText(enabled ? QStringLiteral("开")
+                                        : QStringLiteral("关"));
+}
+
+void RenderSettingsPanel::UpdateReadingControls() {
+  if (reading_style_ == nullptr || transparent_reading_ == nullptr) {
+    return;
+  }
+  transparent_reading_->setEnabled(reading_style_->currentData().toInt() ==
+                                   static_cast<int>(ReadingStyle::kPrototype));
+}
+
 void RenderSettingsPanel::initSignals() {
 #ifdef Q_OS_WIN
   connect(window_material_, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -235,6 +289,14 @@ void RenderSettingsPanel::initSignals() {
             emit themeChanged(
                 static_cast<MarkdownTheme>(theme_->itemData(index).toInt()));
           });
+  connect(reading_style_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            UpdateReadingControls();
+            emit readingStyleChanged(static_cast<ReadingStyle>(
+                reading_style_->itemData(index).toInt()));
+          });
+  connect(transparent_reading_, &QCheckBox::toggled, this,
+          &RenderSettingsPanel::transparentReadingChanged);
   connect(code_line_numbers_, &QCheckBox::toggled, view_,
           &MarkdownView::SetCodeLineNumbers);
   connect(formula_rendering_, &QCheckBox::toggled, view_,

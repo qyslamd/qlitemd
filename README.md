@@ -73,8 +73,10 @@ QWindowKit and builds against an installed SDK.
   QuickJS + mermaid.js backend remains selectable.
 - **SVG rasterization** — resvg handles diagrams and formulas; the legacy
   QtSvg backend remains selectable.
-- **Themes** — built-in light and dark CSS; `MD_MARKDOWN_CSS` can override the
-  stylesheet for live tweaking.
+- **Themes** — built-in light and dark CSS; `SetThemeStyleSheet()` lets a host
+  supply per-theme CSS, `SetPageBackground()` controls the page fill
+  (including transparency for Mica/acrylic windows), and `MD_MARKDOWN_CSS`
+  remains a live-tweak override.
 - **Code block chrome** — language label, copy link and optional line numbers.
 - **Outline** — `MarkdownHeading` list with stable slugs, ready for a side
   panel and anchor navigation.
@@ -257,7 +259,8 @@ navigation, session and per-document reading-position restore, a single-row
 title bar that merges the menu, navigation, zoom and search, a right-hand
 outline, segmented sidebar tabs with inline bookmark stars, focus mode,
 Mica/acrylic window materials, a status bar with document count and build
-backend labels, and a large-file confirmation. The existing zoom, recent
+backend labels, an opt-in prototype reading style (700px column, cards,
+transparent surface) with a breadcrumb, and a large-file confirmation. The existing zoom, recent
 files, image preview/save-as, formula and Mermaid source inspection,
 HTML/PDF export and render-status panel remain. It is also the reference
 integration for host-side policy such as link handling and settings.

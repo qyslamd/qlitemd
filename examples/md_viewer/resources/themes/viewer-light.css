@@ -1,0 +1,208 @@
+/* md_viewer 原型阅读区（浅色）。通过 MarkdownView::SetThemeStyleSheet
+   注入；html/body 保持透明，页面底色由 SetPageBackground 控制 */
+
+html, body { background-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI Variable Text", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.78;
+  color: #1a1c1f;
+}
+
+.md-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 42px 40px 72px;
+}
+
+h1 {
+  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 30px;
+  line-height: 1.25;
+  margin: 0 0 10px;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+h2 {
+  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 20px;
+  margin: 34px 0 10px;
+  padding-top: 6px;
+}
+
+h3 { font-size: 16px; margin: 24px 0 8px; }
+h4, h5, h6 { font-size: 15px; margin: 20px 0 6px; }
+
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 22px; }
+li { margin: 4px 0; }
+
+a { color: #0067c0; }
+
+code {
+  background: #eef1f5;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  color: #1a1c1f;
+}
+
+pre {
+  background: #f6f8fa;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #e1e4e8;
+  margin: 18px 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 12.8px;
+  line-height: 1.65;
+  color: #1a1c1f;
+}
+
+blockquote {
+  margin: 18px 0;
+  padding: 10px 16px;
+  border-left: 3px solid #0067c0;
+  background: #e9f2fb;
+  border-radius: 0 8px 8px 0;
+  color: #565b63;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13.5px;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+th { background: transparent; color: #565b63; font-weight: 600; }
+
+hr { border: 0; border-top: 1px solid #e1e4e8; margin: 18px 0; }
+img { max-width: 100%; }
+
+/* 代码块外框：语言标签 + 复制链接 */
+.code-wrap {
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+  margin: 18px 0;
+  background: #f6f8fa;
+  overflow: hidden;
+}
+
+.code-header {
+  background: #eef1f5;
+  border-bottom: 1px solid #e1e4e8;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  color: #8a9099;
+  line-height: 20px;
+}
+
+.code-lang {
+  color: #565b63;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-weight: 600;
+}
+
+a.copy-btn {
+  float: right;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #8a9099;
+  font-size: 11.5px;
+  line-height: 20px;
+}
+
+.code-wrap pre {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 14px 16px;
+  background: #f6f8fa;
+}
+
+.md-code {
+  width: 100%;
+  background: #f6f8fa;
+  border-collapse: collapse;
+}
+
+.md-code td {
+  border: none;
+  padding: 0;
+  vertical-align: top;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12.8px;
+  line-height: 21px;
+  color: #1a1c1f;
+}
+
+.md-code .md-code-ln {
+  width: 1%;
+  padding: 0 10px 0 12px;
+  text-align: right;
+  color: #8a9099;
+  white-space: nowrap;
+}
+
+.md-code .md-code-line {
+  padding: 0 12px 0 4px;
+  padding-left: 2em;
+  text-indent: -2em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 公式：独立公式是一张 <img class="math-display"> */
+.math-display {
+  display: block;
+  margin: 20px auto;
+  padding: 22px 18px;
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+}
+
+.math-src { color: #b91c1c; }
+
+.mermaid-wrap {
+  text-align: center;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+  background: #f6f8fa;
+}
+
+img.mermaid { max-width: 100%; height: auto; }
+
+.error { color: #b91c1c; }
+
+/* 代码高亮：按原型的主色收敛 */
+.kw, .ty { color: #b5561b; }
+.bi, .fn, .tt { color: #7a4bb8; }
+.lit, .num, .meta, .attr, .sel { color: #0550ae; }
+.var, .sym { color: #953800; }
+.str, .re { color: #0a7d47; }
+.cmt { color: #8a9099; }
+.tag { color: #116329; }
+.op { color: #24292f; }

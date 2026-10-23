@@ -18,6 +18,15 @@ All notable changes to qlitemd are documented here.
   hooks (recorded as `patches/FluentUIStyle/0003-titlebar-widgets.patch`).
   Window material is selectable between auto (Mica on Windows 11, DWM blur
   otherwise), acrylic and off; the markdown body keeps the theme surface.
+- Fix formula image clipping when the source SVG uses `pt`/`ex` units:
+  resvg now scales by the target/intrinsic ratio instead of the raw
+  supersampling factor. Render-cache pipeline bumped to v3 so old clipped
+  entries miss; `SvgRasterizerTest.PtUnitsFillTargetWithoutClipping` pins it.
+- Add `MarkdownView::SetThemeStyleSheet()` and `SetPageBackground()`:
+  hosts can inject per-theme CSS and choose an opaque or transparent page
+  fill. `md_viewer` gains an opt-in prototype reading style (700px column,
+  cards, transparent surface) with a breadcrumb; the library default style
+  and the existing `MD_MARKDOWN_CSS` tweak path remain unchanged.
 - Align `md_viewer` with the UI prototype: outline moved to a right-hand
   column, segmented sidebar tabs with icons, filter above the tabs, a
   single-column document tree with folder/file icons, per-folder counts,

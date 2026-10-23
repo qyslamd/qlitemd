@@ -314,12 +314,20 @@ struct SearchHit {          // 单条命中
   全文搜索是按需扫描，没有持久索引。
 - 视图菜单增加“专注模式”（Ctrl+Shift+F，隐藏侧栏与大纲）和 Windows
   的“窗口材质”子菜单。标题栏菜单按钮改成三条横线 SVG。
-- 阅读区版式仍由 `resources/themes/*.css` 决定；`MarkdownView` 没有
-  样式注入 API，正文居中、卡片化公式/代码、透明背景等原型细节不在
-  本次范围。
+- 阅读区样式：库默认仍由 `resources/themes/*.css` 决定；新增
+  `MarkdownView::SetThemeStyleSheet(theme, css)` 与
+  `SetPageBackground(color)`，宿主可按主题注入 CSS、选择透明/不透明
+  页面。`md_viewer` 提供 opt-in 的原型阅读样式
+  （`examples/md_viewer/resources/themes/viewer-light.css` /
+  `viewer-dark.css`：700px 阅读列、卡片、透明页面）和阅读区上方
+  面包屑；库默认样式不变。
 - 深色主题：FluentUI 的局部 palette 不会跟随 `qApp->setPalette`，
   切主题时显式把 `style()->standardPalette()` 压给 qApp，并递归刷新
-  状态栏、侧栏、大纲和阅读区的 palette。阅读区背景与主题 CSS 的
-  `body` 对齐（浅色 `#ffffff`、深色 `#0d1117`），短文档下方不再露出
-  Fluent 窗口底。Mica/亚克力本身是透明的，funq 的窗口抓图不合成 DWM
-  backdrop，深色截图用“窗口材质：关闭”拍摄。
+  状态栏、侧栏、大纲和阅读区的 palette。页面背景由
+  `SetPageBackground` 管理，主题底色与 CSS `body` 对齐；短文档下方
+  不再露出 Fluent 窗口底。Mica/亚克力本身是透明的，funq 的窗口抓图
+  不合成 DWM backdrop，深色/材质截图用桌面截屏补足。
+- 公式裁切：SVG 的 width/height 可能带 `pt`/`ex` 单位，resvg 的
+  intrinsic size 与 viewBox 不一致；栅格化按 target/intrinsic 比例
+  缩放，修复公式右侧缺失。渲染缓存 pipeline 升到 v3，旧裁切缓存
+  自然失效；新增 `SvgRasterizerTest.PtUnitsFillTargetWithoutClipping`。
