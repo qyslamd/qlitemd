@@ -14,6 +14,8 @@ set(ALL_SRCS
     md_viewer_window.h
     navigation_history.cpp
     navigation_history.h
+    quick_open.cpp
+    quick_open.h
     render_settings_panel.cpp
     text_search.cpp
     text_search.h

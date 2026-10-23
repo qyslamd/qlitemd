@@ -66,3 +66,14 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 set_tests_properties(test_text_search PROPERTIES TIMEOUT 120)
+
+add_unit_test(
+    NAME test_quick_open
+    SOURCES quick_open_test.cpp
+            ${VIEWER_DIR}/quick_open.cpp
+            ${VIEWER_DIR}/quick_open.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)

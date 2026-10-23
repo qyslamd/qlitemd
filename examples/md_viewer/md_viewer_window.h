@@ -36,10 +36,12 @@ class DocumentsPanel;
 class FluentWindowFrame;
 class MarkdownOutlineWidget;
 class MarkdownView;
+class QuickOpenPopup;
 class RenderSettingsPanel;
 class RenderStatusPanel;
 class TextSearch;
 struct DocumentScanResult;
+struct QuickOpenItem;
 struct SearchHit;
 
 // 独立的 Markdown 查看器：单篇与"整个目录"两种打开方式，目录铺在左侧递归
@@ -85,6 +87,9 @@ class MdViewerWindow : public QMainWindow {
 
   void OpenFileDialog();
   void OpenDirectoryDialog();
+  // Ctrl+P：把当前标题/文件/最近/命令汇总到快速跳转面板
+  void ShowQuickOpen();
+  void ActivateQuickOpenItem(const QuickOpenItem& item);
   // Fluent 壳与文档主题一起切
   void ApplyTheme(MarkdownTheme theme);
   // 标题栏主题按钮：浅色/暗色之间翻转
@@ -142,6 +147,7 @@ class MdViewerWindow : public QMainWindow {
   QAction* export_html_action_ = nullptr;
   QAction* export_pdf_action_ = nullptr;
   QAction* find_action_ = nullptr;
+  QAction* quick_open_action_ = nullptr;
   QAction* back_action_ = nullptr;
   QAction* forward_action_ = nullptr;
   QAction* zoom_in_action_ = nullptr;
@@ -168,6 +174,9 @@ class MdViewerWindow : public QMainWindow {
   RenderSettingsPanel* render_settings_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;
   DocumentsPanel* documents_panel_ = nullptr;
+  QuickOpenPopup* quick_open_ = nullptr;
+  // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
+  QStringList quick_open_files_;
   QLabel* path_label_ = nullptr;
   QLabel* breadcrumb_ = nullptr;
   QLabel* zoom_label_ = nullptr;
@@ -206,6 +215,7 @@ class MdViewerWindow : public QMainWindow {
   FluentWindowFrame* fluent_frame_ = nullptr;
   QDockWidget* document_dock_ = nullptr;
   QDockWidget* outline_dock_ = nullptr;
+  QDockWidget* settings_dock_ = nullptr;
   bool focus_mode_ = false;
   bool focus_restore_document_ = true;
   bool focus_restore_outline_ = true;

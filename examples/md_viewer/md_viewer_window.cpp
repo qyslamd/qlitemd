@@ -53,6 +53,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QSet>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QSize>
@@ -75,6 +76,7 @@
 #include "documents_panel.h"
 #include "markdown_outline_widget.h"
 #include "md_viewer_settings.h"
+#include "quick_open.h"
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
 #include "text_search.h"
@@ -368,17 +370,17 @@ void MdViewerWindow::initUi() {
   status_dock->hide();
 
   // 渲染设置：主题、行号、渲染开关、持久缓存、诊断
-  auto* settings_dock = new QDockWidget(QStringLiteral("渲染设置"), this);
-  settings_dock->setObjectName(QStringLiteral("renderSettingsDock"));
-  settings_dock->setMinimumWidth(280);
-  render_settings_ = new RenderSettingsPanel(view_, settings_dock);
+  settings_dock_ = new QDockWidget(QStringLiteral("渲染设置"), this);
+  settings_dock_->setObjectName(QStringLiteral("renderSettingsDock"));
+  settings_dock_->setMinimumWidth(280);
+  render_settings_ = new RenderSettingsPanel(view_, settings_dock_);
   render_settings_->SetWindowMaterial(settings_->window_material);
   render_settings_->SetReadingStyle(settings_->reading_style);
   render_settings_->SetTransparentReading(settings_->transparent_reading);
-  settings_dock->setWidget(render_settings_);
-  addDockWidget(Qt::RightDockWidgetArea, settings_dock);
+  settings_dock_->setWidget(render_settings_);
+  addDockWidget(Qt::RightDockWidgetArea, settings_dock_);
   // 同上：渲染设置默认收起
-  settings_dock->hide();
+  settings_dock_->hide();
 
   statusBar()->setObjectName(QStringLiteral("mainStatusBar"));
   statusBar()->setSizeGripEnabled(false);
@@ -457,6 +459,15 @@ void MdViewerWindow::initUi() {
   fluent_frame_->titleBar()->setThemeDark(view_->theme() !=
                                           MarkdownTheme::Light);
 
+  // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
+  quick_open_action_ = new QAction(QStringLiteral("快速跳转…"), this);
+  quick_open_action_->setObjectName(QStringLiteral("quickOpenAction"));
+  quick_open_action_->setIcon(
+      QIcon(QStringLiteral(":/resources/svg/search.svg")));
+  quick_open_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+P")));
+  quick_open_action_->setToolTip(
+      QStringLiteral("跳转到文件、标题或命令（Ctrl+P）"));
+
   // 导航与缩放从工具条搬进标题栏；文件跳转和锚点跳转共用一个历史栈
   back_action_ = new QAction(QStringLiteral("后退"), this);
   back_action_->setObjectName(QStringLiteral("navBackAction"));
@@ -502,10 +513,12 @@ void MdViewerWindow::initUi() {
   file_menu->addAction(quit_action_);
 
   view_menu_ = app_menu_->addMenu(QStringLiteral("视图(&V)"));
+  view_menu_->addAction(quick_open_action_);
+  view_menu_->addSeparator();
   view_menu_->addAction(document_dock_->toggleViewAction());
   view_menu_->addAction(outline_dock_->toggleViewAction());
   view_menu_->addAction(status_dock->toggleViewAction());
-  view_menu_->addAction(settings_dock->toggleViewAction());
+  view_menu_->addAction(settings_dock_->toggleViewAction());
   focus_mode_action_ = new QAction(QStringLiteral("专注模式"), this);
   focus_mode_action_->setObjectName(QStringLiteral("focusModeAction"));
   focus_mode_action_->setCheckable(true);
@@ -557,6 +570,7 @@ void MdViewerWindow::initUi() {
   addAction(open_dir_action_);
   addAction(quit_action_);
   addAction(find_action_);
+  addAction(quick_open_action_);
   addAction(back_action_);
   addAction(forward_action_);
   addAction(bookmark_action_);
@@ -850,6 +864,8 @@ void MdViewerWindow::initSignals() {
       QDesktopServices::openUrl(url);
     }
   });
+  connect(quick_open_action_, &QAction::triggered, this,
+          &MdViewerWindow::ShowQuickOpen);
   connect(find_action_, &QAction::triggered, this,
           &MdViewerWindow::FocusGlobalSearch);
   // 新输入立即取消旧扫描并清空结果；防抖结束后才真正开扫
@@ -985,7 +1001,15 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
     settings_->root_dir = root_dir_;
     settings_->SaveSession();
     documents_panel_->SetRoot(result);
+    quick_open_files_.clear();
+    quick_open_files_.reserve(result.markdown_file_count);
+    for (const DocumentEntry& entry : result.entries) {
+      if (!entry.is_dir) {
+        quick_open_files_.append(entry.absolute_path);
+      }
+    }
   } else {
+    quick_open_files_.clear();
     root_dir_ = QFileInfo(root).absoluteFilePath();
     documents_panel_->SetRootMissing(root_dir_,
                                      QStringLiteral("目录不存在或不可读"));
@@ -1163,6 +1187,156 @@ void MdViewerWindow::OpenDirectoryDialog() {
       root_dir_.isEmpty() ? QDir::homePath() : root_dir_);
   if (!dir.isEmpty()) {
     OpenPath(dir);
+  }
+}
+
+void MdViewerWindow::ShowQuickOpen() {
+  if (quick_open_ == nullptr) {
+    quick_open_ = new QuickOpenPopup(this);
+    connect(quick_open_, &QuickOpenPopup::itemActivated, this,
+            &MdViewerWindow::ActivateQuickOpenItem);
+  }
+
+  QVector<QuickOpenItem> items;
+  const QString current_file = view_->current_file();
+  if (view_->has_document() && !view_->is_rendering() &&
+      !current_file.isEmpty()) {
+    for (const MarkdownHeading& heading : view_->outline()) {
+      QuickOpenItem item;
+      item.kind = QuickOpenKind::kHeading;
+      item.title = heading.text;
+      item.subtitle = QStringLiteral("%1 · H%2")
+                          .arg(QFileInfo(current_file).fileName())
+                          .arg(heading.level);
+      item.path = current_file;
+      item.anchor = heading.anchor;
+      items.append(item);
+    }
+  }
+
+  QSet<QString> seen;
+  for (const QString& path : settings_->recent_files) {
+    const QFileInfo info(path);
+    if (!info.isFile()) {
+      continue;
+    }
+    const QString absolute = info.absoluteFilePath();
+    if (seen.contains(absolute)) {
+      continue;
+    }
+    seen.insert(absolute);
+    QuickOpenItem item;
+    item.kind = QuickOpenKind::kRecent;
+    item.title = info.fileName();
+    item.subtitle = QStringLiteral("最近 · %1")
+                        .arg(QDir::toNativeSeparators(info.absolutePath()));
+    item.path = absolute;
+    items.append(item);
+  }
+
+  auto add_command = [&items](const QString& title, const QString& subtitle,
+                              const QString& id) {
+    QuickOpenItem item;
+    item.kind = QuickOpenKind::kCommand;
+    item.title = title;
+    item.subtitle = subtitle;
+    item.command_id = id;
+    items.append(item);
+  };
+  add_command(QStringLiteral("打开文件…"), QStringLiteral("文件"),
+              QStringLiteral("open-file"));
+  add_command(QStringLiteral("打开目录…"), QStringLiteral("文件"),
+              QStringLiteral("open-dir"));
+  add_command(view_->theme() == MarkdownTheme::Dark
+                  ? QStringLiteral("切换到浅色主题")
+                  : QStringLiteral("切换到深色主题"),
+              QStringLiteral("外观"), QStringLiteral("toggle-theme"));
+  add_command(focus_mode_ ? QStringLiteral("退出专注模式")
+                          : QStringLiteral("进入专注模式"),
+              QStringLiteral("视图"), QStringLiteral("focus-mode"));
+  const bool starred =
+      !displayed_file_.isEmpty() && bookmarks_.Contains(displayed_file_);
+  add_command(starred ? QStringLiteral("取消收藏当前文档")
+                      : QStringLiteral("收藏当前文档"),
+              QStringLiteral("阅读"), QStringLiteral("toggle-bookmark"));
+  add_command(QStringLiteral("导出 HTML…"), QStringLiteral("导出"),
+              QStringLiteral("export-html"));
+  add_command(QStringLiteral("导出 PDF…"), QStringLiteral("导出"),
+              QStringLiteral("export-pdf"));
+  add_command(QStringLiteral("刷新文档树"), QStringLiteral("视图"),
+              QStringLiteral("refresh-root"));
+  add_command(QStringLiteral("缩小"), QStringLiteral("缩放"),
+              QStringLiteral("zoom-out"));
+  add_command(QStringLiteral("重置缩放"), QStringLiteral("缩放"),
+              QStringLiteral("zoom-reset"));
+  add_command(QStringLiteral("放大"), QStringLiteral("缩放"),
+              QStringLiteral("zoom-in"));
+  add_command(QStringLiteral("打开渲染设置"), QStringLiteral("视图"),
+              QStringLiteral("show-settings"));
+
+  for (const QString& path : quick_open_files_) {
+    if (seen.contains(path)) {
+      continue;
+    }
+    seen.insert(path);
+    const QFileInfo info(path);
+    const QString subtitle = IsPathUnderRoot(path, root_dir_)
+                                 ? QDir(root_dir_).relativeFilePath(path)
+                                 : info.absolutePath();
+    QuickOpenItem item;
+    item.kind = QuickOpenKind::kFile;
+    item.title = info.fileName();
+    item.subtitle = QDir::toNativeSeparators(subtitle);
+    item.path = path;
+    items.append(item);
+  }
+  quick_open_->Open(items);
+}
+
+void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
+  switch (item.kind) {
+    case QuickOpenKind::kHeading:
+      if (!item.path.isEmpty() && !item.anchor.isEmpty()) {
+        NavigateTo(item.path, item.anchor, /*record_history=*/true);
+      }
+      return;
+    case QuickOpenKind::kFile:
+    case QuickOpenKind::kRecent:
+      if (!item.path.isEmpty()) {
+        NavigateTo(item.path, QString(), /*record_history=*/true);
+      }
+      return;
+    case QuickOpenKind::kCommand:
+      break;
+  }
+
+  const QString& id = item.command_id;
+  if (id == QLatin1String("open-file")) {
+    open_file_action_->trigger();
+  } else if (id == QLatin1String("open-dir")) {
+    open_dir_action_->trigger();
+  } else if (id == QLatin1String("toggle-theme")) {
+    ToggleTheme();
+  } else if (id == QLatin1String("focus-mode")) {
+    focus_mode_action_->setChecked(!focus_mode_action_->isChecked());
+  } else if (id == QLatin1String("toggle-bookmark")) {
+    bookmark_action_->trigger();
+  } else if (id == QLatin1String("export-html")) {
+    export_html_action_->trigger();
+  } else if (id == QLatin1String("export-pdf")) {
+    export_pdf_action_->trigger();
+  } else if (id == QLatin1String("refresh-root")) {
+    RefreshRoot();
+  } else if (id == QLatin1String("zoom-out")) {
+    zoom_out_action_->trigger();
+  } else if (id == QLatin1String("zoom-reset")) {
+    zoom_reset_action_->trigger();
+  } else if (id == QLatin1String("zoom-in")) {
+    zoom_in_action_->trigger();
+  } else if (id == QLatin1String("show-settings") &&
+             settings_dock_ != nullptr) {
+    settings_dock_->show();
+    settings_dock_->raise();
   }
 }
 
