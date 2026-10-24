@@ -32,7 +32,7 @@ class RecordingMetrics : public MdFontMetrics {
   mutable std::atomic<int> calls{0};
 };
 
-#if defined(QLITEMD_MDHTML_MERMAID_MERMAN)
+#if defined(QLITEMD_MDHTML_MERMAID_MERMAN) || defined(QLITEMD_MDHTML_QUICKJS)
 
 TEST(MdMermaidTest, RendersSvgForBothThemes) {
   auto metrics = std::make_shared<RecordingMetrics>();

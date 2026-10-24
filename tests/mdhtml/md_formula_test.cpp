@@ -6,7 +6,7 @@
 
 namespace {
 
-#if defined(QLITEMD_MDHTML_FORMULA_RATEX)
+#if defined(QLITEMD_MDHTML_FORMULA_RATEX) || defined(QLITEMD_MDHTML_QUICKJS)
 
 TEST(MdFormulaTest, RendersInlineSvgWithColor) {
   MdFormulaEngine engine;
@@ -16,8 +16,13 @@ TEST(MdFormulaTest, RendersInlineSvgWithColor) {
   EXPECT_EQ(result.svg.svg.rfind("<svg", 0), 0u) << result.svg.svg;
   EXPECT_GT(result.svg.width, 0);
   EXPECT_GT(result.svg.height, 0);
+#if defined(QLITEMD_MDHTML_FORMULA_RATEX)
   EXPECT_NE(result.svg.svg.find("rgba(255,0,0,1)"), std::string::npos)
       << result.svg.svg;
+#else
+  EXPECT_NE(result.svg.svg.find("#ff0000"), std::string::npos)
+      << result.svg.svg;
+#endif
 }
 
 TEST(MdFormulaTest, DisplayModeChangesMetrics) {

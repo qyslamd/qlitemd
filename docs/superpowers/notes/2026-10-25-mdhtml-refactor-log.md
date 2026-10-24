@@ -71,3 +71,23 @@
 - 测试：`test_mdhtml_svg`（11）、`test_mdhtml_font_metrics`（6）、
   `test_mdhtml_formula`（4）、`test_mdhtml_mermaid`（3）；
   MARKDOWN 全量 36/36 通过。
+
+## S3b QuickJS 回退（完成）
+
+- 新增 `md_js_runtime`：`js_runtime` 的 std 化版本，保留字节码加载、
+  一次性失败、首次加载耗时与中断旗标；不打印日志。
+- 新增 `md_bytecode.h` 与 `src/mdhtml/CMakeLists.txt` 里的 qjsc 规则：
+  四份 JS 载荷按构建目录生成字节码并编进核心；仅在
+  `QLITEMD_NEEDS_QUICKJS` 时参与构建。
+- 公式 QuickJS 路径：MathJax `MathJaxAdapter.convert` → `<svg>`；
+  颜色注入 currentColor，尺寸优先解析 `ex`（×8），退回 viewBox
+  （×16/1000），与旧管线一致。
+- Mermaid QuickJS 路径：移植 dom_shim bridge（`__measureText`、
+  `__measureTextFull`、`__setSettled`）、`htmlLabels:false` 初始化、
+  `%%{init}%%` 主题指令、Promise 微任务泵（20 万 job / 30 秒上限）。
+  度量回调全部走 `MdFontMetrics`。
+- 顶层 CMake 调整：`src/mdhtml` 移到 QuickJS/tree-sitter 之后，保证
+  qjsc 与 tree-sitter 目标已存在。
+- 验证：新增第二个构建目录 `build_qt515_quickjs_x86`（Qt 5.15.2 x86，
+  formula/mermaid 都选 quickjs，关闭 md_viewer），6 个 mdhtml 测试
+  目标全部通过；原 resvg+ratex+merman 构建的 MARKDOWN 36/36 仍通过。

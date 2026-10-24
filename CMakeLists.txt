@@ -250,9 +250,6 @@ target_include_directories(md4c PUBLIC
     "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src")
 set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
-# ---------------------------------------------------- Qt-free mdhtml core
-add_subdirectory(src/mdhtml)
-
 # ------------------------------------------------------------- QuickJS
 # 只有选了 quickjs 后端（公式或 Mermaid）才编译 QuickJS 与 JS 载荷
 if(QLITEMD_NEEDS_QUICKJS)
@@ -264,6 +261,11 @@ endif()
 # ------------------------------------------------- tree-sitter (native)
 add_subdirectory(3rdparty/tree-sitter)
 qlitemd_skip_subdir_install(3rdparty/tree-sitter)
+
+# ---------------------------------------------------- Qt-free mdhtml core
+# Needs the QuickJS/qjsc and tree-sitter targets above, so it comes after
+# the vendored dependencies.
+add_subdirectory(src/mdhtml)
 
 # ------------------------------------------------------ viewer UI deps
 if(QLITEMD_BUILD_MD_VIEWER)
