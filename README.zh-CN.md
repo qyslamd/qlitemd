@@ -32,26 +32,31 @@ qlitehtml、QuickJS 或 md4c 的类型，替换渲染后端不需要改调用方
 
 ```cmake
 add_subdirectory(path/to/qlitemd)
-target_link_libraries(myapp PRIVATE qlitemd_markdown)
+target_link_libraries(myapp PRIVATE qlitemd_mdhtml)
 ```
 
 或者使用已安装的 SDK：
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE qlitemd::markdown)
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 ```
 
 ```cpp
-#include "markdown_view.h"
+#include "md_pipeline.h"
 
-auto* view = new MarkdownView(parent);
-view->LoadFile(QStringLiteral("README.md"));
-// 或者：view->SetContent(markdown_text, base_directory);
+MdHtmlPipeline pipeline;
+const MdHtmlResult result = pipeline.Render(markdown_utf8);
+// result.html + result.assets（公式/Mermaid SVG）+ outline
 ```
 
-独立的 `QWidget` 示例在 [`examples/minimal`](examples/minimal)，不依赖
-FluentUI/QWindowKit，可直接针对已安装的 SDK 构建。
+SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
+高亮/公式/Mermaid 在三条 worker lane，只产出 SVG 资产。`QWidget`
+适配层（`MarkdownView`、qlitehtml、resvg/QtSvg 光栅化）位于
+`examples/md_viewer/qt_adapter`，不进入安装包。
+
+独立的零 Qt 控制台示例在 [`examples/minimal`](examples/minimal)，
+可直接针对已安装的 SDK 构建。
 
 ## 功能
 
@@ -194,7 +199,7 @@ cmake --install build
 ```
 
 默认选项下，安装内容包含 `bin/md_viewer.exe`、`bin/resvg.dll`、
-`bin/merman_ffi.dll`、`qlitemd_markdown` 静态库及其静态依赖、公开头文件、
+`bin/merman_ffi.dll`、`qlitemd_mdhtml` 静态库及其静态依赖、公开核心头文件、
 许可证文件和 CMake package config。Windows 安装阶段会调用
 `windeployqt`，并拷贝项目内构建的 `FluentUI3Style.dll` 和
 `ExWidgets.dll`。
@@ -203,16 +208,23 @@ cmake --install build
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE qlitemd::markdown)
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 ```
 
-只安装库 SDK 时，配置阶段加上 `QLITEMD_BUILD_MD_VIEWER=OFF` 和
-`QLITEMD_BUILD_TESTS=OFF`。
+只构建零 Qt 的 SDK 时：
+
+```bash
+cmake -S . -B build-core -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DQLITEMD_CORE_ONLY=ON \
+  -DQLITEMD_FORMULA_BACKEND=quickjs \
+  -DQLITEMD_MERMAID_BACKEND=quickjs
+```
 
 安装组件：
 
 - `Runtime`：`md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
-- `Development`：静态库、公开头文件和 `qlitemdConfig.cmake`
+- `Development`：核心静态库、公开核心头文件和 `qlitemdConfig.cmake`
 - `Licenses`：项目和第三方许可证文本
 
 ```bash
@@ -243,11 +255,13 @@ SDK 仍通过独立的 install 组件发布。
 
 ## 目录结构
 
-- `src/markdown/`：库主体
-- `resources/`：主题 CSS 与 JS 载荷
+- `src/mdhtml/`：零 Qt 核心库（`qlitemd_mdhtml`）
+- `resources/`：主题 CSS 与 QuickJS 回退用的 JS 载荷
 - `examples/md_viewer/`：FluentUI 示例程序
-- `examples/minimal/`：面向已安装 SDK 的独立 QWidget 示例
-- `tests/markdown/`：库的无头 GoogleTest 测试
+- `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
+- `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
+- `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
+- `tests/mdhtml/`：核心无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助
 - `installer/`：Windows 安装包的 Inno Setup 脚本

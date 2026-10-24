@@ -37,27 +37,31 @@ md4c types, so the rendering backend can be replaced without changing callers.
 
 ```cmake
 add_subdirectory(path/to/qlitemd)
-target_link_libraries(myapp PRIVATE qlitemd_markdown)
+target_link_libraries(myapp PRIVATE qlitemd_mdhtml)
 ```
 
 Or, from an installed SDK:
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE qlitemd::markdown)
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 ```
 
 ```cpp
-#include "markdown_view.h"
+#include "md_pipeline.h"
 
-auto* view = new MarkdownView(parent);
-view->LoadFile(QStringLiteral("README.md"));
-// or: view->SetContent(markdown_text, base_directory);
+MdHtmlPipeline pipeline;
+const MdHtmlResult result = pipeline.Render(markdown_utf8);
+// result.html + result.assets (formula/Mermaid SVG) + outline
 ```
 
-A standalone `QWidget` example is in
-[`examples/minimal`](examples/minimal). It does not use FluentUI or
-QWindowKit and builds against an installed SDK.
+The SDK is the zero-Qt `mdhtml` core: parsing and assembly on a coordinator
+thread, highlight/formula/Mermaid on three worker lanes, and SVG-only assets.
+The `QWidget` adapter (`MarkdownView`, qlitehtml, resvg/QtSvg rasterization)
+lives in `examples/md_viewer/qt_adapter` and is not part of the installed SDK.
+
+A standalone zero-Qt console example is in
+[`examples/minimal`](examples/minimal); it builds against an installed SDK.
 
 ## Features
 
@@ -66,13 +70,12 @@ QWindowKit and builds against an installed SDK.
 - **Syntax highlighting** — native tree-sitter with 12 grammar languages
   (bash, batch, c, cpp, css, go, html, java, javascript, json, python,
   rust); the example renders per-line spans so line numbers stay aligned.
-- **Formulas** — MathJax (TeX to SVG to QPixmap), inline `$...$` and display
-  `$$...$$`, with theme-aware colors.
+- **Formulas** — RaTeX (native, Windows) or MathJax in QuickJS emits SVG for
+  inline `$...$` and display `$$...$$`, with theme-aware colors.
 - **Mermaid diagrams** — merman-ffi parses Mermaid natively and emits
-  `resvg-safe` SVG; no JavaScript runs for diagrams. The legacy
-  QuickJS + mermaid.js backend remains selectable.
-- **SVG rasterization** — resvg handles diagrams and formulas; the legacy
-  QtSvg backend remains selectable.
+  `resvg-safe` SVG; the QuickJS + mermaid.js backend remains selectable.
+- **SVG assets** — the core never rasterizes. `md_viewer` uses resvg, with
+  the legacy QtSvg backend still selectable.
 - **Themes** — built-in light and dark CSS; `SetThemeStyleSheet()` lets a host
   supply per-theme CSS, `SetPageBackground()` controls the page fill
   (including transparency for Mica/acrylic windows), and `MD_MARKDOWN_CSS`
@@ -147,10 +150,10 @@ Validated configurations:
 
 | Qt | Architecture | Status |
 | --- | --- | --- |
-| Qt 5.15.2 | x86 | Library, tests, `md_viewer`, install |
-| Qt 5.14.2 | x64 | Library, tests, `md_viewer` |
-| Qt 6.8.3 | x64 | Library, tests and `md_viewer` build; runtime visual check pending |
-| Qt 6.8.3 | x64 (Linux) | Library and tests in CI; `md_viewer` disabled |
+| Qt 5.15.2 | x86 | Core, adapter tests, `md_viewer`, install |
+| Qt 5.14.2 | x64 | Core, adapter tests, `md_viewer` |
+| Qt 6.8.3 | x64 | Core, adapter tests and `md_viewer` build; runtime visual check pending |
+| Qt 6.8.3 | x64 (Linux) | Core and adapter tests in CI; `md_viewer` disabled |
 | Qt 5.12.12 | x64 | Not supported; Qt 5.14 is the minimum |
 
 Windows with MSVC is the primary platform. Linux library/tests are covered by
@@ -217,25 +220,33 @@ cmake --install build
 ```
 
 With the default options, the install contains `bin/md_viewer.exe`,
-`bin/resvg.dll`, `bin/merman_ffi.dll`, the `qlitemd_markdown` static library,
-its static dependency archives, public headers, license files and a CMake
-package config. On Windows, `windeployqt` is invoked during install, and the
-in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next to the viewer.
+`bin/resvg.dll`, `bin/merman_ffi.dll`, the `qlitemd_mdhtml` static library,
+its dependency archives (`md4c`, tree-sitter, QuickJS when selected), public
+core headers, license files and a CMake package config. On Windows,
+`windeployqt` is invoked during install, and the in-tree `FluentUI3Style` and
+`ExWidgets` DLLs are copied next to the viewer.
 
 Consumers can then use:
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE qlitemd::markdown)
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 ```
 
-For a library-only SDK, configure with `QLITEMD_BUILD_MD_VIEWER=OFF` and
-`QLITEMD_BUILD_TESTS=OFF`.
+For a Qt-free SDK build (no Qt discovery, no viewer, no adapter):
+
+```bash
+cmake -S . -B build-core -G Ninja \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DQLITEMD_CORE_ONLY=ON \
+  -DQLITEMD_FORMULA_BACKEND=quickjs \
+  -DQLITEMD_MERMAID_BACKEND=quickjs
+```
 
 Install components:
 
 - `Runtime` — `md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
-- `Development` — static libraries, public headers and `qlitemdConfig.cmake`
+- `Development` — core static libraries, public core headers and `qlitemdConfig.cmake`
 - `Licenses` — project and third-party license texts
 
 ```bash
@@ -271,11 +282,13 @@ integration for host-side policy such as link handling and settings.
 
 ## Layout
 
-- `src/markdown/` — the library
-- `resources/` — theme CSS and JS payloads
+- `src/mdhtml/` — the zero-Qt core library (`qlitemd_mdhtml`)
+- `resources/` — theme CSS and JS payloads for the QuickJS fallback
 - `examples/md_viewer/` — the FluentUI example application
-- `examples/minimal/` — standalone QWidget example for an installed SDK
-- `tests/markdown/` — headless library GoogleTest suite
+- `examples/md_viewer/qt_adapter/` — QWidget/qlitehtml/rasterizer adapter
+- `examples/md_viewer/qt_adapter/tests/` — headless adapter GoogleTest suite
+- `examples/minimal/` — zero-Qt console example for an installed SDK
+- `tests/mdhtml/` — headless core GoogleTest suite
 - `tests/md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
 - `installer/` — Inno Setup script for the Windows installer
@@ -291,8 +304,9 @@ integration for host-side policy such as link handling and settings.
   supported.
 - PDF export paginates by slicing the layout, so a very long element can be
   split across pages.
-- Linux and Qt 6 have library/test build coverage; `md_viewer` runtime and
-  visual sign-off are still pending.
+- Linux and Qt 6 have core/adapter test coverage; `md_viewer` runtime and
+  visual sign-off are still pending. A separate CI job builds the core with
+  no Qt at all.
 - Ubuntu 20.04's Qt 5.12.8 is below the minimum Qt 5.14; install a newer Qt.
 - FluentUI uses the system `Segoe Fluent Icons` font and falls back to
   `Segoe MDL2 Assets`; the Microsoft font is not redistributed with this

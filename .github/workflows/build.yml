@@ -122,6 +122,19 @@ jobs:
       - name: Test
         run: ctest --test-dir build-core --output-on-failure
 
+      - name: Install SDK
+        run: cmake --install build-core --prefix "$PWD/stage"
+
+      - name: Build minimal consumer
+        run: |
+          cmake -S examples/minimal -B consumer-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            "-DCMAKE_PREFIX_PATH=$PWD/stage"
+          cmake --build consumer-build
+
+      - name: Run minimal consumer
+        run: ./consumer-build/qlitemd_minimal
+
       - name: Check formatting
         run: |
           python3 -m pip install --user --break-system-packages clang-format==21.1.2

@@ -11,11 +11,12 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 渲染链路：
 
 ```text
-Markdown -> md4c -> qlitehtml/litehtml -> QWidget
-                  \-> tree-sitter: 语法高亮（原生）
-                  \-> RaTeX: 公式（Windows 原生）/ QuickJS: MathJax（其它平台）
-                  \-> merman-ffi: Mermaid（原生）
-                  \-> resvg: 公式/图表 SVG 光栅化
+Markdown -> mdhtml（零 Qt）-> HTML + SVG 资产
+              \-> tree-sitter: 语法高亮
+              \-> RaTeX: 公式（Windows 原生）/ QuickJS: MathJax（其它平台）
+              \-> merman-ffi: Mermaid（原生）/ QuickJS: mermaid.js
+Qt 适配层（examples/md_viewer/qt_adapter）
+              \-> resvg/QtSvg 光栅化 -> qlitehtml/litehtml -> QWidget
 ```
 
 - 主验证平台：Windows + MSVC
@@ -114,7 +115,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build-linux --output-on-failure -L MA
 ctest --test-dir build --output-on-failure -L MARKDOWN
 ```
 
-- 改到 `src/markdown/` 时只跑 `MARKDOWN` 测试组，不要全量。
+- 改到 `src/mdhtml/` 或适配层时只跑 `MARKDOWN` 测试组，不要全量。
 - Linux 无显示环境使用 `QT_QPA_PLATFORM=offscreen`。
 - 行为变更必须补可无头运行的测试。
 
@@ -127,8 +128,9 @@ cmake --install build
 ```
 
 安装分为 `Runtime`、`Development`、`Licenses` 三个组件。`Runtime` 只含
-`md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含静态库、
-公开头文件和 `qlitemdConfig.cmake`；`Licenses` 含项目与第三方许可证。
+`md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含核心
+静态库、公开核心头文件和 `qlitemdConfig.cmake`（目标 `qlitemd::mdhtml`）；
+`Licenses` 含项目与第三方许可证。Qt 适配层不安装。
 
 ```bash
 cmake --install build --component Runtime
@@ -140,11 +142,11 @@ cmake --install build --component Licenses
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
-target_link_libraries(myapp PRIVATE qlitemd::markdown)
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 ```
 
-`examples/minimal` 是只依赖已安装 SDK 的最小 `QWidget` 示例；它不依赖
-FluentUI/QWindowKit，也是 CI 的 install/consumer smoke 用例。
+`examples/minimal` 是只依赖已安装核心 SDK 的最小零 Qt 控制台示例，
+也是 CI 的 install/consumer smoke 用例。
 
 ### 格式
 
@@ -158,13 +160,15 @@ clang-format --dry-run --Werror <file>
 
 ## 代码结构
 
-- `src/markdown/`：库主体，目标名 `qlitemd_markdown`
+- `src/mdhtml/`：零 Qt 核心，目标名 `qlitemd_mdhtml`
+- `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
 - `examples/md_viewer/`：FluentUI + QWindowKit 示例（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
   `text_search` / `navigation_history` / `documents_panel`）
-- `examples/minimal/`：面向已安装 SDK 的最小 `QWidget` 示例
-- `tests/markdown/`：库的无头 GoogleTest 测试
+- `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
+- `tests/mdhtml/`：核心无头 GoogleTest 测试
+- `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层模块与文档面板的无头测试
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
 - `installer/`：Inno Setup 安装包脚本
@@ -195,7 +199,7 @@ clang-format --dry-run --Werror <file>
 项目约定：
 
 - 本项目不使用命名空间。
-- 公开头文件不得暴露 qlitehtml、QuickJS 或 md4c 类型。
+- 公开核心头文件不得暴露 qlitehtml、QuickJS 或 md4c 类型。
 - 不在 C++ 中硬编码界面样式；主题 CSS 放在 `resources/themes/`，
   示例的 FluentUI 样式由 FluentUIStyle 负责。
 - 代码中禁止 emoji；示例图标优先使用 `QStyle` 标准图标或新增 SVG。

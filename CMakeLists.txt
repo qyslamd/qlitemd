@@ -323,27 +323,13 @@ if(WIN32)
 endif()
 
 add_subdirectory(examples/md_viewer/qt_adapter)
+endif()  # NOT QLITEMD_CORE_ONLY
 
-set(QLITEMD_PUBLIC_HEADERS
-    examples/md_viewer/qt_adapter/heading_ids.h
-    examples/md_viewer/qt_adapter/markdown_outline_widget.h
-    examples/md_viewer/qt_adapter/markdown_render_tasks.h
-    examples/md_viewer/qt_adapter/markdown_theme.h
-    examples/md_viewer/qt_adapter/markdown_to_html.h
-    examples/md_viewer/qt_adapter/markdown_types.h
-    examples/md_viewer/qt_adapter/markdown_view.h)
-
-# The public library only exposes qlitemd headers; qlitehtml, litehtml, md4c
-# and QuickJS stay implementation details. Their archives are installed because
-# qlitemd_markdown is a static library and consumers must link them.
-# All of these targets are static archives. Install the files directly so the
-# vendored targets' PUBLIC_HEADER paths are not resolved against this source
-# directory; only qlitemd's public headers are part of the SDK.
+# ------------------------------------------------------- core SDK install
+# The SDK is the Qt-free mdhtml core. qlitehtml/litehtml and the Qt adapter
+# stay implementation details of the md_viewer example and are not installed.
 install(FILES
-    "$<TARGET_FILE:qlitemd_markdown>"
-    "$<TARGET_FILE:qlitehtml>"
-    "$<TARGET_FILE:litehtml>"
-    "$<TARGET_FILE:gumbo>"
+    "$<TARGET_FILE:qlitemd_mdhtml>"
     "$<TARGET_FILE:md4c>"
     "$<TARGET_FILE:tree_sitter_core>"
     "$<TARGET_FILE:tree_sitter_grammars>"
@@ -354,7 +340,17 @@ if(QLITEMD_NEEDS_QUICKJS)
         DESTINATION lib COMPONENT Development)
 endif()
 
-install(FILES ${QLITEMD_PUBLIC_HEADERS}
+set(QLITEMD_CORE_PUBLIC_HEADERS
+    src/mdhtml/md_types.h
+    src/mdhtml/md_font_metrics.h
+    src/mdhtml/md_pipeline.h
+    src/mdhtml/mdhtml_c.h
+    src/mdhtml/md_highlight.h
+    src/mdhtml/md_formula.h
+    src/mdhtml/md_mermaid.h
+    src/mdhtml/md_svg.h
+    src/mdhtml/md_hash.h)
+install(FILES ${QLITEMD_CORE_PUBLIC_HEADERS}
     DESTINATION include/qlitemd
     COMPONENT Development)
 
@@ -373,7 +369,6 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfigVersion.cmake"
     DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR}
     COMPONENT Development)
-endif()  # NOT QLITEMD_CORE_ONLY
 
 install(FILES LICENSE NOTICE README.md README.zh-CN.md
     DESTINATION .
@@ -455,8 +450,8 @@ if(QLITEMD_BUILD_TESTS)
     add_subdirectory(tests/mdhtml)
     qlitemd_skip_subdir_install(tests/mdhtml)
     if(NOT QLITEMD_CORE_ONLY)
-        add_subdirectory(tests/markdown)
-        qlitemd_skip_subdir_install(tests/markdown)
+        add_subdirectory(examples/md_viewer/qt_adapter/tests)
+        qlitemd_skip_subdir_install(examples/md_viewer/qt_adapter/tests)
         add_subdirectory(tests/md_viewer)
         qlitemd_skip_subdir_install(tests/md_viewer)
     endif()

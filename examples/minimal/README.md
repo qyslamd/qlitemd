@@ -1,19 +1,14 @@
-# Minimal example
+# qlitemd minimal consumer
 
-A standalone `QWidget` + `MarkdownView` example. It does not use FluentUI,
-QWindowKit or the larger `md_viewer` application, so it is the smallest
-integration test for an installed qlitemd SDK.
-
-```bash
-cmake -S examples/minimal -B build-minimal -G Ninja \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_PREFIX_PATH="<qlitemd-prefix>;<Qt-prefix>"
-cmake --build build-minimal
-./build-minimal/qlitemd_minimal
-```
-
-On Linux without a display:
+A zero-Qt console program built against the installed qlitemd SDK. It renders
+Markdown through `MdHtmlPipeline`, prints the body HTML, and optionally writes
+every formula/Mermaid SVG to a directory:
 
 ```bash
-QT_QPA_PLATFORM=offscreen ./build-minimal/qlitemd_minimal
+cmake -S . -B build -DCMAKE_PREFIX_PATH=<qlitemd install prefix>
+cmake --build build
+./build/qlitemd_minimal document.md --assets out-assets
 ```
+
+The program links only `qlitemd::mdhtml`; no Qt, qlitehtml or rasterizer is
+involved.

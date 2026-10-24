@@ -4,7 +4,6 @@
 #include <array>
 #include <memory>
 #include <optional>
-#include <variant>
 
 #include <QColor>
 #include <QElapsedTimer>
@@ -15,14 +14,10 @@
 #include <QVector>
 #include <QWidget>
 
-#include "markdown_render_tasks.h"
 #include "markdown_theme.h"
-#include "markdown_to_html.h"
 #include "markdown_types.h"
 
 class MarkdownRenderContext;
-class MarkdownRenderService;
-struct MarkdownRenderResult;
 class MdRenderJob;
 struct MdHtmlResult;
 struct MdViewCorePrepared;
@@ -267,8 +262,6 @@ class MarkdownView : public QWidget {
                      bool notify_document_reloaded = false);
   // 解析、收集、缓存命中与派发；在事件循环里执行
   void StartRender(quint64 request_id);
-  void OnTaskFinished(quint64 request_id, const MarkdownRenderResult& result);
-  void OnAllFinished(const QString& view_id, quint64 request_id);
   // 核心 pipeline 的等待结果回到 GUI 线程；prepared 已带光栅化后的图片
   void OnCoreRenderFinished(quint64 request_id,
                             std::shared_ptr<MdHtmlResult> result,
@@ -284,13 +277,6 @@ class MarkdownView : public QWidget {
   void OnFileChanged();
   void OnReloadTick();
   void SetZoom(qreal factor);
-  // 由 worker 产物生成 token 图并拼 <img>：命中跨文档缓存就直接复用，
-  // 否则 fromImage 一次。image 的位图/PNG 都来自本代渲染或缓存解码，
-  // GUI 线程不再有 base64/PNG 解码以外的字符串手术。当前文档的 token
-  // 一律 pin 进 document_pixmaps_，provider 只读这一层
-  QString RegisterImage(const QString& token, const RenderedImage& image,
-                        const QString& css_class,
-                        QHash<QString, PinnedImage>* pixmaps);
   // 定时器到点：应用最后一档缩放
   void ApplyPendingZoom();
   // 立刻应用挂起的缩放（查找/锚点跳转前调用）
@@ -301,13 +287,10 @@ class MarkdownView : public QWidget {
   // 每视图一份渲染状态（缓存/计数/配置）；引擎由同步入口的线程局部
   // 默认实例提供，异步 worker 各自持有
   std::unique_ptr<MarkdownRenderContext> context_;
-  // 进程级共享服务；首次派发时才取实例（旧 Qt 渲染链路，仅保留状态兼容）
-  MarkdownRenderService* render_service_ = nullptr;
   // 当前的 mdhtml 核心 job；取消/换文档时置 cancel
   std::shared_ptr<MdRenderJob> core_job_;
   std::shared_ptr<MdHtmlResult> pending_core_result_;
   std::shared_ptr<MdViewCorePrepared> pending_core_prepared_;
-  QString view_id_;
   QLiteHtmlWidget* html_ = nullptr;
   QFileSystemWatcher* watcher_ = nullptr;
   // "先删后建"保存时用来等文件回来，见 OnFileChanged
@@ -365,10 +348,6 @@ class MarkdownView : public QWidget {
   bool pending_notify_viewport_ = false;
   bool reload_notify_on_load_ = false;
   std::optional<int> pending_scroll_;
-  MarkdownParseResult pending_parse_;
-  // identity -> 高亮 HTML 或渲染图（判别以 task.kind 为准，variant 只做
-  // "存对了没有"的断言）
-  QHash<QString, std::variant<QString, RenderedImage>> pending_rendered_;
   int pending_total_ = 0;
   int pending_completed_ = 0;
   int pending_in_flight_ = 0;

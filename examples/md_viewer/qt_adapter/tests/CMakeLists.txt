@@ -196,7 +196,7 @@ if(TARGET ExWidgets::ExWidgets)
     add_unit_test(
         NAME test_render_settings_panel
         SOURCES status_panel_test.cpp
-                ../../examples/md_viewer/render_status_panel.cpp
+                ${CMAKE_SOURCE_DIR}/examples/md_viewer/render_status_panel.cpp
         INCLUDES ${CMAKE_SOURCE_DIR}/examples/md_viewer
         LIBS ${APP_TARGET_PREFIX}_markdown ExWidgets::ExWidgets
         QT_MODULES Widgets Test

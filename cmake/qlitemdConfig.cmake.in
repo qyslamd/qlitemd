@@ -1,35 +1,12 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-
-if(@QLITEMD_QT_MAJOR@ EQUAL 6)
-    find_dependency(Qt6 6.0 COMPONENTS Core Gui Widgets Svg PrintSupport)
-    set(_qlitemd_qt Qt6)
-else()
-    find_dependency(Qt5 5.14 COMPONENTS Core Gui Widgets Svg PrintSupport)
-    set(_qlitemd_qt Qt5)
-endif()
 find_dependency(Threads)
 
 set(_qlitemd_libdir "${PACKAGE_PREFIX_DIR}/lib")
 
-find_library(QLITEMD_MARKDOWN_LIBRARY
-    NAMES qlitemd_markdown
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
-find_library(QLITEMD_QLITEHTML_LIBRARY
-    NAMES qlitehtml0 qlitehtml
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
-find_library(QLITEMD_LITEHTML_LIBRARY
-    NAMES litehtml
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
-find_library(QLITEMD_GUMBO_LIBRARY
-    NAMES gumbo
+find_library(QLITEMD_MDHTML_LIBRARY
+    NAMES qlitemd_mdhtml
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
@@ -38,13 +15,6 @@ find_library(QLITEMD_MD4C_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
-if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
-    find_library(QLITEMD_QJS_LIBRARY
-        NAMES qjs
-        PATHS "${_qlitemd_libdir}"
-        NO_DEFAULT_PATH
-        REQUIRED)
-endif()
 find_library(QLITEMD_TREE_SITTER_CORE_LIBRARY
     NAMES tree_sitter_core
     PATHS "${_qlitemd_libdir}"
@@ -55,7 +25,16 @@ find_library(QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
+if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
+    find_library(QLITEMD_QJS_LIBRARY
+        NAMES qjs
+        PATHS "${_qlitemd_libdir}"
+        NO_DEFAULT_PATH
+        REQUIRED)
+endif()
 
+# Native SVG backends are optional shared libraries. The core itself only
+# produces SVG, so resvg (a rasterizer) is never part of the SDK.
 set(_qlitemd_native_libraries "")
 if(WIN32)
     if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")
@@ -66,15 +45,6 @@ if(WIN32)
                 IMPORTED_IMPLIB "${_qlitemd_libdir}/ratex_ffi.dll.lib")
         endif()
         list(APPEND _qlitemd_native_libraries qlitemd::ratex)
-    endif()
-    if("@QLITEMD_SVG_BACKEND@" STREQUAL "resvg")
-        if(NOT TARGET qlitemd::resvg)
-            add_library(qlitemd::resvg SHARED IMPORTED)
-            set_target_properties(qlitemd::resvg PROPERTIES
-                IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/bin/resvg.dll"
-                IMPORTED_IMPLIB "${_qlitemd_libdir}/resvg.dll.lib")
-        endif()
-        list(APPEND _qlitemd_native_libraries qlitemd::resvg)
     endif()
     if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
         if(NOT TARGET qlitemd::merman)
@@ -94,14 +64,6 @@ else()
             REQUIRED)
         list(APPEND _qlitemd_native_libraries ${QLITEMD_RATEX_LIBRARY})
     endif()
-    if("@QLITEMD_SVG_BACKEND@" STREQUAL "resvg")
-        find_library(QLITEMD_RESVG_LIBRARY
-            NAMES resvg
-            PATHS "${_qlitemd_libdir}"
-            NO_DEFAULT_PATH
-            REQUIRED)
-        list(APPEND _qlitemd_native_libraries ${QLITEMD_RESVG_LIBRARY})
-    endif()
     if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
         find_library(QLITEMD_MERMAN_LIBRARY
             NAMES merman_ffi
@@ -112,13 +74,8 @@ else()
     endif()
 endif()
 
-# Static archives must precede the Qt shared libraries that they reference:
-# Linux linkers with --as-needed may otherwise drop Qt PrintSupport before
-# qlitehtml's QPrinter symbols are seen.
+# Static archives first; their dependencies follow.
 set(_qlitemd_link_libraries
-    ${QLITEMD_QLITEHTML_LIBRARY}
-    ${QLITEMD_LITEHTML_LIBRARY}
-    ${QLITEMD_GUMBO_LIBRARY}
     ${QLITEMD_MD4C_LIBRARY}
     ${QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY}
     ${QLITEMD_TREE_SITTER_CORE_LIBRARY}
@@ -126,14 +83,7 @@ set(_qlitemd_link_libraries
 if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
     list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
 endif()
-list(APPEND _qlitemd_link_libraries
-    ${_qlitemd_qt}::Widgets
-    ${_qlitemd_qt}::Gui
-    ${_qlitemd_qt}::Core
-    ${_qlitemd_qt}::Svg
-    ${_qlitemd_qt}::PrintSupport
-    Threads::Threads
-    ${CMAKE_DL_LIBS})
+list(APPEND _qlitemd_link_libraries Threads::Threads ${CMAKE_DL_LIBS})
 if(UNIX AND NOT APPLE)
     list(APPEND _qlitemd_link_libraries m)
 endif()
@@ -144,10 +94,10 @@ else()
     set(_qlitemd_compile_options "")
 endif()
 
-if(NOT TARGET qlitemd::markdown)
-    add_library(qlitemd::markdown STATIC IMPORTED)
-    set_target_properties(qlitemd::markdown PROPERTIES
-        IMPORTED_LOCATION "${QLITEMD_MARKDOWN_LIBRARY}"
+if(NOT TARGET qlitemd::mdhtml)
+    add_library(qlitemd::mdhtml STATIC IMPORTED)
+    set_target_properties(qlitemd::mdhtml PROPERTIES
+        IMPORTED_LOCATION "${QLITEMD_MDHTML_LIBRARY}"
         IMPORTED_LINK_INTERFACE_LANGUAGES "CXX;C"
         INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/include/qlitemd"
         INTERFACE_COMPILE_FEATURES "cxx_std_17"

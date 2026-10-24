@@ -43,7 +43,7 @@ set(TARGET_SRCS
 # 公式走 SVG→PNG（QSvgRenderer 在 Gui 里，Svg 模块提供 svg 支持）
 if(NOT TARGET Qt${QT_VERSION_MAJOR}::Svg)
     message(FATAL_ERROR
-        "Qt Svg 没找到：公式渲染依赖 QSvgRenderer（见 src/markdown/formula_renderer.cpp）")
+        "Qt Svg 没找到：公式渲染依赖 QSvgRenderer（见 formula_renderer.cpp）")
 endif()
 
 set(MARKDOWN_RESOURCES markdown_res.qrc)
@@ -70,7 +70,7 @@ if(NOT TARGET qjsc)
     message(FATAL_ERROR
         "qjsc 目标不存在：markdown 的 JS 载荷需要在构建期用 qjsc 预编译成"
         "字节码（本模块链接它的产物）。确认 3rdparty/quickjs-ng 的"
-        " add_subdirectory 先于 src/markdown。")
+        " add_subdirectory 先于 qt_adapter。")
 endif()
 set(QJSC_CMD "$<TARGET_FILE:qjsc>")
 set(MARKDOWN_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")

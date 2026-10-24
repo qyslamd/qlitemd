@@ -154,3 +154,49 @@
 - 核心每次 ApplyDocument 都重新生成 SVG，磁盘缓存只省掉光栅化；
   内容级缓存留给后续核心版本。
 - 状态面板的 per-lane 数字来自核心总计，暂不能区分三条 lane。
+
+## S6 parity 与收尾（完成）
+
+- SDK 改为纯核心：`Development` 组件只安装
+  `qlitemd_mdhtml`、md4c、tree-sitter（以及选中时的 qjs）静态库、
+  9 个公开核心头和 `qlitemdConfig.cmake`；适配层、qlitehtml/litehtml
+  不再安装。
+- `cmake/qlitemdConfig.cmake.in` 重写为零 Qt 版本：只依赖 Threads，
+  导入目标 `qlitemd::mdhtml`；ratex/merman 仍作为可选原生共享库
+  导入，resvg 不再进入核心 SDK。
+- `examples/minimal` 改为零 Qt 控制台：渲染内置或指定 Markdown，
+  输出 HTML，`--assets <dir>` 写出全部公式/Mermaid SVG；作为
+  install/consumer smoke 用例。
+- 适配层测试从 `tests/markdown` 移到
+  `examples/md_viewer/qt_adapter/tests`；顶层 CMake、CI 路径同步。
+- 删除 MarkdownView 中已被核心路径取代的死代码：
+  `render_service_`、`OnTaskFinished`/`OnAllFinished`、
+  `RegisterImage`/`DecodeCachedImage`、`pending_parse_`/
+  `pending_rendered_`。
+- CI core-only job 增加 install + minimal consumer 构建/运行步骤；
+  Windows/Linux 现有 job 继续覆盖适配层与 md_viewer。
+- 文档：README（中英）、CLAUDE.md、docs/architecture.md、
+  docs/rendering.md、CHANGELOG、适配层 readme 全部更新到新结构/
+  新 SDK 目标；设计文档标记为已实施。
+
+### 最终验证矩阵
+
+- 本地 Qt 5.15.2 x86 ratex+merman：MARKDOWN 38/38（含适配层、
+  MarkdownView、导出、状态面板、md_viewer 模块）。
+- 本地 Qt 5.15.2 x86 quickjs：mdhtml 8/8。
+- 全新 core-only 构建目录（无 Qt，quickjs）：8/8。
+- core-only 安装 → 独立 minimal consumer 编译、运行、写出两个 SVG
+  资产成功；SDK 树中没有 Qt 头/库、没有 qlitehtml。
+- 原生 SDK 安装 → 独立 minimal consumer 运行成功。
+- md_viewer 浅色/深色截图：
+  `temp/render-style-demo/artifacts/style-light.png` /
+  `style-dark.png`，公式、Mermaid、代码、表格、大纲正常。
+- 全仓 C++ `clang-format --dry-run --Werror` 通过。
+
+### 仍保留的取舍
+
+- 核心暂不做跨 ApplyDocument 的内容缓存；磁盘缓存只跳过光栅化。
+- C API 先同步；异步句柄留待 Avalonia 接入时补。
+- 原生 merman/RaTeX 取消只能等当前图完成；QuickJS 可中断。
+- 适配层仍保留旧渲染器代码供既有纯函数测试与诊断使用，但
+  MarkdownView 不再走它；后续可单独删除。

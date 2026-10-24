@@ -4,6 +4,21 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Split the rendering stack into a zero-Qt core (`qlitemd_mdhtml`) and a Qt
+  adapter under `examples/md_viewer/qt_adapter`. The core parses and
+  assembles Markdown on a coordinator thread, runs highlight/formula/Mermaid
+  on three worker lanes, and returns HTML plus SVG assets
+  (`qlitemd-asset:<id>`); fonts are injectable and the default metrics are
+  deterministic.
+- Add a synchronous C API (`mdhtml_c.h`) for non-Qt hosts, plus
+  `QLITEMD_CORE_ONLY` and a no-Qt CI job with an installed-SDK consumer.
+- **Breaking for SDK consumers:** the installed package now exposes
+  `qlitemd::mdhtml`, not `qlitemd::markdown`; `MarkdownView` and qlitehtml
+  are example-side implementation details and are no longer installed.
+- `md_viewer` keeps its previous behaviour while rendering through the core;
+  its SVG assets are rasterized by the adapter and the existing `mj:` image
+  tokens, outline, export and status panel semantics are preserved.
+
 ## 0.0.3 - 2026-10-24
 
 - Fix review findings in the reading experience: progress and the

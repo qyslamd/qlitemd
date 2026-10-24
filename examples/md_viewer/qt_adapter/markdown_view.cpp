@@ -28,7 +28,6 @@
 #include <QScrollBar>
 #include <QShortcut>
 #include <QTimer>
-#include <QUuid>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 
@@ -50,7 +49,6 @@
 #include "qt_md_font_metrics.h"
 #include "render_cache.h"
 #include "render_diagnostics.h"
-#include "render_service.h"
 #include "svg_rasterizer.h"
 
 namespace {
@@ -437,20 +435,6 @@ QString MakeImageToken(const QString& prefix, const QString& cache_key) {
   return QStringLiteral("mj:") + prefix + QString::fromLatin1(digest);
 }
 
-// 驻留形态 → 待提交形态。PNG 解码失败时 image 为空，产物整体按失败处理；
-// 这是缓存命中路径唯一的一次 PNG 解码，fresh 渲染路径不经过这里
-RenderedImage DecodeCachedImage(const CachedImage& cached) {
-  RenderedImage out;
-  if (cached.isNull()) {
-    return out;
-  }
-  out.image = QImage::fromData(cached.png_bytes);
-  out.png_bytes = cached.png_bytes;
-  out.layout_width = cached.layout_width;
-  out.layout_height = cached.layout_height;
-  return out;
-}
-
 // 实现见头文件注释（两道闸）。留在自由函数里是为了可测：资源回调是
 // qlitehtml 的私有路径，单测从这层进去就够了
 QByteArray ReadResourceForUrl(const QUrl& url, const QString& base_dir) {
@@ -500,9 +484,7 @@ QByteArray ReadResourceForUrl(const QUrl& url, const QString& base_dir) {
 }
 
 MarkdownView::MarkdownView(QWidget* parent)
-    : QWidget(parent),
-      context_(new MarkdownRenderContext),
-      view_id_(QUuid::createUuid().toString(QUuid::WithoutBraces)) {
+    : QWidget(parent), context_(new MarkdownRenderContext) {
   initUi();
   initSignals();
 }
@@ -517,9 +499,6 @@ QString CopyTextForLink(const QUrl& url,
 
 // 析构写在 .cpp：成员里只有第三方控件的前向声明，需要完整类型才能生成
 MarkdownView::~MarkdownView() {
-  if (render_service_ != nullptr) {
-    render_service_->CancelView(view_id_);
-  }
   if (core_job_) {
     core_job_->Cancel();
   }
@@ -1249,8 +1228,6 @@ void MarkdownView::ApplyDocument(bool preserve_scroll,
   pending_scroll_ =
       preserve_scroll ? std::optional<int>(html_->verticalScrollBar()->value())
                       : std::nullopt;
-  pending_parse_ = MarkdownParseResult();
-  pending_rendered_.clear();
   pending_core_result_.reset();
   pending_core_prepared_.reset();
   pending_total_ = 0;
@@ -1337,126 +1314,6 @@ void MarkdownView::StartRender(quint64 request_id) {
         },
         Qt::QueuedConnection);
   }).detach();
-}
-
-void MarkdownView::OnTaskFinished(quint64 request_id,
-                                  const MarkdownRenderResult& result) {
-  if (request_id != active_request_id_ || !rendering_) {
-    ++render_history_.stale_results;
-    return;
-  }
-  pending_timings_.worker_ms += result.elapsed_ms;
-  pending_timings_.worker_max_ms =
-      qMax(pending_timings_.worker_max_ms, result.elapsed_ms);
-  if (result.engine_load_failed) {
-    ++render_history_.failed_worker_results;
-  }
-  MarkdownRenderContextState& state =
-      MarkdownRenderContextAccess::State(*context_);
-  const QString identity =
-      RenderIdentity(result.task.kind, result.task.cache_key);
-
-  if (result.task.kind == MarkdownRenderKind::Highlight) {
-    pending_rendered_.insert(identity, result.rendered);
-    if (!result.ok) {
-      ++state.highlight_stats.failures;
-    } else {
-      state.highlight_cache.Insert(result.task.cache_key, result.rendered);
-    }
-    if (result.loaded) {
-      highlight_engine_status_.loaded = true;
-      if (highlight_engine_status_.first_load_ms == 0) {
-        highlight_engine_status_.first_load_ms = result.first_load_ms;
-      }
-    }
-    if (result.engine_all_failed) {
-      highlight_engine_status_.permanently_failed = true;
-    }
-  } else if (result.task.kind == MarkdownRenderKind::Formula) {
-    pending_rendered_.insert(identity, result.image);
-    if (result.image.isNull()) {
-      ++state.formula_stats.failures;
-    }
-    const CachedImage cached{result.image.png_bytes, result.image.layout_width,
-                             result.image.layout_height};
-    state.formula_cache.Insert(result.task.cache_key, cached);
-    if (!result.image.isNull()) {
-      const QString variant = result.task.formula_color.isValid()
-                                  ? result.task.formula_color.name()
-                                  : QStringLiteral("legacy");
-      const QString disk_key = MakeRenderCacheKey(
-          QStringLiteral("formula"), result.task.payload.trimmed(),
-          (result.task.display ? QStringLiteral("D") : QStringLiteral("I")) +
-              QLatin1Char('|') + variant);
-      const RenderCacheConfig cache_config =
-          MakeRenderCacheConfig(state.options, QStringLiteral("formula"));
-      if (cache_config.enabled) {
-        StoreRenderCacheEntry(cache_config, QStringLiteral("formula"), disk_key,
-                              cached);
-      }
-    }
-    if (result.loaded) {
-      formula_engine_status_.loaded = true;
-      if (formula_engine_status_.first_load_ms == 0) {
-        formula_engine_status_.first_load_ms = result.first_load_ms;
-      }
-    }
-    if (result.engine_all_failed) {
-      formula_engine_status_.permanently_failed = true;
-    }
-  } else {
-    pending_rendered_.insert(identity, result.image);
-    if (result.image.isNull()) {
-      ++state.mermaid_stats.failures;
-    }
-    const CachedImage cached{result.image.png_bytes, result.image.layout_width,
-                             result.image.layout_height};
-    state.mermaid_cache.Insert(result.task.cache_key, cached);
-    if (!result.image.isNull()) {
-      const QString disk_key =
-          MakeRenderCacheKey(QStringLiteral("mermaid"), result.task.payload,
-                             MermaidRenderVariant(result.task.theme));
-      const RenderCacheConfig cache_config =
-          MakeRenderCacheConfig(state.options, QStringLiteral("mermaid"));
-      if (cache_config.enabled) {
-        StoreRenderCacheEntry(cache_config, QStringLiteral("mermaid"), disk_key,
-                              cached);
-      }
-    }
-    if (result.loaded) {
-      mermaid_engine_status_.loaded = true;
-      if (mermaid_engine_status_.first_load_ms == 0) {
-        mermaid_engine_status_.first_load_ms = result.first_load_ms;
-      }
-    }
-    if (result.engine_all_failed) {
-      mermaid_engine_status_.permanently_failed = true;
-    }
-  }
-
-  if (!result.artifacts.isEmpty()) {
-    const MarkdownDiagnostics diagnostics = context_->diagnostics();
-    for (const MarkdownRenderArtifact& artifact : result.artifacts) {
-      DumpRenderArtifact(diagnostics, artifact.name, artifact.bytes);
-    }
-  }
-
-  ++pending_completed_;
-  if (pending_in_flight_ > 0) {
-    --pending_in_flight_;
-  }
-  emit renderProgress(request_id, pending_completed_, pending_total_,
-                      pending_in_flight_);
-}
-
-void MarkdownView::OnAllFinished(const QString& view_id, quint64 request_id) {
-  if (view_id != view_id_ || request_id != active_request_id_ || !rendering_) {
-    if (view_id == view_id_) {
-      ++render_history_.stale_results;
-    }
-    return;
-  }
-  CommitRender(request_id);
 }
 
 void MarkdownView::OnCoreRenderFinished(
@@ -1649,8 +1506,6 @@ void MarkdownView::CancelPendingRender() {
   pending_notify_reload_ = false;
   pending_notify_viewport_ = false;
   pending_scroll_.reset();
-  pending_parse_ = MarkdownParseResult();
-  pending_rendered_.clear();
   pending_core_result_.reset();
   pending_core_prepared_.reset();
   pending_total_ = 0;
@@ -1672,42 +1527,6 @@ void MarkdownView::CancelPendingRender() {
     html_->verticalScrollBar()->setValue(placeholder_scroll_);
     placeholder_scroll_ = 0;
   }
-}
-
-QString MarkdownView::RegisterImage(const QString& token,
-                                    const RenderedImage& image,
-                                    const QString& css_class,
-                                    QHash<QString, PinnedImage>* pixmaps) {
-  if (image.isNull()) {
-    return QString();  // 渲染失败，调用方按原文兜底
-  }
-  MarkdownRenderContextState& state =
-      MarkdownRenderContextAccess::State(*context_);
-  if (const PixmapCacheEntry* cached = state.pixmap_cache.object(token)) {
-    ++state.image_stats.image_cache_hits;
-    // 跨代命中：缓存条目没有 png_bytes，pin 层置空，导出回退重编码
-    pixmaps->insert(token, PinnedImage{cached->pixmap, QByteArray()});
-    return cached->img_tag;
-  }
-  ++state.image_stats.image_cache_misses;
-
-  // 调用方已判过 isNull：这里必然能出图，GUI 全程零解码零 base64
-  const QPixmap pixmap = QPixmap::fromImage(image.image);
-  const QString img_tag = QStringLiteral(
-                              "<img%1 src=\"%2\" width=\"%3\" "
-                              "height=\"%4\">")
-                              .arg(css_class, token)
-                              .arg(image.layout_width)
-                              .arg(image.layout_height);
-  constexpr qint64 kMaxCost = std::numeric_limits<int>::max();
-  const qint64 cost =
-      qint64(pixmap.width()) * pixmap.height() * 4 + qint64(img_tag.size()) * 2;
-  auto* entry = new PixmapCacheEntry{pixmap, img_tag};
-  // insert 失败时 QCache 已删除 entry，之后不能再碰它；pin 层仍保证当前文档可用
-  state.pixmap_cache.insert(token, entry,
-                            static_cast<int>(qMin(cost, kMaxCost)));
-  pixmaps->insert(token, PinnedImage{pixmap, image.png_bytes});
-  return img_tag;
 }
 
 void MarkdownView::ShowMessage(const QString& text) {
