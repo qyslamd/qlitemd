@@ -120,3 +120,37 @@
 - 测试：新增 `test_mdhtml_pipeline`（8）与 `test_mdhtml_c_api`（3）。
   三种配置均 8/8 通过：本地 ratex+merman、本地 quickjs、
   本地 `build_core_only`（无 Qt）。
+
+## S5 Qt 适配层迁移（完成）
+
+- `src/markdown` 整体 `git mv` 到 `examples/md_viewer/qt_adapter`；
+  `markdown_res.qrc` 的相对路径按新层级修正；目标名仍是
+  `qlitemd_markdown`（S6 再处理安装/改名）。
+- `MarkdownView` 的渲染主链路换到 `MdHtmlPipeline`：
+  - `StartRender` 派发核心 job，等待线程只做 `job->Wait()` + SVG 光栅化
+    （QImage/PNG 可在后台线程），结果经 queued invoke 回 GUI；
+  - 资产在等待线程转成旧 `mj:f/<sha>`/`mj:m/<sha>` token，HTML 里的
+    `qlitemd-asset:<id>` 被替换；公开 API、qlitehtml pixmap 回调、
+    导出路径无需改动；
+  - 持久 PNG 缓存继续使用原来的 formula/mermaid key 与二进制格式；
+    命中时跳过光栅化并计入磁盘命中；
+  - `QtMdFontMetrics` 注入核心 pipeline：CJK 族选择、QFontMetricsF、
+    font fingerprint 与旧 mermaid 路径一致；
+  - QtSvg 后端时在适配层对 Mermaid SVG 重新应用
+    CleanSvg/InlineSvgCss/InlineSvgMarkers，resvg 路径保持原始 SVG；
+  - 状态面板计数映射：渲染 = 任务数 - 磁盘命中，磁盘命中单独计数；
+    renderer_status 的 loaded 标志按实际出现过的任务置位。
+- 核心 `MdHeading` 增加 `id` 字段，适配层据此恢复 slug→id 锚点表。
+- 验证：
+  - `ctest -L MARKDOWN`：38/38 通过（含 markdown_view、导出、
+    渲染开关、状态面板、md_viewer 模块测试）；
+  - 本地截图（`temp/render-style-demo`）确认浅色/深色下公式、
+    Mermaid、代码高亮、表格、大纲均正常；
+  - quickjs 与 core-only 两种 mdhtml 构建仍 8/8。
+
+已知取舍：
+- 旧 render_service/cache 代码仍留在适配层（`MarkdownView` 已不再走
+  它），测试仍有覆盖；S6 清理或迁移。
+- 核心每次 ApplyDocument 都重新生成 SVG，磁盘缓存只省掉光栅化；
+  内容级缓存留给后续核心版本。
+- 状态面板的 per-lane 数字来自核心总计，暂不能区分三条 lane。

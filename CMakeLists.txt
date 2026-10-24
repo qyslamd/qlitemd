@@ -322,16 +322,16 @@ if(WIN32)
     target_link_libraries(qlitemd_single_instance PRIVATE user32)
 endif()
 
-add_subdirectory(src/markdown)
+add_subdirectory(examples/md_viewer/qt_adapter)
 
 set(QLITEMD_PUBLIC_HEADERS
-    src/markdown/heading_ids.h
-    src/markdown/markdown_outline_widget.h
-    src/markdown/markdown_render_tasks.h
-    src/markdown/markdown_theme.h
-    src/markdown/markdown_to_html.h
-    src/markdown/markdown_types.h
-    src/markdown/markdown_view.h)
+    examples/md_viewer/qt_adapter/heading_ids.h
+    examples/md_viewer/qt_adapter/markdown_outline_widget.h
+    examples/md_viewer/qt_adapter/markdown_render_tasks.h
+    examples/md_viewer/qt_adapter/markdown_theme.h
+    examples/md_viewer/qt_adapter/markdown_to_html.h
+    examples/md_viewer/qt_adapter/markdown_types.h
+    examples/md_viewer/qt_adapter/markdown_view.h)
 
 # The public library only exposes qlitemd headers; qlitehtml, litehtml, md4c
 # and QuickJS stay implementation details. Their archives are installed because

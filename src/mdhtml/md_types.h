@@ -18,6 +18,8 @@ struct MdHeading {
   int level = 0;
   std::string text;
   std::string anchor;
+  // ASCII element id ("h-0"), stable for scroll/anchor lookup.
+  std::string id;
 };
 
 struct MdCodeBlock {

@@ -292,6 +292,7 @@ std::string AddHeadingIds(
       heading.level = level - '0';
       heading.text = plain;
       heading.anchor = slug;
+      heading.id = ascii_id;
       on_outline(heading);
     }
     result += "<h";

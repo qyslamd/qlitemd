@@ -1,6 +1,10 @@
 #include "markdown_view.h"
 
+#include <cmath>
 #include <limits>
+#include <memory>
+#include <thread>
+#include <utility>
 
 #include <QBuffer>
 #include <QClipboard>
@@ -36,11 +40,43 @@
 #include "markdown_theme.h"
 #include "markdown_to_html.h"
 #include "markdown_types.h"
+#include "md_pipeline.h"
+#include "md_types.h"
 #include "mermaid_renderer.h"
+#if defined(QLITEMD_MDHTML_SVG_QTSVG)
+#include "mermaid_svg_cleanup.h"
+#endif
 #include "qlitehtmlwidget.h"
+#include "qt_md_font_metrics.h"
 #include "render_cache.h"
 #include "render_diagnostics.h"
 #include "render_service.h"
+#include "svg_rasterizer.h"
+
+namespace {
+
+struct MdViewPreparedAsset {
+  QString token;
+  MarkdownImageInfo info;
+  QImage image;
+  QByteArray png;
+  int width = 0;
+  int height = 0;
+};
+
+}  // namespace
+
+// Images rasterized by the wait thread. QImage is safe off the GUI thread;
+// QPixmap conversion happens in OnCoreRenderFinished.
+struct MdViewCorePrepared {
+  QVector<MdViewPreparedAsset> assets;
+  QString body_html;
+  int formula_failures = 0;
+  int mermaid_failures = 0;
+  int formula_disk_hits = 0;
+  int mermaid_disk_hits = 0;
+  int disk_hits = 0;
+};
 
 namespace {
 
@@ -232,6 +268,166 @@ bool ReadMarkdownFile(const QString& path, QString* text) {
   return true;
 }
 
+// Process-wide core pipeline. Qt font metrics are created on the GUI thread
+// on first use and shared by every worker; the pipeline itself is never torn
+// down (its lanes own long-lived QuickJS/merman state).
+MdHtmlPipeline& CorePipeline() {
+  static MdHtmlPipeline* pipeline = [] {
+    MdPipelineOptions options;
+    options.font_metrics = std::make_shared<QtMdFontMetrics>();
+    return new MdHtmlPipeline(options);
+  }();
+  return *pipeline;
+}
+
+MdColor ToMdColor(const QColor& color) {
+  MdColor out;
+  out.r = static_cast<uint8_t>(color.red());
+  out.g = static_cast<uint8_t>(color.green());
+  out.b = static_cast<uint8_t>(color.blue());
+  out.a = static_cast<uint8_t>(color.alpha());
+  return out;
+}
+
+QString AssetKindName(const MdAsset& asset) {
+  return asset.kind == MdAssetKind::Formula ? QStringLiteral("formula")
+                                            : QStringLiteral("mermaid");
+}
+
+// Keep the adapter's historical mj: token scheme: public APIs, the qlitehtml
+// pixmap callback and ExportHtml all key on it.
+QString AssetToken(const MdAsset& asset, MarkdownTheme theme,
+                   const QColor& formula_color) {
+  if (asset.kind == MdAssetKind::Formula) {
+    return MakeImageToken(QStringLiteral("f/"),
+                          FormulaRenderKey(QString::fromStdString(asset.source),
+                                           asset.display, formula_color));
+  }
+  return MakeImageToken(
+      QStringLiteral("m/"),
+      MermaidRenderKey(QString::fromStdString(asset.source), theme));
+}
+
+QString AssetDiskKey(const MdAsset& asset, MarkdownTheme theme,
+                     const QColor& formula_color) {
+  if (asset.kind == MdAssetKind::Formula) {
+    const QString variant =
+        (asset.display ? QStringLiteral("D") : QStringLiteral("I")) +
+        QLatin1Char('|') + formula_color.name();
+    return MakeRenderCacheKey(QStringLiteral("formula"),
+                              QString::fromStdString(asset.source).trimmed(),
+                              variant);
+  }
+  return MakeRenderCacheKey(QStringLiteral("mermaid"),
+                            QString::fromStdString(asset.source),
+                            MermaidRenderVariant(theme));
+}
+
+bool RasterizeAssetSvg(const MdAsset& asset, QImage* image, QString* error) {
+  QString svg = QString::fromStdString(asset.image.svg);
+#if defined(QLITEMD_MDHTML_SVG_QTSVG)
+  // QtSvg needs the compatibility pass the old Mermaid renderer applied;
+  // resvg consumes merman's output as-is.
+  if (asset.kind == MdAssetKind::Mermaid) {
+    svg = CleanSvg(svg);
+    svg = InlineSvgCss(svg, MermaidFontFamily());
+    svg = InlineSvgMarkers(svg);
+  }
+#endif
+  qreal scale = 2.0;
+  constexpr qreal kMaxRasterPixels = 4096.0 * 4096.0;
+  const qreal area = qreal(asset.image.width) * qreal(asset.image.height);
+  if (area > 0.0 && area * scale * scale > kMaxRasterPixels) {
+    scale = std::sqrt(kMaxRasterPixels / area);
+  }
+  return RasterizeSvg(svg.toUtf8(),
+                      QSizeF(asset.image.width, asset.image.height), scale,
+                      MermaidFontFamily(), image, error);
+}
+
+QByteArray EncodePngImage(const QImage& image) {
+  QByteArray png;
+  QBuffer buffer(&png);
+  buffer.open(QIODevice::WriteOnly);
+  if (!image.save(&buffer, "PNG")) {
+    return {};
+  }
+  return png;
+}
+
+// Runs on the wait thread: turns every core SVG into a QImage, reusing the
+// persistent PNG cache when possible, and rewrites asset URLs back to mj:
+// tokens. GUI work (QPixmap) is left to OnCoreRenderFinished.
+void PrepareCoreAssets(const MdHtmlResult& result, MarkdownTheme theme,
+                       const QColor& formula_color,
+                       const RenderCacheConfig& formula_config,
+                       const RenderCacheConfig& mermaid_config,
+                       MdViewCorePrepared* prepared) {
+  prepared->body_html = QString::fromStdString(result.html);
+  for (const MdAsset& asset : result.assets) {
+    const QString token = AssetToken(asset, theme, formula_color);
+    MdViewPreparedAsset entry;
+    entry.token = token;
+    if (asset.kind == MdAssetKind::Formula) {
+      entry.info.kind = MarkdownImageKind::kFormula;
+      entry.info.source = QString::fromStdString(asset.source);
+      entry.info.display = asset.display;
+    } else {
+      entry.info.kind = MarkdownImageKind::kMermaid;
+      entry.info.source = QString::fromStdString(asset.source);
+      entry.info.display = false;
+    }
+
+    const QString kind_name = AssetKindName(asset);
+    const RenderCacheConfig& config =
+        asset.kind == MdAssetKind::Formula ? formula_config : mermaid_config;
+    const QString disk_key = AssetDiskKey(asset, theme, formula_color);
+    CachedImage cached;
+    if (config.enabled &&
+        LoadRenderCacheEntry(config, kind_name, disk_key, &cached) &&
+        !cached.isNull()) {
+      entry.image = QImage::fromData(cached.png_bytes);
+      if (!entry.image.isNull()) {
+        entry.png = cached.png_bytes;
+        entry.width = cached.layout_width;
+        entry.height = cached.layout_height;
+        ++prepared->disk_hits;
+        if (asset.kind == MdAssetKind::Formula) {
+          ++prepared->formula_disk_hits;
+        } else {
+          ++prepared->mermaid_disk_hits;
+        }
+      }
+    }
+
+    if (entry.image.isNull()) {
+      QString raster_error;
+      if (!RasterizeAssetSvg(asset, &entry.image, &raster_error) ||
+          entry.image.isNull()) {
+        if (asset.kind == MdAssetKind::Formula) {
+          ++prepared->formula_failures;
+        } else {
+          ++prepared->mermaid_failures;
+        }
+        continue;
+      }
+      entry.width = qMax(1, asset.image.width);
+      entry.height = qMax(1, asset.image.height);
+      entry.png = EncodePngImage(entry.image);
+      if (config.enabled && !entry.png.isEmpty()) {
+        StoreRenderCacheEntry(
+            config, kind_name, disk_key,
+            CachedImage{entry.png, entry.width, entry.height});
+      }
+    }
+
+    prepared->assets.push_back(std::move(entry));
+    prepared->body_html.replace(
+        QStringLiteral("qlitemd-asset:") + QString::fromStdString(asset.id),
+        token);
+  }
+}
+
 }  // namespace
 
 QString MakeImageToken(const QString& prefix, const QString& cache_key) {
@@ -323,6 +519,9 @@ QString CopyTextForLink(const QUrl& url,
 MarkdownView::~MarkdownView() {
   if (render_service_ != nullptr) {
     render_service_->CancelView(view_id_);
+  }
+  if (core_job_) {
+    core_job_->Cancel();
   }
 }
 
@@ -1004,10 +1203,15 @@ void MarkdownView::ResetRendererStats() {
 }
 
 MarkdownServiceStatus MarkdownView::render_service_status() const {
-  if (render_service_ == nullptr) {
-    return {};
-  }
-  return render_service_->Status();
+  const MdServiceStatus core = CorePipeline().Status();
+  MarkdownServiceStatus status;
+  status.pending_batches = core.active_jobs;
+  status.pending_tasks = core.queued_tasks;
+  // The core exposes lane totals, not per-lane counts; show them on the
+  // highlight row and leave the other rows idle.
+  status.highlight.queued = core.queued_tasks;
+  status.highlight.processing = core.running_tasks;
+  return status;
 }
 
 void MarkdownView::SetDiagnostics(const MarkdownDiagnostics& diagnostics) {
@@ -1029,9 +1233,11 @@ void MarkdownView::ReapplyDocument() {
 void MarkdownView::ApplyDocument(bool preserve_scroll,
                                  bool notify_document_reloaded) {
   ++render_history_.requests_started;
-  if (active_request_id_ != 0 && render_service_ != nullptr) {
+  if (active_request_id_ != 0) {
     ++render_history_.requests_cancelled;
-    render_service_->Cancel(view_id_, active_request_id_);
+    if (core_job_) {
+      core_job_->Cancel();
+    }
   }
   request_clock_.start();
   pending_timings_ = MarkdownRenderTimings();
@@ -1045,6 +1251,8 @@ void MarkdownView::ApplyDocument(bool preserve_scroll,
                       : std::nullopt;
   pending_parse_ = MarkdownParseResult();
   pending_rendered_.clear();
+  pending_core_result_.reset();
+  pending_core_prepared_.reset();
   pending_total_ = 0;
   pending_completed_ = 0;
   pending_in_flight_ = 0;
@@ -1061,131 +1269,74 @@ void MarkdownView::StartRender(quint64 request_id) {
   if (request_id != active_request_id_ || !rendering_) {
     return;
   }
-  QElapsedTimer stage_clock;
-  stage_clock.start();
-  pending_parse_ = ParseMarkdown(markdown_, formula_rendering_enabled_);
-  pending_timings_.parse_ms = stage_clock.elapsed();
-  const MarkdownDiagnostics diagnostics = context_->diagnostics();
-  if (pending_parse_.parse_error) {
-    pending_total_ = 0;
-    pending_completed_ = 0;
-    pending_in_flight_ = 0;
-    emit renderProgress(request_id, 0, 0, 0);
-    CommitRender(request_id);
-    return;
-  }
+
+  const QColor formula_color = ThemeFormulaColor(theme_);
+  MdRenderOptions options;
+  options.theme =
+      theme_ == MarkdownTheme::Dark ? MdTheme::Dark : MdTheme::Light;
+  options.formula = formula_rendering_enabled_;
+  options.mermaid = mermaid_rendering_enabled_;
+  options.code_line_numbers = code_line_numbers_;
+  options.formula_color = ToMdColor(formula_color);
 
   MarkdownRenderContextState& state =
       MarkdownRenderContextAccess::State(*context_);
-  stage_clock.restart();
-  QVector<MarkdownRenderTask> tasks =
-      CollectRenderTasks(pending_parse_, mermaid_rendering_enabled_,
-                         ThemeFormulaColor(theme_), theme_);
-  pending_timings_.collect_ms = stage_clock.elapsed();
-  pending_total_ = tasks.size();
+  const RenderCacheConfig formula_config =
+      MakeRenderCacheConfig(state.options, QStringLiteral("formula"));
+  const RenderCacheConfig mermaid_config =
+      MakeRenderCacheConfig(state.options, QStringLiteral("mermaid"));
+
+  pending_total_ = 0;
   pending_completed_ = 0;
   pending_in_flight_ = 0;
+  emit renderProgress(request_id, 0, 0, 0);
 
-  QVector<MarkdownRenderTask> dispatch;
-  for (MarkdownRenderTask task : tasks) {
-    task.diagnostics = diagnostics;
-    const QString identity = RenderIdentity(task.kind, task.cache_key);
-    MarkdownContextStatus* stats = nullptr;
-    const QString* memory_html = nullptr;
-    const CachedImage* memory_image = nullptr;
-    if (task.kind == MarkdownRenderKind::Highlight) {
-      stats = &state.highlight_stats;
-      memory_html = state.highlight_cache.Find(task.cache_key);
-    } else if (task.kind == MarkdownRenderKind::Formula) {
-      stats = &state.formula_stats;
-      memory_image = state.formula_cache.Find(task.cache_key);
-    } else {
-      stats = &state.mermaid_stats;
-      memory_image = state.mermaid_cache.Find(task.cache_key);
-    }
-
-    std::variant<QString, RenderedImage> cached;
-    bool hit = false;
-    if (task.kind == MarkdownRenderKind::Highlight) {
-      if (memory_html != nullptr) {
-        cached = *memory_html;
-        hit = true;
-        ++stats->memory_cache_hits;
-      } else {
-        ++stats->memory_cache_misses;
-      }
-    } else {
-      // 失败产物也缓存（null CachedImage）：同一个坏输入不重试
-      if (memory_image != nullptr) {
-        hit = true;
-        ++stats->memory_cache_hits;
-        cached = DecodeCachedImage(*memory_image);
-      } else {
-        ++stats->memory_cache_misses;
-        const QString kind_name = task.kind == MarkdownRenderKind::Formula
-                                      ? QStringLiteral("formula")
-                                      : QStringLiteral("mermaid");
-        const RenderCacheConfig cache_config =
-            MakeRenderCacheConfig(state.options, kind_name);
-        if (cache_config.enabled) {
-          QString disk_key;
-          if (task.kind == MarkdownRenderKind::Formula) {
-            const QString variant = task.formula_color.isValid()
-                                        ? task.formula_color.name()
-                                        : QStringLiteral("legacy");
-            disk_key = MakeRenderCacheKey(
-                kind_name, task.payload.trimmed(),
-                (task.display ? QStringLiteral("D") : QStringLiteral("I")) +
-                    QLatin1Char('|') + variant);
-          } else {
-            disk_key = MakeRenderCacheKey(kind_name, task.payload,
-                                          MermaidRenderVariant(task.theme));
-          }
-          CachedImage disk_image;
-          if (LoadRenderCacheEntry(cache_config, kind_name, disk_key,
-                                   &disk_image)) {
-            ++stats->disk_cache_hits;
-            hit = true;
-            RenderImageCache* memory_cache =
-                task.kind == MarkdownRenderKind::Formula ? &state.formula_cache
-                                                         : &state.mermaid_cache;
-            memory_cache->Insert(task.cache_key, disk_image);
-            cached = DecodeCachedImage(disk_image);
-          } else {
-            ++stats->disk_cache_misses;
-          }
+  QPointer<MarkdownView> self(this);
+  const MarkdownTheme theme = theme_;
+  const std::string markdown = markdown_.toUtf8().toStdString();
+  std::shared_ptr<MdRenderJob> job = CorePipeline().RenderAsync(
+      markdown, options,
+      [self, request_id](int completed, int total, int in_flight) {
+        if (self.isNull()) {
+          return;
         }
-      }
-    }
-
-    if (hit) {
-      pending_rendered_.insert(identity, std::move(cached));
-      ++pending_completed_;
-    } else {
-      ++stats->renders;
-      dispatch.append(task);
-    }
-  }
-
-  pending_in_flight_ = dispatch.size();
-  emit renderProgress(request_id, pending_completed_, pending_total_,
-                      pending_in_flight_);
-  if (dispatch.isEmpty()) {
-    CommitRender(request_id);
-    return;
-  }
-  if (render_service_ == nullptr) {
-    render_service_ = &MarkdownRenderService::Instance();
-    connect(render_service_, &MarkdownRenderService::taskFinished, this,
-            [this](const QString& view_id, const MarkdownRenderResult& result) {
-              if (view_id == view_id_) {
-                OnTaskFinished(result.task.request_id, result);
+        QMetaObject::invokeMethod(
+            self.data(),
+            [self, request_id, completed, total, in_flight] {
+              if (self.isNull() || request_id != self->active_request_id_ ||
+                  !self->rendering_) {
+                return;
               }
-            });
-    connect(render_service_, &MarkdownRenderService::allFinished, this,
-            &MarkdownView::OnAllFinished);
-  }
-  render_service_->Submit(view_id_, request_id, dispatch);
+              self->pending_total_ = total;
+              self->pending_completed_ = completed;
+              self->pending_in_flight_ = in_flight;
+              emit self->renderProgress(request_id, completed, total,
+                                        in_flight);
+            },
+            Qt::QueuedConnection);
+      });
+  core_job_ = job;
+
+  // The core job owns its own coordinator thread; this thread only waits and
+  // rasterizes SVG assets (QImage work is safe off the GUI thread).
+  std::thread([self, request_id, job, theme, formula_color, formula_config,
+               mermaid_config]() {
+    auto result = std::make_shared<MdHtmlResult>(job->Wait());
+    auto prepared = std::make_shared<MdViewCorePrepared>();
+    PrepareCoreAssets(*result, theme, formula_color, formula_config,
+                      mermaid_config, prepared.get());
+    if (self.isNull()) {
+      return;
+    }
+    QMetaObject::invokeMethod(
+        self.data(),
+        [self, request_id, result, prepared] {
+          if (!self.isNull()) {
+            self->OnCoreRenderFinished(request_id, result, prepared);
+          }
+        },
+        Qt::QueuedConnection);
+  }).detach();
 }
 
 void MarkdownView::OnTaskFinished(quint64 request_id,
@@ -1308,102 +1459,96 @@ void MarkdownView::OnAllFinished(const QString& view_id, quint64 request_id) {
   CommitRender(request_id);
 }
 
-void MarkdownView::CommitRender(quint64 request_id) {
+void MarkdownView::OnCoreRenderFinished(
+    quint64 request_id, std::shared_ptr<MdHtmlResult> result,
+    std::shared_ptr<MdViewCorePrepared> prepared) {
   if (request_id != active_request_id_ || !rendering_) {
+    ++render_history_.stale_results;
     return;
   }
+  if (result->cancelled) {
+    return;
+  }
+  core_job_.reset();
+  pending_core_result_ = std::move(result);
+  pending_core_prepared_ = std::move(prepared);
+
+  const MdRenderStats& stats = pending_core_result_->stats;
+  pending_timings_.parse_ms = stats.parse_ms;
+  pending_timings_.collect_ms = stats.collect_ms;
+  pending_timings_.worker_ms = stats.worker_ms;
+  pending_timings_.worker_max_ms = 0;
+  pending_timings_.assemble_ms = stats.assemble_ms;
+
+  MarkdownRenderContextState& state =
+      MarkdownRenderContextAccess::State(*context_);
+  const int highlight_tasks =
+      qMax(0, stats.worker_tasks - stats.formulas - stats.mermaid_blocks);
+  state.highlight_stats.renders += highlight_tasks;
+  state.formula_stats.renders +=
+      qMax(0, stats.formulas - pending_core_prepared_->formula_disk_hits);
+  state.mermaid_stats.renders +=
+      qMax(0, stats.mermaid_blocks - pending_core_prepared_->mermaid_disk_hits);
+  state.formula_stats.disk_cache_hits +=
+      pending_core_prepared_->formula_disk_hits;
+  state.mermaid_stats.disk_cache_hits +=
+      pending_core_prepared_->mermaid_disk_hits;
+  state.formula_stats.failures += pending_core_prepared_->formula_failures;
+  state.mermaid_stats.failures += pending_core_prepared_->mermaid_failures;
+  state.image_stats.image_cache_misses += pending_core_prepared_->assets.size();
+  state.image_stats.image_cache_hits += pending_core_prepared_->disk_hits;
+  if (stats.worker_tasks > 0) {
+    highlight_engine_status_.loaded = true;
+  }
+  if (stats.formulas > 0) {
+    formula_engine_status_.loaded = true;
+  }
+  if (stats.mermaid_blocks > 0) {
+    mermaid_engine_status_.loaded = true;
+  }
+
+  CommitRender(request_id);
+}
+
+void MarkdownView::CommitRender(quint64 request_id) {
+  if (request_id != active_request_id_ || !rendering_ ||
+      pending_core_result_ == nullptr || pending_core_prepared_ == nullptr) {
+    return;
+  }
+  const MdHtmlResult& result = *pending_core_result_;
+
   QHash<QString, QString> code_blocks;
+  for (const MdCodeBlock& block : result.code_blocks) {
+    code_blocks.insert(QString::number(block.index),
+                       QString::fromStdString(block.code));
+  }
   QHash<QString, QString> heading_ids;
   QVector<MarkdownHeading> outline;
+  for (const MdHeading& heading : result.outline) {
+    MarkdownHeading converted;
+    converted.level = heading.level;
+    converted.text = QString::fromStdString(heading.text);
+    converted.anchor = QString::fromStdString(heading.anchor);
+    outline.append(converted);
+    heading_ids.insert(converted.anchor, QString::fromStdString(heading.id));
+  }
   QHash<QString, PinnedImage> pixmaps;
   QHash<QString, MarkdownImageInfo> image_info;
-  MarkdownRenderOptions options;
-  options.code_line_numbers = code_line_numbers_;
-  options.outline = [&outline](const MarkdownHeading& heading) {
-    outline.append(heading);
-  };
-  const MarkdownRenderResolver resolver =
-      [this, &pixmaps, &image_info](MarkdownRenderKind kind,
-                                    const QString& payload,
-                                    const QString& language, bool display) {
-        QString key;
-        switch (kind) {
-          case MarkdownRenderKind::Highlight:
-            key = HighlightRenderKey(payload, language);
-            break;
-          case MarkdownRenderKind::Formula:
-            key = FormulaRenderKey(payload, display, ThemeFormulaColor(theme_));
-            break;
-          case MarkdownRenderKind::Mermaid:
-            key = MermaidRenderKey(payload, theme_);
-            break;
-        }
-        const auto it = pending_rendered_.constFind(RenderIdentity(kind, key));
-        if (it == pending_rendered_.constEnd()) {
-          return QString();
-        }
-        if (kind == MarkdownRenderKind::Formula) {
-          const QString token = MakeImageToken(QStringLiteral("f/"), key);
-          const auto& image = std::get<RenderedImage>(it.value());
-          if (image.isNull()) {
-            return QString();  // 渲染失败，调用方按原文兜底
-          }
-          const QString tag = RegisterImage(
-              token, image,
-              display ? QStringLiteral(" class=\"math-display\"") : QString(),
-              &pixmaps);
-          if (!tag.isEmpty()) {
-            MarkdownImageInfo info;
-            info.kind = MarkdownImageKind::kFormula;
-            info.source = payload.trimmed();
-            info.display = display;
-            image_info.insert(token, info);
-          }
-          return tag;
-        }
-        if (kind == MarkdownRenderKind::Mermaid) {
-          const QString token = MakeImageToken(QStringLiteral("m/"), key);
-          const auto& image = std::get<RenderedImage>(it.value());
-          if (image.isNull()) {
-            return QString();  // 渲染失败，调用方按原文兜底
-          }
-          const QString tag = RegisterImage(
-              token, image, QStringLiteral(" class=\"mermaid\""), &pixmaps);
-          if (!tag.isEmpty()) {
-            MarkdownImageInfo info;
-            info.kind = MarkdownImageKind::kMermaid;
-            info.source = payload;
-            image_info.insert(token, info);
-          }
-          return tag;
-        }
-        return std::get<QString>(it.value());
-      };
-  QElapsedTimer assemble_clock;
-  assemble_clock.start();
-  const QString body = AssembleMarkdown(
-      pending_parse_, resolver,
-      [&code_blocks](const QString& id, const QString& code) {
-        code_blocks.insert(id, code);
-      },
-      [&heading_ids](const QString& slug, const QString& id) {
-        heading_ids.insert(slug, id);
-      },
-      options);
-  pending_timings_.assemble_ms = assemble_clock.elapsed();
-  const QString final_html = WrapDocument(body, CssForTheme(theme_));
+  for (const MdViewPreparedAsset& asset : pending_core_prepared_->assets) {
+    pixmaps.insert(asset.token,
+                   PinnedImage{QPixmap::fromImage(asset.image), asset.png});
+    image_info.insert(asset.token, asset.info);
+  }
+
+  const QString final_html =
+      WrapDocument(pending_core_prepared_->body_html, CssForTheme(theme_));
 
   document_stats_.source_chars = markdown_.size();
   document_stats_.html_chars = final_html.size();
   document_stats_.headings = outline.size();
-  document_stats_.code_blocks = pending_parse_.blocks.size();
-  document_stats_.formulas = pending_parse_.segments.size();
-  document_stats_.mermaid_blocks = 0;
-  for (const MarkdownCodeBlock& block : pending_parse_.blocks) {
-    if (block.language == QLatin1String("mermaid")) {
-      ++document_stats_.mermaid_blocks;
-    }
-  }
+  document_stats_.code_blocks = result.code_blocks.size();
+  document_stats_.formulas = result.stats.formulas;
+  document_stats_.mermaid_blocks = result.stats.mermaid_blocks;
 
   const MarkdownDiagnostics diagnostics = context_->diagnostics();
   if (diagnostics.trace) {
@@ -1455,8 +1600,8 @@ void MarkdownView::CommitRender(quint64 request_id) {
   InvalidateAnchorYCache();
   rendering_ = false;
   active_request_id_ = 0;
-  pending_parse_ = MarkdownParseResult();
-  pending_rendered_.clear();
+  pending_core_result_.reset();
+  pending_core_prepared_.reset();
   pending_total_ = 0;
   pending_completed_ = 0;
   pending_in_flight_ = 0;
@@ -1493,10 +1638,11 @@ void MarkdownView::CommitRender(quint64 request_id) {
 void MarkdownView::CancelPendingRender() {
   if (active_request_id_ != 0) {
     ++render_history_.requests_cancelled;
-    if (render_service_ != nullptr) {
-      render_service_->Cancel(view_id_, active_request_id_);
+    if (core_job_) {
+      core_job_->Cancel();
     }
   }
+  core_job_.reset();
   ++render_request_id_;
   active_request_id_ = 0;
   rendering_ = false;
@@ -1505,6 +1651,8 @@ void MarkdownView::CancelPendingRender() {
   pending_scroll_.reset();
   pending_parse_ = MarkdownParseResult();
   pending_rendered_.clear();
+  pending_core_result_.reset();
+  pending_core_prepared_.reset();
   pending_total_ = 0;
   pending_completed_ = 0;
   pending_in_flight_ = 0;

@@ -23,6 +23,9 @@
 class MarkdownRenderContext;
 class MarkdownRenderService;
 struct MarkdownRenderResult;
+class MdRenderJob;
+struct MdHtmlResult;
+struct MdViewCorePrepared;
 class QFileSystemWatcher;
 class QLiteHtmlWidget;
 class QPrinter;
@@ -266,6 +269,10 @@ class MarkdownView : public QWidget {
   void StartRender(quint64 request_id);
   void OnTaskFinished(quint64 request_id, const MarkdownRenderResult& result);
   void OnAllFinished(const QString& view_id, quint64 request_id);
+  // 核心 pipeline 的等待结果回到 GUI 线程；prepared 已带光栅化后的图片
+  void OnCoreRenderFinished(quint64 request_id,
+                            std::shared_ptr<MdHtmlResult> result,
+                            std::shared_ptr<MdViewCorePrepared> prepared);
   void CommitRender(quint64 request_id);
   // 重渲染并保留垂直滚动位置（开关切换用）
   void ReapplyDocument();
@@ -294,8 +301,12 @@ class MarkdownView : public QWidget {
   // 每视图一份渲染状态（缓存/计数/配置）；引擎由同步入口的线程局部
   // 默认实例提供，异步 worker 各自持有
   std::unique_ptr<MarkdownRenderContext> context_;
-  // 进程级共享服务；首次派发时才取实例
+  // 进程级共享服务；首次派发时才取实例（旧 Qt 渲染链路，仅保留状态兼容）
   MarkdownRenderService* render_service_ = nullptr;
+  // 当前的 mdhtml 核心 job；取消/换文档时置 cancel
+  std::shared_ptr<MdRenderJob> core_job_;
+  std::shared_ptr<MdHtmlResult> pending_core_result_;
+  std::shared_ptr<MdViewCorePrepared> pending_core_prepared_;
   QString view_id_;
   QLiteHtmlWidget* html_ = nullptr;
   QFileSystemWatcher* watcher_ = nullptr;

@@ -24,6 +24,8 @@ set(TARGET_SRCS
     mermaid_renderer.h
     mermaid_svg_cleanup.cpp
     mermaid_svg_cleanup.h
+    qt_md_font_metrics.cpp
+    qt_md_font_metrics.h
     svg_rasterizer.cpp
     svg_rasterizer.h
     markdown_to_html.cpp
@@ -127,11 +129,16 @@ target_link_libraries(${TARGET_NAME}
     Qt${QT_VERSION_MAJOR}::Core
     PRIVATE
     qlitehtml
+    qlitemd_mdhtml
     md4c
     tree_sitter_core
     tree_sitter_grammars  # 高亮：native tree-sitter（12 语言）
     Qt${QT_VERSION_MAJOR}::Svg
 )
+if(QLITEMD_SVG_BACKEND STREQUAL "qtsvg")
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+        QLITEMD_MDHTML_SVG_QTSVG=1)
+endif()
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::resvg)
 endif()
