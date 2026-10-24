@@ -250,6 +250,9 @@ target_include_directories(md4c PUBLIC
     "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src")
 set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
+# ---------------------------------------------------- Qt-free mdhtml core
+add_subdirectory(src/mdhtml)
+
 # ------------------------------------------------------------- QuickJS
 # 只有选了 quickjs 后端（公式或 Mermaid）才编译 QuickJS 与 JS 载荷
 if(QLITEMD_NEEDS_QUICKJS)
@@ -436,6 +439,8 @@ if(QLITEMD_BUILD_TESTS)
     add_subdirectory(3rdparty/googletest)
     qlitemd_skip_subdir_install(3rdparty/googletest)
     include(cmake/test_helpers.cmake)
+    add_subdirectory(tests/mdhtml)
+    qlitemd_skip_subdir_install(tests/mdhtml)
     add_subdirectory(tests/markdown)
     qlitemd_skip_subdir_install(tests/markdown)
     add_subdirectory(tests/md_viewer)
