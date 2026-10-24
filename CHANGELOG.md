@@ -4,6 +4,8 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+## 0.0.3 - 2026-10-24
+
 - Fix review findings in the reading experience: progress and the
   back-to-top threshold use virtual pixels at every zoom, progress
   refreshes after resize/reflow, the width row has a default option,
