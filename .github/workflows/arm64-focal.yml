@@ -1,0 +1,61 @@
+name: arm64-focal
+
+# GitHub-hosted arm64 runners (ubuntu-24.04-arm) cannot provide Qt 5.12.8:
+# that kit only exists in Focal's apt archive. Emulate arm64 Focal in Docker
+# on an x64 runner so the arm64 build/tests use the same Qt 5.12.8 as the
+# oldest supported x64 kit.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/**'
+      - 'resources/**'
+      - '3rdparty/**'
+      - 'tests/**'
+      - '.github/workflows/arm64-focal.yml'
+      - '.github/scripts/arm64_focal.sh'
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'src/**'
+      - 'resources/**'
+      - '3rdparty/**'
+      - 'tests/**'
+      - '.github/workflows/arm64-focal.yml'
+      - '.github/scripts/arm64_focal.sh'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64-focal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Linux Qt5.12.8 (arm64, focal, quickjs)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build and test under arm64 Focal
+        run: |
+          docker run --rm \
+            --platform linux/arm64 \
+            -e QT_QPA_PLATFORM=offscreen \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            ubuntu:20.04 \
+            bash /work/.github/scripts/arm64_focal.sh
