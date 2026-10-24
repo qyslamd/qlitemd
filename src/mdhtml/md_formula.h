@@ -1,6 +1,7 @@
 #ifndef FILE_MDHTML_MD_FORMULA_H_
 #define FILE_MDHTML_MD_FORMULA_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -23,6 +24,10 @@ class MdFormulaEngine {
   MdFormulaEngine& operator=(const MdFormulaEngine&) = delete;
 
   MdFormulaResult Render(std::string_view tex, bool display, MdColor color);
+
+  // QuickJS only: setting the flag interrupts a running evaluation. The
+  // native RaTeX backend is not interruptible and ignores it.
+  void SetInterruptFlag(std::atomic<bool>* flag);
 
  private:
   struct Impl;

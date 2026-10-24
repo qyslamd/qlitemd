@@ -394,6 +394,7 @@ struct MdMermaidEngine::Impl {
 
   bool EnsureLoaded();
   MdMermaidResult Render(std::string_view code, MdTheme theme);
+  void SetInterruptFlag(std::atomic<bool>* flag) { (void)flag; }
 };
 
 namespace {
@@ -598,6 +599,9 @@ struct MdMermaidEngine::Impl {
   bool EnsureInitialized();
   std::string RenderSvg(std::string_view code);
   MdMermaidResult Render(std::string_view code, MdTheme theme);
+  void SetInterruptFlag(std::atomic<bool>* flag) {
+    runtime.SetInterruptFlag(flag);
+  }
 };
 
 namespace {
@@ -874,6 +878,7 @@ struct MdMermaidEngine::Impl {
     }
   }
   std::shared_ptr<const MdFontMetrics> metrics;
+  void SetInterruptFlag(std::atomic<bool>* flag) { (void)flag; }
 };
 
 #endif  // backends
@@ -882,6 +887,10 @@ MdMermaidEngine::MdMermaidEngine(std::shared_ptr<const MdFontMetrics> metrics)
     : impl_(new Impl(std::move(metrics))) {}
 
 MdMermaidEngine::~MdMermaidEngine() = default;
+
+void MdMermaidEngine::SetInterruptFlag(std::atomic<bool>* flag) {
+  impl_->SetInterruptFlag(flag);
+}
 
 bool MdMermaidEngine::EnsureLoaded() {
 #if defined(QLITEMD_MDHTML_MERMAID_MERMAN) || defined(QLITEMD_MDHTML_QUICKJS)

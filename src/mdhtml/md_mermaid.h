@@ -1,6 +1,7 @@
 #ifndef FILE_MDHTML_MD_MERMAID_H_
 #define FILE_MDHTML_MD_MERMAID_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -30,6 +31,10 @@ class MdMermaidEngine {
 
   bool EnsureLoaded();
   MdMermaidResult Render(std::string_view code, MdTheme theme);
+
+  // QuickJS only: interrupts the running render. The native merman backend
+  // currently finishes the current diagram.
+  void SetInterruptFlag(std::atomic<bool>* flag);
 
  private:
   std::unique_ptr<Impl> impl_;

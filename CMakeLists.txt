@@ -39,6 +39,11 @@ endfunction()
 
 option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ON)
 option(QLITEMD_BUILD_MD_VIEWER "Build the md_viewer example" ON)
+option(QLITEMD_CORE_ONLY "Build only the Qt-free mdhtml core (no Qt)" OFF)
+if(QLITEMD_CORE_ONLY)
+    set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL
+        "Build the md_viewer example" FORCE)
+endif()
 
 set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
 set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
@@ -203,43 +208,47 @@ if(_qlitemd_runtime_libs)
         VERBATIM)
 endif()
 
-set(QLITEMD_QT_MAJOR 5 CACHE STRING "Qt major version (5 or 6)")
-set(QT_VERSION_MAJOR ${QLITEMD_QT_MAJOR})
-if(QLITEMD_QT_MAJOR EQUAL 6)
-    find_package(Qt6 REQUIRED COMPONENTS
-        Core Gui Widgets Svg Network PrintSupport Test)
-else()
-    find_package(Qt5 5.12 REQUIRED COMPONENTS
-        Core Gui Widgets Svg Network PrintSupport Test)
+if(NOT QLITEMD_CORE_ONLY)
+    set(QLITEMD_QT_MAJOR 5 CACHE STRING "Qt major version (5 or 6)")
+    set(QT_VERSION_MAJOR ${QLITEMD_QT_MAJOR})
+    if(QLITEMD_QT_MAJOR EQUAL 6)
+        find_package(Qt6 REQUIRED COMPONENTS
+            Core Gui Widgets Svg Network PrintSupport Test)
+    else()
+        find_package(Qt5 5.12 REQUIRED COMPONENTS
+            Core Gui Widgets Svg Network PrintSupport Test)
+    endif()
+
+    include(cmake/run_app.cmake)
 endif()
 
-include(cmake/run_app.cmake)
-
 # ---------------------------------------------------------------- spdlog
-set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
-set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(3rdparty/spdlog)
-qlitemd_skip_subdir_install(3rdparty/spdlog)
+if(NOT QLITEMD_CORE_ONLY)
+    set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+    set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(3rdparty/spdlog)
+    qlitemd_skip_subdir_install(3rdparty/spdlog)
 
-# ------------------------------------------------------------ litehtml
-set(CMAKE_SKIP_INSTALL_RULES TRUE)
-add_subdirectory(3rdparty/litehtml "${CMAKE_BINARY_DIR}/litehtml")
-unset(CMAKE_SKIP_INSTALL_RULES)
-qlitemd_skip_subdir_install(litehtml)
-target_include_directories(litehtml SYSTEM INTERFACE
-    "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/include"
-    "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/src")
+    # ------------------------------------------------------------ litehtml
+    set(CMAKE_SKIP_INSTALL_RULES TRUE)
+    add_subdirectory(3rdparty/litehtml "${CMAKE_BINARY_DIR}/litehtml")
+    unset(CMAKE_SKIP_INSTALL_RULES)
+    qlitemd_skip_subdir_install(litehtml)
+    target_include_directories(litehtml SYSTEM INTERFACE
+        "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/include"
+        "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/src")
 
-# ----------------------------------------------------------- qlitehtml
-set(QLITEHTML_LIBRARY_TYPE STATIC)
-set(CMAKE_SKIP_INSTALL_RULES TRUE)
-add_subdirectory(3rdparty/qlitehtml/src
-                 "${CMAKE_BINARY_DIR}/qlitehtml")
-unset(CMAKE_SKIP_INSTALL_RULES)
-qlitemd_skip_subdir_install(qlitehtml)
-set_target_properties(qlitehtml PROPERTIES AUTOMOC ON)
+    # ----------------------------------------------------------- qlitehtml
+    set(QLITEHTML_LIBRARY_TYPE STATIC)
+    set(CMAKE_SKIP_INSTALL_RULES TRUE)
+    add_subdirectory(3rdparty/qlitehtml/src
+                     "${CMAKE_BINARY_DIR}/qlitehtml")
+    unset(CMAKE_SKIP_INSTALL_RULES)
+    qlitemd_skip_subdir_install(qlitehtml)
+    set_target_properties(qlitehtml PROPERTIES AUTOMOC ON)
+endif()
 
 # --------------------------------------------------------------- md4c
 add_library(md4c STATIC
@@ -297,6 +306,7 @@ unset(CMAKE_SKIP_INSTALL_RULES)
 endif()
 
 # ------------------------------------------------------------ modules
+if(NOT QLITEMD_CORE_ONLY)
 add_subdirectory(src/logging)
 qlitemd_skip_subdir_install(src/logging)
 
@@ -363,6 +373,7 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/qlitemdConfigVersion.cmake"
     DESTINATION ${QLITEMD_CMAKE_INSTALL_DIR}
     COMPONENT Development)
+endif()  # NOT QLITEMD_CORE_ONLY
 
 install(FILES LICENSE NOTICE README.md README.zh-CN.md
     DESTINATION .
@@ -443,10 +454,12 @@ if(QLITEMD_BUILD_TESTS)
     include(cmake/test_helpers.cmake)
     add_subdirectory(tests/mdhtml)
     qlitemd_skip_subdir_install(tests/mdhtml)
-    add_subdirectory(tests/markdown)
-    qlitemd_skip_subdir_install(tests/markdown)
-    add_subdirectory(tests/md_viewer)
-    qlitemd_skip_subdir_install(tests/md_viewer)
+    if(NOT QLITEMD_CORE_ONLY)
+        add_subdirectory(tests/markdown)
+        qlitemd_skip_subdir_install(tests/markdown)
+        add_subdirectory(tests/md_viewer)
+        qlitemd_skip_subdir_install(tests/md_viewer)
+    endif()
 endif()
 
 # ------------------------------------------------------------- viewer

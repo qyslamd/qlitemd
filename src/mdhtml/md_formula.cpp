@@ -85,11 +85,23 @@ struct MdFormulaEngine::Impl {
 #if defined(QLITEMD_MDHTML_QUICKJS)
   MdJsRuntime runtime;
 #endif
+
+  void SetInterruptFlag(std::atomic<bool>* flag) {
+#if defined(QLITEMD_MDHTML_QUICKJS)
+    runtime.SetInterruptFlag(flag);
+#else
+    (void)flag;
+#endif
+  }
 };
 
 MdFormulaEngine::MdFormulaEngine() : impl_(new Impl) {}
 
 MdFormulaEngine::~MdFormulaEngine() = default;
+
+void MdFormulaEngine::SetInterruptFlag(std::atomic<bool>* flag) {
+  impl_->SetInterruptFlag(flag);
+}
 
 MdFormulaResult MdFormulaEngine::Render(std::string_view tex, bool display,
                                         MdColor color) {

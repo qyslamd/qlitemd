@@ -91,3 +91,32 @@
 - 验证：新增第二个构建目录 `build_qt515_quickjs_x86`（Qt 5.15.2 x86，
   formula/mermaid 都选 quickjs，关闭 md_viewer），6 个 mdhtml 测试
   目标全部通过；原 resvg+ratex+merman 构建的 MARKDOWN 36/36 仍通过。
+
+## S4 多线程调度与 C API（完成）
+
+- 新增 `md_pipeline`：
+  - 每个 job 一个 coordinator 线程（解析、收集、等待、组装）；
+  - 三条常驻 lane（highlight/formula/mermaid），每个 worker 持有自己的
+    parser/引擎状态；Windows 用 `_beginthreadex` 给 32MB 栈；
+  - 任务按稳定 key 去重；结果表 `(kind,key)`，组装按源码顺序查表，
+    worker 完成顺序不影响 HTML；
+  - 有界队列（默认 256）对 coordinator 施加背压；
+  - 进度回调在 coordinator 线程执行，`completed/total/in_flight` 单调；
+  - 取消：排队任务出队即丢弃，QuickJS 通过 interrupt handler 中断；
+    原生 merman/RaTeX 当前完成手上的图。
+  - 设计取舍：字体度量改为 pipeline 级属性（Mermaid worker 的
+    merman 引擎在创建时绑定度量）；worker 数量也放在
+    `MdPipelineOptions`，`MdRenderOptions` 只保留每次渲染的差异项。
+- 资产 HTML：`<img src="qlitemd-asset:<id>" width=... height=...>`，
+  公式显示态带 `class="math-display"`、Mermaid 带 `class="mermaid"`；
+  `id` 是 SHA-256 前 128 位。
+- 新增 `mdhtml_c.h` 同步 C API：pipeline/result 句柄、选项与 stats
+  的 `struct_size` 版本化、资产/大纲访问器、字体度量回调。
+- 新增 `QLITEMD_CORE_ONLY`：不查找 Qt，不编 qlitehtml/litehtml/
+  spdlog/src/markdown/md_viewer，只构建 mdhtml、md4c、tree-sitter、
+  QuickJS 与核心测试。
+- CI：`.github/workflows/build.yml` 增加 `core-only` job
+  （ubuntu-24.04，无 Qt，quickjs，全量 ctest + 格式检查）。
+- 测试：新增 `test_mdhtml_pipeline`（8）与 `test_mdhtml_c_api`（3）。
+  三种配置均 8/8 通过：本地 ratex+merman、本地 quickjs、
+  本地 `build_core_only`（无 Qt）。

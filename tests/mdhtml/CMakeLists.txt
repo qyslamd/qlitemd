@@ -47,3 +47,21 @@ add_unit_test(
     LABELS MARKDOWN
 )
 set_tests_properties(test_mdhtml_mermaid PROPERTIES TIMEOUT 120)
+
+add_unit_test(
+    NAME test_mdhtml_pipeline
+    SOURCES md_pipeline_test.cpp
+    LIBS qlitemd_mdhtml md4c
+    INCLUDES ${CMAKE_SOURCE_DIR}/src/mdhtml
+    LABELS MARKDOWN
+)
+set_tests_properties(test_mdhtml_pipeline PROPERTIES TIMEOUT 120)
+
+add_unit_test(
+    NAME test_mdhtml_c_api
+    SOURCES mdhtml_c_test.cpp
+    LIBS qlitemd_mdhtml md4c
+    INCLUDES ${CMAKE_SOURCE_DIR}/src/mdhtml
+    LABELS MARKDOWN
+)
+set_tests_properties(test_mdhtml_c_api PROPERTIES TIMEOUT 120)

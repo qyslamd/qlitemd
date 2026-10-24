@@ -77,12 +77,16 @@ add_library(${MDHTML_TARGET} STATIC
     md_mermaid.h
     md_parser.cpp
     md_parser.h
+    md_pipeline.cpp
+    md_pipeline.h
     md_queries.h
     md_svg.cpp
     md_svg.h
     md_text.cpp
     md_text.h
     md_types.h
+    mdhtml_c.cpp
+    mdhtml_c.h
     ${MDHTML_QUERY_SOURCE}
     ${MDHTML_QUICKJS_SOURCES}
 )
@@ -90,11 +94,13 @@ add_library(${MDHTML_TARGET} STATIC
 target_include_directories(${MDHTML_TARGET}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
+find_package(Threads REQUIRED)
 target_link_libraries(${MDHTML_TARGET}
     PRIVATE
     md4c
     tree_sitter_core
     tree_sitter_grammars
+    Threads::Threads
 )
 
 # Native SVG backends stay optional: other platforms fall back to QuickJS

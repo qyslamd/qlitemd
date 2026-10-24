@@ -98,6 +98,38 @@ jobs:
           $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
           .\consumer-build\qlitemd_minimal.exe
 
+  core-only:
+    name: Core only (no Qt, quickjs)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-core -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DQLITEMD_CORE_ONLY=ON
+          -DQLITEMD_SVG_BACKEND=qtsvg
+          -DQLITEMD_FORMULA_BACKEND=quickjs
+          -DQLITEMD_MERMAID_BACKEND=quickjs
+
+      - name: Build
+        run: cmake --build build-core --parallel
+
+      - name: Test
+        run: ctest --test-dir build-core --output-on-failure
+
+      - name: Check formatting
+        run: |
+          python3 -m pip install --user --break-system-packages clang-format==21.1.2
+          export PATH="$HOME/.local/bin:$PATH"
+          git ls-files 'src/**/*.h' 'src/**/*.cpp' \
+            'tests/mdhtml/**/*.h' 'tests/mdhtml/**/*.cpp' |
+            xargs clang-format --dry-run --Werror
+
   linux:
     name: Linux Qt6 (x64, ${{ matrix.backend }})
     runs-on: ubuntu-24.04
