@@ -2,7 +2,58 @@
 
 日期：2026-10-25
 分支：`feature/qt-free-mdhtml`
-状态：方案，未实施
+状态：已定稿，实施中
+
+## 定稿决策
+
+以下按维护者 2026-10-25 的授权确定，后续实施不再逐项确认：
+
+1. **彻底重构**：`src/markdown` 的 Qt 渲染层不再作为库的一部分；
+   新增零 Qt 核心 `qlitemd_mdhtml`，Qt 适配层（MarkdownView、
+   qlitehtml、SVG 光栅化、PNG 缓存、主题资源）整体移到
+   `examples/md_viewer/qt_adapter/`，由 md_viewer 和适配层测试
+   链接。不再保留一个“Qt 版 qlitemd_markdown”兼容库。
+2. **C 接口方向**：核心从第一天按 C ABI 友好设计；首批提供
+   `include/qlitemd/mdhtml_c.h` 的同步渲染、结果/资产访问、字体
+   度量回调和销毁接口，供 C#/Avalonia 后续 P/Invoke。异步 job 的
+   C 接口放到核心稳定后。
+3. **公共 API**：C++17，UTF-8 `std::string`，不使用 namespace，
+   类型用 `Md` 前缀；公共头不出现 Qt。
+4. **资产传输**：HTML 用 `qlitemd-asset:<id>`，结果带 assets 表；
+   导出辅助函数负责 inline 成 data URI。不把大段 SVG 直接塞进
+   HTML。
+5. **引擎**：默认内置 tree-sitter、RaTeX/merman、QuickJS 的 SVG
+   实现；`QLITEMD_MDHTML_BUILTIN_ENGINES=OFF` 时只保留解析/组装，
+   宿主通过回调注入。核心不链接 resvg/QtSvg。
+6. **字体度量**：默认 `MdDefaultFontMetrics`（确定性近似）；Qt
+   适配层提供 `QtMdFontMetrics`；C 接口用函数指针表注入。
+7. **SVG profile**：核心默认标准 SVG；QtSvg 兼容后处理留在 Qt
+   适配层，按光栅化后端选择，不进入核心默认路径。
+8. **测试**：新增 `tests/mdhtml`（GoogleTest，零 Qt）；原
+   `tests/markdown` 的 Qt 测试迁移到适配层测试；`examples/minimal`
+   改为零 Qt 控制台 consumer，验证安装后的核心 SDK。
+9. **线程**：coordinator + highlight/formula/mermaid 三条 std
+   thread lane；解析/组装单线程；支持取消、进度、确定性组装。
+10. **安装**：SDK 只安装核心头、静态库和 package config
+    `qlitemd::mdhtml`；Qt 适配层不安装。md_viewer 的安装包仍包含
+    qlitehtml 静态链接进示例。
+
+### 实施子任务与提交边界
+
+- S1 核心骨架：`src/mdhtml` 目录、std 类型、md4c 解析、HTML 组装、
+  heading/code/outline、核心测试；提交“core: 建立零 Qt 解析与组装”。
+- S2 高亮：tree-sitter + 查询资源 std 化；提交“core: 移植语法高亮”。
+- S3 SVG 引擎：RaTeX/QuickJS 公式、merman/QuickJS Mermaid、SVG
+  尺寸/颜色、字体度量注入；提交“core: 公式与 Mermaid 输出 SVG”。
+- S4 调度与 C API：线程池、取消/进度、C ABI、core-only CI；
+  提交“core: 多线程调度与 C API”。
+- S5 Qt 适配层迁移：移动 MarkdownView/qlitehtml/缓存/光栅化/主题，
+  改接核心资产；提交“refactor(md_viewer): 迁移 Qt 适配层”。
+- S6 parity 与收尾：md_viewer 功能回归、测试迁移、文档/安装/CI；
+  提交“docs/test: 完成 Qt 无关重构”。
+
+每个子任务完成、最终完成都会发邮件；关键取舍在实施中记录到
+`docs/superpowers/notes/2026-10-25-mdhtml-refactor-log.md`。
 
 ## 1. 背景
 
