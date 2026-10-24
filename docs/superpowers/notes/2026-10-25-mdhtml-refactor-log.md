@@ -23,3 +23,25 @@
 - 测试：`tests/mdhtml`，8/8 通过；未链接 Qt。
 - 仍需：tree-sitter 高亮、公式/Mermaid SVG、字体度量、线程池、
   C API、Qt 适配层迁移。
+
+## S2 语法高亮（完成）
+
+- 新增 `md_highlight.{h,cpp}`：tree-sitter 解析 + highlights query
+  → 带短类名 `<span>` 的 HTML，接口为
+  `MdHighlightCode(code, language, cache)` 与
+  `MdHighlightRenderKey(code, language)`。
+- 12 种语言（bash/batch/c/cpp/css/go/html/java/javascript/json/
+  python/rust）与别名表、`cpp` 继承 `c` 查询、逐语言
+  `MdTreeSitterParserCache`，均与旧 Qt 模块一致。
+- 查询资源不再走 qrc：`cmake/embed_mdhtml_queries.cmake` 在构建期
+  把 `3rdparty/tree-sitter-lang/*/queries/highlights.scm` 生成为
+  raw string 字面量的 C++ 源；核心不依赖 Qt 资源系统。
+- 谓词求值保留旧语义（`#match?` 全部命中、`#eq?/#ne?` 全有/全无、
+  缺少捕获则跳过规则）。`#is-not?` 仍按旧的等值规则处理，保证
+  JavaScript 内建名的高亮结果与旧版逐字节一致。
+- `std::regex` 不支持内联标志：查询里只出现行首 `(?i)`，编译时转成
+  `icase`；其余语法均在 ECMAScript 子集内。
+- 输出契约不变：按 `\n` 拆行后 span 自平衡；未注册语言纯转义；
+  `'` 输出 `&#x27;`，与旧版及主题 CSS 契约一致。
+- 测试：`tests/mdhtml/md_highlight_test.cpp`，10 项通过；连同 S1
+  共 2 个测试目标、18 项通过，均未链接 Qt。

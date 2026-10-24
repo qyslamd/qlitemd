@@ -1,19 +1,52 @@
 set(MDHTML_TARGET qlitemd_mdhtml)
 
+# The bundled highlights queries are text resources owned by the core, so
+# they are embedded as generated C++ instead of Qt's resource system.
+set(MDHTML_TS_ROOT "${CMAKE_SOURCE_DIR}/3rdparty/tree-sitter-lang")
+set(MDHTML_QUERY_SOURCE
+    "${CMAKE_CURRENT_BINARY_DIR}/md_queries_generated.cpp")
+set(MDHTML_LANGUAGES
+    bash batch c cpp css go html java javascript json python rust)
+set(MDHTML_QUERY_FILES "")
+foreach(language IN LISTS MDHTML_LANGUAGES)
+    list(APPEND MDHTML_QUERY_FILES
+        "${MDHTML_TS_ROOT}/${language}/queries/highlights.scm")
+endforeach()
+add_custom_command(
+    OUTPUT "${MDHTML_QUERY_SOURCE}"
+    COMMAND ${CMAKE_COMMAND}
+        "-DQL_TS_LANG_ROOT=${MDHTML_TS_ROOT}"
+        "-DQL_OUTPUT=${MDHTML_QUERY_SOURCE}"
+        -P "${CMAKE_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
+    DEPENDS ${MDHTML_QUERY_FILES}
+        "${CMAKE_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
+    COMMENT "Embedding tree-sitter highlight queries"
+    VERBATIM
+)
+
 add_library(${MDHTML_TARGET} STATIC
     md_assembler.cpp
     md_assembler.h
+    md_highlight.cpp
+    md_highlight.h
     md_parser.cpp
     md_parser.h
+    md_queries.h
     md_text.cpp
     md_text.h
     md_types.h
+    ${MDHTML_QUERY_SOURCE}
 )
 
 target_include_directories(${MDHTML_TARGET}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(${MDHTML_TARGET} PRIVATE md4c)
+target_link_libraries(${MDHTML_TARGET}
+    PRIVATE
+    md4c
+    tree_sitter_core
+    tree_sitter_grammars
+)
 target_compile_features(${MDHTML_TARGET} PUBLIC cxx_std_17)
 set_target_properties(${MDHTML_TARGET} PROPERTIES
     CXX_STANDARD 17
