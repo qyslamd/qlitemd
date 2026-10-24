@@ -54,9 +54,18 @@ class LightboxView final : public QGraphicsView {
 
  protected:
   void wheelEvent(QWheelEvent* event) override {
-    const qreal factor = event->angleDelta().y() >= 0 ? 1.15 : 1.0 / 1.15;
-    const qreal next = transform().m11() * factor;
-    if (next < kMinScale || next > kMaxScale) {
+    const int delta = event->angleDelta().y();
+    if (delta == 0) {
+      // 横向触控板滚动交给基类，别当成放大
+      event->ignore();
+      return;
+    }
+    const qreal factor = delta > 0 ? 1.15 : 1.0 / 1.15;
+    const qreal current = transform().m11();
+    // FitImage 可能把很小的图放大到 20 倍以上：上限只能拦继续放大，
+    // 不能拦住缩小，否则滚轮在小图上完全失效。
+    if ((factor > 1.0 && current >= kMaxScale) ||
+        (factor < 1.0 && current <= kMinScale)) {
       event->accept();
       return;
     }

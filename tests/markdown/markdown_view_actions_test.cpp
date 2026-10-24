@@ -16,6 +16,7 @@
 #include <QMetaObject>
 #include <QPalette>
 #include <QPrinter>
+#include <QScrollBar>
 #include <QStandardPaths>
 #include <QString>
 #include <QTemporaryDir>
@@ -158,13 +159,37 @@ TEST(MarkdownViewStyleTest, PageBackgroundAppliesToHtmlSurface) {
   EXPECT_TRUE(area->viewport()->autoFillBackground());
 }
 
-TEST(MarkdownViewMetricsTest, DocumentAndViewportHeight) {
+TEST(MarkdownViewMetricsTest, ViewportHeightMatchesScrollRangeAtAllZooms) {
+  QString markdown;
+  for (int i = 0; i < 40; ++i) {
+    markdown +=
+        QStringLiteral("## 第 %1 节\n\n这是用来撑开滚动范围的一段正文。\n\n")
+            .arg(i);
+  }
   MarkdownView view;
   view.resize(640, 420);
   view.show();
-  ASSERT_TRUE(SetContentAndWait(view, SampleMarkdown(), QString()));
-  EXPECT_GT(view.DocumentHeight(), 0);
-  EXPECT_GT(view.ViewportHeight(), 0);
+  ASSERT_TRUE(SetContentAndWait(view, markdown, QString()));
+  auto* html = view.findChild<QWidget*>(QStringLiteral("markdownHtml"));
+  ASSERT_NE(html, nullptr);
+  auto* area = qobject_cast<QAbstractScrollArea*>(html);
+  ASSERT_NE(area, nullptr);
+  auto expect_scroll_range = [&] {
+    EXPECT_NEAR(view.DocumentHeight() - view.ViewportHeight(),
+                area->verticalScrollBar()->maximum(), 2);
+  };
+
+  expect_scroll_range();
+  const int viewport_at_100 = view.ViewportHeight();
+  view.SetZoomFactor(2.0);
+  view.SetScrollPosition(0);  // 立刻落地挂起的缩放
+  EXPECT_LT(view.ViewportHeight(), viewport_at_100);
+  expect_scroll_range();
+
+  view.SetZoomFactor(0.5);
+  view.SetScrollPosition(0);
+  EXPECT_GT(view.ViewportHeight(), viewport_at_100);
+  expect_scroll_range();
   view.hide();
 }
 

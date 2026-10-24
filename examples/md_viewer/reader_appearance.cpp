@@ -172,7 +172,10 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
     for (const QPair<QString, int>& option : options) {
       auto* button = new ChoiceButton(option.first, panel);
       button->setObjectName(object_prefix + QString::number(option.second));
-      group->addButton(button, option.second);
+      // 组 id 不能直接用 -1（QButtonGroup 会当成自动分配），
+      // 选中态统一读这个属性
+      button->setProperty("preferenceValue", option.second);
+      group->addButton(button);
       row->addWidget(button, 1);
       connect(button, &QToolButton::clicked, this,
               [this, option, apply] { apply(option.second); });
@@ -214,7 +217,8 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
 
   add_choice_row(
       QStringLiteral("栏宽"), QStringLiteral("appearanceMeasure"),
-      {{QStringLiteral("窄"), 680},
+      {{QStringLiteral("默认"), -1},
+       {QStringLiteral("窄"), 680},
        {QStringLiteral("舒适"), 760},
        {QStringLiteral("宽"), 900},
        {QStringLiteral("全宽"), 0}},
@@ -265,22 +269,31 @@ void ReaderAppearancePopup::OpenNear(QWidget* anchor) {
     return;
   }
   adjustSize();
-  resize(kPopupWidth, sizeHint().height());
   const QPoint anchor_top = anchor->mapToGlobal(QPoint(0, 0));
   const QPoint anchor_bottom =
       anchor->mapToGlobal(QPoint(0, anchor->height() + 8));
-  QPoint top_left(anchor_top.x() + anchor->width() / 2 - width() / 2,
-                  anchor_bottom.y());
   QScreen* screen = QGuiApplication::screenAt(anchor_bottom);
   if (screen == nullptr) {
     screen = QGuiApplication::primaryScreen();
   }
-  if (screen != nullptr) {
-    const QRect available = screen->availableGeometry();
-    top_left.setX(qBound(available.left() + 12, top_left.x(),
-                         available.right() - width() - 12));
-    top_left.setY(qBound(available.top() + 12, top_left.y(),
-                         available.bottom() - height() - 12));
+  const QRect available =
+      screen != nullptr ? screen->availableGeometry() : QRect();
+  int width = kPopupWidth;
+  int height = sizeHint().height();
+  if (available.isValid()) {
+    width = qMin(width, qMax(220, available.width() - 24));
+    height = qMin(height, qMax(160, available.height() - 24));
+  }
+  resize(width, height);
+  QPoint top_left(anchor_top.x() + anchor->width() / 2 - width / 2,
+                  anchor_bottom.y());
+  if (available.isValid()) {
+    const int min_x = available.left() + 12;
+    const int min_y = available.top() + 12;
+    const int max_x = qMax(min_x, available.right() - width - 12);
+    const int max_y = qMax(min_y, available.bottom() - height - 12);
+    top_left.setX(qBound(min_x, top_left.x(), max_x));
+    top_left.setY(qBound(min_y, top_left.y(), max_y));
   }
   move(top_left);
   show();
@@ -306,7 +319,7 @@ void ReaderAppearancePopup::UpdateChecked() {
     group->setExclusive(false);
     for (QAbstractButton* button : group->buttons()) {
       QSignalBlocker blocker(button);
-      button->setChecked(group->id(button) == value);
+      button->setChecked(button->property("preferenceValue").toInt() == value);
     }
     group->setExclusive(exclusive);
   };

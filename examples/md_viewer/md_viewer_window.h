@@ -3,6 +3,7 @@
 
 #include <optional>
 
+#include <QByteArray>
 #include <QColor>
 #include <QMainWindow>
 #include <QPoint>
@@ -140,8 +141,12 @@ class MdViewerWindow : public QMainWindow {
   // 无文档时的欢迎页，与正文互斥显示
   void ShowWelcome();
   void HideWelcome();
+  // restoreState 之后采样欢迎页之前的大纲可见性与 dock 布局
+  void CaptureWelcomeState();
   // 顶部进度线、浮动回顶按钮与状态栏阅读时长
   void UpdateReadingProgress(int y);
+  // 等 qlitehtml 完成重排后再按新高度重算进度
+  void ScheduleReadingProgressRefresh();
   void UpdateReadingTime();
   void PositionBackToTop();
   void ScrollToTop();
@@ -244,8 +249,10 @@ class MdViewerWindow : public QMainWindow {
   bool focus_mode_ = false;
   bool focus_restore_document_ = true;
   bool focus_restore_outline_ = true;
-  // 欢迎页会临时收起空大纲，打开文档后按这个记录恢复
-  bool welcome_outline_visible_ = false;
+  // 欢迎页会临时收起空大纲；采样一次，避免重复 ShowWelcome 覆盖
+  bool welcome_outline_was_visible_ = false;
+  // 欢迎页显示期间关闭窗口时保存这份布局，别把临时隐藏写进配置
+  QByteArray welcome_dock_state_;
   // 窄宽度自动收起大纲；用户手动关掉的不算，恢复宽度时也不自动弹开
   bool outline_auto_hidden_ = false;
   QWidget* nav_widget_ = nullptr;

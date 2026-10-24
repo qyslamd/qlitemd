@@ -494,7 +494,16 @@ int MarkdownView::DocumentHeight() const {
 }
 
 int MarkdownView::ViewportHeight() const {
-  return html_ != nullptr ? html_->viewport()->height() : 0;
+  if (html_ == nullptr) {
+    return 0;
+  }
+  // 滚动条与 DocumentHeight 都是虚拟像素：视口高度要除掉缩放，
+  // 否则阅读进度在非 100% 缩放下分母偏大/偏小。
+  const qreal zoom = html_->zoomFactor();
+  if (zoom <= 0.0) {
+    return 0;
+  }
+  return qRound(html_->viewport()->height() / zoom);
 }
 
 int MarkdownView::layout_count() const { return html_->layoutCount(); }

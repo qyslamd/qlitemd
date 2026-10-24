@@ -23,7 +23,7 @@ h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote {
 
 h1 {
   font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
-  font-size: 30px;
+  font-size: 2em;
   line-height: 1.25;
   margin: 0 0 10px;
   border-bottom: none;
@@ -32,13 +32,13 @@ h1 {
 
 h2 {
   font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
-  font-size: 20px;
+  font-size: 1.333em;
   margin: 34px 0 10px;
   padding-top: 6px;
 }
 
-h3 { font-size: 16px; margin: 24px 0 8px; }
-h4, h5, h6 { font-size: 15px; margin: 20px 0 6px; }
+h3 { font-size: 1.067em; margin: 24px 0 8px; }
+h4, h5, h6 { font-size: 1em; margin: 20px 0 6px; }
 
 p { margin: 0 0 14px; }
 ul, ol { margin: 0 0 14px; padding-left: 22px; }

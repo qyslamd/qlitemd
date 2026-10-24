@@ -54,6 +54,31 @@ TEST(ReaderAppearanceCssTest, FullWidthIsNone) {
                   .contains(QStringLiteral(".md-page { max-width: none; }")));
 }
 
+TEST(ReaderAppearancePopupTest, DefaultWidthOptionRoundTrips) {
+  qRegisterMetaType<ReaderPreferences>();
+  ReaderPreferences initial;
+  initial.measure_px = 900;
+  ReaderAppearancePopup popup;
+  popup.SetPreferences(initial);
+  auto* wide =
+      popup.findChild<QAbstractButton*>(QStringLiteral("appearanceMeasure900"));
+  auto* fallback =
+      popup.findChild<QAbstractButton*>(QStringLiteral("appearanceMeasure-1"));
+  ASSERT_NE(wide, nullptr);
+  ASSERT_NE(fallback, nullptr);
+  EXPECT_TRUE(wide->isChecked());
+  EXPECT_FALSE(fallback->isChecked());
+
+  QSignalSpy spy(&popup, &ReaderAppearancePopup::preferencesChanged);
+  fallback->click();
+  ASSERT_EQ(spy.count(), 1);
+  const ReaderPreferences preferences =
+      spy.takeFirst().at(0).value<ReaderPreferences>();
+  EXPECT_EQ(preferences.measure_px, -1);
+  EXPECT_TRUE(fallback->isChecked());
+  EXPECT_FALSE(wide->isChecked());
+}
+
 TEST(ReaderAppearancePopupTest, ChoiceAndResetEmitPreferences) {
   qRegisterMetaType<ReaderPreferences>();
   ReaderAppearancePopup popup;

@@ -171,6 +171,46 @@
 - 公式/Mermaid PNG 背景透明，灯箱在图片下方垫了浅色纸面，否则深色
   文字会消失在暗色背景里。
 - 阅读时长按源字符数 / 500 估算，只作为量级提示。
-- 设置测试后已恢复 `reading_style=0`、透明阅读区开、扩展偏好默认；
-  欢迎页/进度/灯箱的截图使用临时原型样式与 19px 字号拍摄。
+- 测试后已恢复测试前的 md_viewer 设置（原型样式开、透明阅读区开、
+  扩展偏好默认）；欢迎页/进度/灯箱的截图使用临时原型样式与 19px
+  字号拍摄。
 - 分支尚未推送；改动全部保留在本地 `feature/modern-reader`。
+
+## 审查修复（B 方案）
+
+2026-10-24 对 6 个提交做了高力度审查，15 项发现中按 B 方案修
+1-9（高 3、中 6），10-15 留待后续。
+
+已修：
+
+1. `ViewportHeight()` 改用虚拟像素（viewport/zoom），并补
+   `ViewportHeightMatchesScrollRangeAtAllZooms`：100%/200%/50%
+   下 `DocumentHeight - ViewportHeight` 与滚动条最大值一致。
+2. 欢迎页不再在 `ShowWelcome()` 里采样/覆盖大纲状态：构造时
+   `restoreState()` 之后 `CaptureWelcomeState()` 采样一次，欢迎页
+   期间关闭窗口保存采样时的 `dock_state`，不写入临时隐藏。
+3. `ShowFile()` 的 `LoadFile` 失败分支也 `HideWelcome()`，错误页
+   可见。
+4. 灯箱滚轮改为按方向判断边界，fit 超限时允许缩小；横向滚轮
+   `angleDelta().y() == 0` 交给基类。补
+   `WheelZoomOutWorksWhenFitExceedsMax`。
+5. 标题字号改成 `em`（viewer 与库默认四份主题），正文放大时标题
+   同步放大，不再出现 h3-h6 比正文小。
+6. 阅读区 resize 与缩放完成后延迟重算进度；回顶阈值按约 200 设备
+   像素（`y * zoom`）。
+7. 栏宽增加“默认”(-1) 选项；选中态改读按钮的
+   `preferenceValue` 属性，不再依赖 QButtonGroup 的 id（-1 会被
+   当成自动分配）。补 `DefaultWidthOptionRoundTrips`。
+8. 快速跳转标题最多 30 条，保证命令/最近不被 80 条总上限截掉；
+   100 标题文档实测列表 52 项（30 标题 + 命令 + 文件），命令在列。
+9. 两个弹层先按屏幕可用区域收缩宽高，再用 `qMax(min, max)` 防御
+   `qBound(min > max)`；小屏/高 DPI 不再断言或偏出屏幕。
+
+验证：
+
+- `ctest -L MARKDOWN`：30/30 通过。
+- 实机检查：100 标题文档 Ctrl+P 命令在列；保存“大纲隐藏”后重启
+  打开文档仍隐藏；欢迎页点已删除文件后错误页可见；
+  19px 字号下标题按比例放大。
+- 低优 10-15 未修：清除最近记录不刷新欢迎页、生成图顺序、灯箱
+  热重载、图标缓存、弹层外壳重复、initUi/initSignals 约定。

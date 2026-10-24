@@ -468,21 +468,31 @@ void QuickOpenPopup::PositionNearParent() {
   if (parent == nullptr) {
     return;
   }
-  const int width = qBound(520, parent->width() - 120, 720);
-  const int height = qBound(320, parent->height() - 200, 480);
-  QPoint top_left =
-      parent->mapToGlobal(QPoint((parent->width() - width) / 2, 78));
-
-  QScreen* screen = QGuiApplication::screenAt(top_left);
+  QScreen* screen =
+      QGuiApplication::screenAt(parent->mapToGlobal(parent->rect().center()));
   if (screen == nullptr) {
     screen = QGuiApplication::primaryScreen();
   }
-  if (screen != nullptr) {
-    const QRect available = screen->availableGeometry();
-    top_left.setX(qBound(available.left() + 12, top_left.x(),
-                         available.right() - width - 12));
-    top_left.setY(qBound(available.top() + 12, top_left.y(),
-                         available.bottom() - height - 12));
+  const QRect available =
+      screen != nullptr ? screen->availableGeometry() : QRect();
+
+  int width = qBound(520, parent->width() - 120, 720);
+  int height = qBound(320, parent->height() - 200, 480);
+  if (available.isValid()) {
+    // 高 DPI 小屏上可用区域可能比弹层最小尺寸还小：先收缩，
+    // 后面的 qBound 才不会出现 min > max
+    width = qMin(width, qMax(200, available.width() - 24));
+    height = qMin(height, qMax(160, available.height() - 24));
+  }
+  QPoint top_left =
+      parent->mapToGlobal(QPoint((parent->width() - width) / 2, 78));
+  if (available.isValid()) {
+    const int min_x = available.left() + 12;
+    const int min_y = available.top() + 12;
+    const int max_x = qMax(min_x, available.right() - width - 12);
+    const int max_y = qMax(min_y, available.bottom() - height - 12);
+    top_left.setX(qBound(min_x, top_left.x(), max_x));
+    top_left.setY(qBound(min_y, top_left.y(), max_y));
   }
   setGeometry(QRect(top_left, QSize(width, height)));
 }

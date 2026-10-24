@@ -89,6 +89,8 @@ namespace {
 
 // 超过这个大小才提示；严格大于
 constexpr qint64 kLargeDocumentBytes = 20 * 1024 * 1024;
+// 快速跳转空查询的总上限是 80；标题不设上限会把命令挤出去
+constexpr int kMaxQuickOpenHeadings = 30;
 
 #ifdef Q_OS_WIN
 // 改 Qt::WindowStaysOnTopHint 会重建 HWND，QWK 的模糊等窗口属性得重来；
@@ -209,6 +211,8 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, QWidget* parent)
     outline_dock_->show();
   }
   resizeDocks({document_dock_, outline_dock_}, {300, 212}, Qt::Horizontal);
+  CaptureWelcomeState();
+  ShowWelcome();
 }
 
 // qApp->quit() 不会走 closeEvent，析构时补一次落盘
@@ -635,7 +639,6 @@ void MdViewerWindow::initUi() {
   UpdateChromeVisibility();
   UpdateBookmarkUi();
   RefreshRecentMenu();
-  ShowWelcome();
 }
 
 void MdViewerWindow::initSignals() {
@@ -725,8 +728,12 @@ void MdViewerWindow::initSignals() {
   });
   connect(view_, &MarkdownView::outlineChanged, this,
           [this] { outline_->SetHeadings(view_->outline()); });
-  connect(view_, &MarkdownView::zoomChanged, this,
-          &MdViewerWindow::UpdateZoomLabel);
+  connect(view_, &MarkdownView::zoomChanged, this, [this](qreal factor) {
+    UpdateZoomLabel(factor);
+    // 缩放有 150ms 合并窗口，等重排完成后再量进度
+    QTimer::singleShot(250, this,
+                       &MdViewerWindow::ScheduleReadingProgressRefresh);
+  });
   connect(view_, &MarkdownView::renderStatusChanged, this,
           &MdViewerWindow::ReportRenderStatus);
   connect(view_, &MarkdownView::documentReloaded, this, [this] {
@@ -1211,7 +1218,11 @@ void MdViewerWindow::ShowQuickOpen() {
   const QString current_file = view_->current_file();
   if (view_->has_document() && !view_->is_rendering() &&
       !current_file.isEmpty()) {
+    int heading_count = 0;
     for (const MarkdownHeading& heading : view_->outline()) {
+      if (heading_count >= kMaxQuickOpenHeadings) {
+        break;
+      }
       QuickOpenItem item;
       item.kind = QuickOpenKind::kHeading;
       item.title = heading.text;
@@ -1221,6 +1232,7 @@ void MdViewerWindow::ShowQuickOpen() {
       item.path = current_file;
       item.anchor = heading.anchor;
       items.append(item);
+      ++heading_count;
     }
   }
 
@@ -1559,13 +1571,20 @@ void MdViewerWindow::ShowWelcome() {
   if (appearance_popup_ != nullptr) {
     appearance_popup_->hide();
   }
-  if (outline_dock_ != nullptr) {
-    welcome_outline_visible_ = !outline_dock_->isHidden();
+  if (outline_dock_ != nullptr && welcome_outline_was_visible_) {
     outline_dock_->hide();
   }
   view_->hide();
   welcome_->show();
   welcome_->raise();
+}
+
+void MdViewerWindow::CaptureWelcomeState() {
+  welcome_outline_was_visible_ =
+      outline_dock_ != nullptr && !outline_dock_->isHidden();
+  if (welcome_ != nullptr) {
+    welcome_dock_state_ = saveState();
+  }
 }
 
 void MdViewerWindow::HideWelcome() {
@@ -1578,10 +1597,10 @@ void MdViewerWindow::HideWelcome() {
   if (reading_progress_ != nullptr) {
     reading_progress_->show();
   }
-  if (welcome_outline_visible_ && outline_dock_ != nullptr && !focus_mode_) {
+  if (welcome_outline_was_visible_ && outline_dock_ != nullptr &&
+      !focus_mode_) {
     outline_dock_->show();
   }
-  welcome_outline_visible_ = false;
 }
 
 void MdViewerWindow::UpdateReadingProgress(int y) {
@@ -1599,12 +1618,22 @@ void MdViewerWindow::UpdateReadingProgress(int y) {
   const int max_scroll = qMax(1, document_height - viewport_height);
   const qreal progress = qBound(0.0, qreal(y) / max_scroll, 1.0);
   reading_progress_->SetProgress(progress);
-  // 短文档的滚动范围可能还不到一屏；按绝对滚动距离判断更可靠
-  const bool show = y > 200;
+  // 短文档的滚动范围可能还不到一屏；按约 200 设备像素判断更可靠。
+  // y 是虚拟像素，缩放后要乘回去。
+  const qreal zoom = qMax<qreal>(0.1, view_->zoom());
+  const bool show = y * zoom > 200.0;
   back_to_top_->setVisible(show);
   if (show) {
     PositionBackToTop();
   }
+}
+
+void MdViewerWindow::ScheduleReadingProgressRefresh() {
+  QTimer::singleShot(0, this, [this] {
+    if (view_ != nullptr) {
+      UpdateReadingProgress(view_->ScrollPosition());
+    }
+  });
 }
 
 void MdViewerWindow::UpdateReadingTime() {
@@ -1652,6 +1681,7 @@ void MdViewerWindow::ScrollToTop() {
 bool MdViewerWindow::eventFilter(QObject* watched, QEvent* event) {
   if (watched == reader_container_ && event->type() == QEvent::Resize) {
     PositionBackToTop();
+    ScheduleReadingProgressRefresh();
   }
   return QMainWindow::eventFilter(watched, event);
 }
@@ -1735,7 +1765,10 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
   if (!view_->LoadFile(absolute_path)) {
     pending_restore_scroll_ = -1;
     pending_restore_path_.clear();
-    return false;  // 视图里已经是错误页，状态栏的消息由 loadFailed 负责
+    // 视图里已经提交了错误页；欢迎页正显示时必须让位，否则用户
+    // 只看得到 5 秒状态栏消息
+    HideWelcome();
+    return false;
   }
   HideWelcome();
   // 旧文档还在屏幕上，而新文档已在后台渲染；先给一个明确的等待页
@@ -1864,7 +1897,14 @@ void MdViewerWindow::SaveSettings() {
   }
   RememberCurrentPosition();
   settings_->window_geometry = saveGeometry();
-  settings_->dock_state = saveState();
+  const bool welcome_visible = welcome_ != nullptr && welcome_->isVisible();
+  if (welcome_visible && !welcome_dock_state_.isEmpty()) {
+    // 欢迎页会临时收起空大纲；保存欢迎页之前的布局，别把临时
+    // 隐藏写进下次启动的 dock_state
+    settings_->dock_state = welcome_dock_state_;
+  } else {
+    settings_->dock_state = saveState();
+  }
   settings_->dark_theme = view_->theme() == MarkdownTheme::Dark;
   settings_->code_line_numbers = view_->code_line_numbers();
   settings_->formula_rendering = view_->formula_rendering_enabled();

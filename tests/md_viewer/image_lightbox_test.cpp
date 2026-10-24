@@ -1,8 +1,11 @@
 #include "image_lightbox.h"
 
 #include <QApplication>
+#include <QGraphicsView>
 #include <QSignalSpy>
+#include <QTest>
 #include <QToolButton>
+#include <QWheelEvent>
 
 #include <gtest/gtest.h>
 
@@ -61,4 +64,31 @@ TEST(ImageLightboxTest, FitAndActualDoNotCrash) {
   lightbox.FitToWindow();
   lightbox.ActualSize();
   lightbox.FitToWindow();
+}
+
+TEST(ImageLightboxTest, WheelZoomOutWorksWhenFitExceedsMax) {
+  QPixmap tiny(4, 4);
+  tiny.fill(Qt::red);
+  ImageLightbox lightbox(tiny, QStringLiteral("图片预览"), false);
+  lightbox.resize(640, 480);
+  lightbox.show();
+  QTest::qWait(50);
+  auto* view = lightbox.findChild<QGraphicsView*>();
+  ASSERT_NE(view, nullptr);
+  const qreal fitted = view->transform().m11();
+  ASSERT_GT(fitted, 20.0);
+
+  QWheelEvent zoom_out(QPointF(100, 100), QPointF(100, 100), QPoint(),
+                       QPoint(0, -120), Qt::NoButton, Qt::NoModifier,
+                       Qt::NoScrollPhase, false);
+  QApplication::sendEvent(view->viewport(), &zoom_out);
+  EXPECT_LT(view->transform().m11(), fitted);
+
+  const qreal before_horizontal = view->transform().m11();
+  QWheelEvent horizontal(QPointF(100, 100), QPointF(100, 100), QPoint(120, 0),
+                         QPoint(), Qt::NoButton, Qt::NoModifier,
+                         Qt::NoScrollPhase, false);
+  QApplication::sendEvent(view->viewport(), &horizontal);
+  EXPECT_DOUBLE_EQ(view->transform().m11(), before_horizontal);
+  lightbox.hide();
 }

@@ -4,6 +4,16 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Fix review findings in the reading experience: progress and the
+  back-to-top threshold use virtual pixels at every zoom, progress
+  refreshes after resize/reflow, the width row has a default option,
+  quick open caps headings so commands stay reachable, and both popups
+  shrink to small/high-DPI screens.
+- Fix the welcome page's dock-state handling (saved outline visibility
+  is respected and welcome-time hiding is not persisted), show the
+  error page when a file opened from welcome fails, scale headings with
+  the reader font size, and let the lightbox wheel zoom out of an
+  oversized fit.
 - Add a Ctrl+P quick-open palette that searches the current document's
   headings, recent documents, document-set files and common commands,
   with fuzzy ranking and Enter/click activation.

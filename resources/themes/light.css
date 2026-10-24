@@ -22,10 +22,10 @@ body {
   padding: 24px 48px;
 }
 
-h1 { font-size: 28px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
-h2 { font-size: 22px; }
-h3 { font-size: 18px; }
-h4, h5, h6 { font-size: 16px; }
+h1 { font-size: 1.867em; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+h2 { font-size: 1.467em; }
+h3 { font-size: 1.2em; }
+h4, h5, h6 { font-size: 1.067em; }
 
 p { margin: 12px 0; }
 ul, ol { margin: 12px 0; padding-left: 24px; }
