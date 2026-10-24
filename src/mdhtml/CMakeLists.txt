@@ -27,11 +27,21 @@ add_custom_command(
 add_library(${MDHTML_TARGET} STATIC
     md_assembler.cpp
     md_assembler.h
+    md_font_metrics.cpp
+    md_font_metrics.h
+    md_formula.cpp
+    md_formula.h
+    md_hash.cpp
+    md_hash.h
     md_highlight.cpp
     md_highlight.h
+    md_mermaid.cpp
+    md_mermaid.h
     md_parser.cpp
     md_parser.h
     md_queries.h
+    md_svg.cpp
+    md_svg.h
     md_text.cpp
     md_text.h
     md_types.h
@@ -47,6 +57,22 @@ target_link_libraries(${MDHTML_TARGET}
     tree_sitter_core
     tree_sitter_grammars
 )
+
+# Native SVG backends stay optional: other platforms fall back to QuickJS
+# (not ported yet), and the core must still build without the native libs.
+if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND TARGET qlitemd::ratex)
+    target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::ratex)
+    target_compile_definitions(${MDHTML_TARGET} PUBLIC
+        QLITEMD_MDHTML_FORMULA_RATEX=1)
+endif()
+if(QLITEMD_MERMAID_BACKEND STREQUAL "merman" AND TARGET qlitemd::merman)
+    target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::merman)
+    target_compile_definitions(${MDHTML_TARGET} PUBLIC
+        QLITEMD_MDHTML_MERMAID_MERMAN=1)
+endif()
+if(TARGET qlitemd_runtime_dlls)
+    add_dependencies(${MDHTML_TARGET} qlitemd_runtime_dlls)
+endif()
 target_compile_features(${MDHTML_TARGET} PUBLIC cxx_std_17)
 set_target_properties(${MDHTML_TARGET} PROPERTIES
     CXX_STANDARD 17

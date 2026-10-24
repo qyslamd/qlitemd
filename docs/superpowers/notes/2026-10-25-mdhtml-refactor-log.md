@@ -45,3 +45,29 @@
   `'` 输出 `&#x27;`，与旧版及主题 CSS 契约一致。
 - 测试：`tests/mdhtml/md_highlight_test.cpp`，10 项通过；连同 S1
   共 2 个测试目标、18 项通过，均未链接 Qt。
+
+## S3 SVG 引擎（native 部分完成，QuickJS 待补）
+
+- 新增 `md_svg`：根元素提取（8 MiB 上限）、viewBox/px 尺寸解析、
+  公式颜色注入（currentColor / 根 `<g>` fill），只做 `kPortable`
+  profile；QtSvg 兼容处理留在适配层。
+- 新增 `md_hash`：自带 SHA-256；`MdAssetId` 取 kind+key 的
+  SHA-256 前 128 位，资产 id 跨进程稳定。
+- 新增 `md_font_metrics`：`MdFontMetrics` 注入接口与确定性的
+  `MdDefaultFontMetrics`（Latin 分类字宽、CJK/全角 1em、组合字符 0）。
+  额外增加 `Fingerprint()`，作为 Mermaid 缓存 key 的字体盐。
+- 新增 `md_formula`：RaTeX FFI 输出 `<svg>`，字体 16px、padding 0、
+  stroke 0.6，与旧管线一致；尺寸取 viewBox。
+- 新增 `md_mermaid`：merman 原生输出 `<svg>`，light/dark 各一个
+  engine 句柄；文本度量回调改接 `MdFontMetrics`，实现单行与按词换行；
+  不再做 PNG/2x 采样/QtSvg 后处理。
+- CMake 按后端裁剪：只有 `QLITEMD_FORMULA_BACKEND=ratex` 时链接
+  `qlitemd::ratex`，只有 `mermaid` 时链接 `qlitemd::merman`；对应
+  宏 `QLITEMD_MDHTML_FORMULA_RATEX` / `QLITEMD_MDHTML_MERMAID_MERMAN`
+  PUBLIC 给测试使用。
+- 本地验证的后端是 ratex + merman；QuickJS 路径（公式 MathJax、
+  Mermaid JS bridge）在 Windows 构建里不编译，放到 S3b 用 WSL/Linux
+  构建验证后再提交，避免写无法编译的代码。
+- 测试：`test_mdhtml_svg`（11）、`test_mdhtml_font_metrics`（6）、
+  `test_mdhtml_formula`（4）、`test_mdhtml_mermaid`（3）；
+  MARKDOWN 全量 36/36 通过。

@@ -41,4 +41,25 @@ struct MdParseResult {
 
 enum class MdRenderKind { Highlight, Formula, Mermaid };
 
+enum class MdAssetKind { Formula, Mermaid };
+
+// kPortable keeps the SVG as produced (root extraction, formula colour);
+// kQtSvg is reserved for hosts that still rasterize with QSvgRenderer and
+// need the QtSvg compatibility pass applied in their adapter layer.
+enum class MdSvgProfile { kPortable, kQtSvg };
+
+struct MdSvg {
+  std::string svg;
+  int width = 0;
+  int height = 0;
+};
+
+struct MdAsset {
+  std::string id;
+  MdAssetKind kind = MdAssetKind::Formula;
+  std::string source;
+  MdSvg image;
+  bool display = false;
+};
+
 #endif  // FILE_MDHTML_MD_TYPES_H_
