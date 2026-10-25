@@ -85,8 +85,6 @@ add_library(${MDHTML_TARGET} STATIC
     md_text.cpp
     md_text.h
     md_types.h
-    mdhtml_c.cpp
-    mdhtml_c.h
     ${MDHTML_QUERY_SOURCE}
     ${MDHTML_QUICKJS_SOURCES}
 )
@@ -137,3 +135,34 @@ if(MSVC)
 endif()
 
 add_library(qlitemd::mdhtml ALIAS ${MDHTML_TARGET})
+
+# Shared C ABI library for non-C++ hosts (C#, Rust, ...). It compiles the C
+# API translation unit itself so the exported symbols get the API macros;
+# the implementation links the static C++ core.
+add_library(qlitemd_mdhtml_c SHARED
+    mdhtml_c.cpp
+    mdhtml_c.h
+)
+target_link_libraries(qlitemd_mdhtml_c PRIVATE ${MDHTML_TARGET})
+target_compile_features(qlitemd_mdhtml_c PRIVATE cxx_std_17)
+target_compile_definitions(qlitemd_mdhtml_c PRIVATE
+    MDHTML_SHARED
+    MDHTML_BUILD
+    "MDHTML_VERSION_STRING=\"${PROJECT_VERSION}\"")
+target_compile_definitions(qlitemd_mdhtml_c INTERFACE MDHTML_SHARED)
+set_target_properties(qlitemd_mdhtml_c PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+    OUTPUT_NAME qlitemd_mdhtml_c
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+)
+if(TARGET qlitemd_runtime_dlls)
+    add_dependencies(qlitemd_mdhtml_c qlitemd_runtime_dlls)
+endif()
+if(MSVC)
+    target_compile_options(qlitemd_mdhtml_c PRIVATE /utf-8 /W4 /WX- /EHsc)
+endif()
+add_library(qlitemd::mdhtml_c ALIAS qlitemd_mdhtml_c)

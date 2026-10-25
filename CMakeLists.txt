@@ -10,6 +10,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(APP_TARGET_PREFIX qlitemd)
 
+# qlitemd_mdhtml_c is a shared library that embeds the static core and its
+# static dependencies, so every in-tree static target must be PIC on ELF.
+# MSVC ignores this property.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # 原生 .so 与可执行文件放在同一目录（见 qlitemd_runtime_dlls），
 # 用 $ORIGIN 让 Linux 加载器从可执行文件所在目录解析依赖
 if(NOT WIN32)
@@ -339,6 +344,11 @@ if(QLITEMD_NEEDS_QUICKJS)
     install(FILES "$<TARGET_FILE:qjs>"
         DESTINATION lib COMPONENT Development)
 endif()
+install(TARGETS qlitemd_mdhtml_c
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    COMPONENT Development)
 
 set(QLITEMD_CORE_PUBLIC_HEADERS
     src/mdhtml/md_types.h

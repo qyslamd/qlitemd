@@ -153,7 +153,7 @@ std::string HighlightCodeBlocks(std::string_view html,
 
     const std::string block_id = std::to_string(block_index++);
     if (code_blocks) {
-      code_blocks(block_id, code);
+      code_blocks(block_id, language, code);
     }
     std::string highlighted = options.highlight
                                   ? options.highlight(code, language)

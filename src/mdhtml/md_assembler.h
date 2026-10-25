@@ -10,8 +10,8 @@
 using MdFormulaSink =
     std::function<std::string(std::string_view tex, bool display)>;
 using MdMermaidSink = std::function<std::string(std::string_view code)>;
-using MdCodeBlockSink =
-    std::function<void(std::string_view id, std::string_view code)>;
+using MdCodeBlockSink = std::function<void(
+    std::string_view id, std::string_view language, std::string_view code)>;
 using MdHeadingSink =
     std::function<void(std::string_view slug, std::string_view id)>;
 

@@ -104,3 +104,30 @@ if(NOT TARGET qlitemd::mdhtml)
         INTERFACE_COMPILE_OPTIONS "${_qlitemd_compile_options}"
         INTERFACE_LINK_LIBRARIES "${_qlitemd_link_libraries}")
 endif()
+
+# Shared C ABI for non-C++ hosts. The DLL/SO already contains the core and
+# its native backend links; consumers only need the header and the runtime
+# DLLs from the Runtime component.
+find_library(QLITEMD_MDHTML_C_LIBRARY
+    NAMES qlitemd_mdhtml_c
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+if(NOT TARGET qlitemd::mdhtml_c)
+    add_library(qlitemd::mdhtml_c SHARED IMPORTED)
+    if(WIN32)
+        set(_qlitemd_mdhtml_c_location
+            "${PACKAGE_PREFIX_DIR}/bin/qlitemd_mdhtml_c.dll")
+        set(_qlitemd_mdhtml_c_implib "${QLITEMD_MDHTML_C_LIBRARY}")
+    else()
+        set(_qlitemd_mdhtml_c_location "${QLITEMD_MDHTML_C_LIBRARY}")
+    endif()
+    set_target_properties(qlitemd::mdhtml_c PROPERTIES
+        IMPORTED_LOCATION "${_qlitemd_mdhtml_c_location}"
+        INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/include/qlitemd"
+        INTERFACE_COMPILE_DEFINITIONS "MDHTML_SHARED")
+    if(WIN32)
+        set_target_properties(qlitemd::mdhtml_c PROPERTIES
+            IMPORTED_IMPLIB "${_qlitemd_mdhtml_c_implib}")
+    endif()
+endif()

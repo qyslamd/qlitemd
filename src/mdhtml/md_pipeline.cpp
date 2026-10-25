@@ -573,10 +573,13 @@ class MdRenderJobImpl : public MdRenderJob,
                                  std::string_view language, bool display) {
       return Resolve(kind, payload, language, display);
     };
-    const auto code_sink = [this](std::string_view id, std::string_view code) {
-      (void)id;
+    const auto code_sink = [this](std::string_view id,
+                                  std::string_view language,
+                                  std::string_view code) {
       MdCodeBlock block;
       block.index = static_cast<int>(result_.code_blocks.size());
+      block.id = std::string(id);
+      block.language = std::string(language);
       block.code = std::string(code);
       result_.code_blocks.push_back(std::move(block));
     };

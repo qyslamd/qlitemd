@@ -98,6 +98,7 @@ TEST(MdHtmlTest, CodeBlockGetsFrameAndCopyId) {
   EXPECT_EQ(parsed.blocks[0].code, "int x = 1;\n");
 
   std::string copied_id;
+  std::string copied_language;
   std::string copied_code;
   MdAssembleOptions options;
   options.highlight = [](std::string_view code, std::string_view language) {
@@ -106,8 +107,10 @@ TEST(MdHtmlTest, CodeBlockGetsFrameAndCopyId) {
   };
   const std::string html = AssembleMarkdown(
       parsed, ResolveNothing,
-      [&](std::string_view id, std::string_view code) {
+      [&](std::string_view id, std::string_view language,
+          std::string_view code) {
         copied_id = id;
+        copied_language = language;
         copied_code = code;
       },
       {}, options);

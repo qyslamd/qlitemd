@@ -24,6 +24,8 @@ struct MdHeading {
 
 struct MdCodeBlock {
   int index = 0;
+  // Assembler block id; matches the copy:<id> link in the HTML.
+  std::string id;
   std::string language;
   std::string code;
 };

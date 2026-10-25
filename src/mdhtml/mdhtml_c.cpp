@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <string>
 #include <string_view>
@@ -11,6 +12,10 @@
 
 #include "md_font_metrics.h"
 #include "md_pipeline.h"
+
+#ifndef MDHTML_VERSION_STRING
+#define MDHTML_VERSION_STRING "0.0.0"
+#endif
 
 namespace {
 
@@ -119,6 +124,11 @@ struct mdhtml_result {
   MdHtmlResult result;
 };
 
+struct mdhtml_job {
+  std::shared_ptr<MdRenderJob> job;
+  std::mutex wait_mutex;
+};
+
 namespace {
 
 const MdAsset* AssetAt(const mdhtml_result* result, std::size_t index) {
@@ -135,9 +145,20 @@ const MdHeading* HeadingAt(const mdhtml_result* result, std::size_t index) {
   return &result->result.outline[index];
 }
 
+const MdCodeBlock* CodeBlockAt(const mdhtml_result* result, std::size_t index) {
+  if (result == nullptr || index >= result->result.code_blocks.size()) {
+    return nullptr;
+  }
+  return &result->result.code_blocks[index];
+}
+
 }  // namespace
 
 extern "C" {
+
+uint32_t mdhtml_abi_version(void) { return MDHTML_ABI_VERSION; }
+
+const char* mdhtml_version_string(void) { return MDHTML_VERSION_STRING; }
 
 void mdhtml_font_metrics_init(mdhtml_font_metrics* metrics) {
   if (metrics == nullptr) {
@@ -189,18 +210,59 @@ void mdhtml_pipeline_cancel_all(mdhtml_pipeline* pipeline) {
   }
 }
 
-mdhtml_result* mdhtml_render(mdhtml_pipeline* pipeline, const char* markdown,
-                             const mdhtml_render_options* options) {
+mdhtml_job* mdhtml_render_async(mdhtml_pipeline* pipeline, const char* markdown,
+                                const mdhtml_render_options* options,
+                                mdhtml_progress_fn progress, void* user_data) {
   if (pipeline == nullptr || !pipeline->pipeline) {
     return nullptr;
   }
+  auto handle = std::unique_ptr<mdhtml_job>(new (std::nothrow) mdhtml_job);
+  if (!handle) {
+    return nullptr;
+  }
+  try {
+    MdProgressCallback callback;
+    if (progress != nullptr) {
+      callback = [progress, user_data](int completed, int total,
+                                       int in_flight) {
+        progress(user_data, completed, total, in_flight);
+      };
+    }
+    handle->job = pipeline->pipeline->RenderAsync(
+        markdown != nullptr ? markdown : "", ToRenderOptions(options),
+        std::move(callback));
+  } catch (const std::bad_alloc&) {
+    return nullptr;
+  } catch (...) {
+    return nullptr;
+  }
+  if (!handle->job) {
+    return nullptr;
+  }
+  return handle.release();
+}
+
+void mdhtml_job_cancel(mdhtml_job* job) {
+  if (job != nullptr && job->job) {
+    job->job->Cancel();
+  }
+}
+
+int mdhtml_job_is_finished(const mdhtml_job* job) {
+  return job == nullptr || !job->job || job->job->IsFinished() ? 1 : 0;
+}
+
+mdhtml_result* mdhtml_job_wait(mdhtml_job* job) {
+  if (job == nullptr || !job->job) {
+    return nullptr;
+  }
+  std::lock_guard<std::mutex> lock(job->wait_mutex);
   auto* output = new (std::nothrow) mdhtml_result;
   if (output == nullptr) {
     return nullptr;
   }
   try {
-    output->result = pipeline->pipeline->Render(
-        markdown != nullptr ? markdown : "", ToRenderOptions(options));
+    output->result = job->job->Wait();
   } catch (const std::bad_alloc&) {
     delete output;
     return nullptr;
@@ -209,6 +271,29 @@ mdhtml_result* mdhtml_render(mdhtml_pipeline* pipeline, const char* markdown,
     output->result.error = "render failed";
   }
   return output;
+}
+
+void mdhtml_job_destroy(mdhtml_job* job) {
+  if (job == nullptr) {
+    return;
+  }
+  if (job->job) {
+    job->job->Cancel();
+    job->job->Wait();
+  }
+  delete job;
+}
+
+mdhtml_result* mdhtml_render(mdhtml_pipeline* pipeline, const char* markdown,
+                             const mdhtml_render_options* options) {
+  mdhtml_job* job =
+      mdhtml_render_async(pipeline, markdown, options, nullptr, nullptr);
+  if (job == nullptr) {
+    return nullptr;
+  }
+  mdhtml_result* result = mdhtml_job_wait(job);
+  mdhtml_job_destroy(job);
+  return result;
 }
 
 void mdhtml_result_destroy(mdhtml_result* result) { delete result; }
@@ -291,6 +376,34 @@ const char* mdhtml_result_outline_anchor(const mdhtml_result* result,
                                          size_t index) {
   const MdHeading* heading = HeadingAt(result, index);
   return heading != nullptr ? heading->anchor.c_str() : nullptr;
+}
+
+const char* mdhtml_result_outline_id(const mdhtml_result* result,
+                                     size_t index) {
+  const MdHeading* heading = HeadingAt(result, index);
+  return heading != nullptr ? heading->id.c_str() : nullptr;
+}
+
+size_t mdhtml_result_code_block_count(const mdhtml_result* result) {
+  return result != nullptr ? result->result.code_blocks.size() : 0;
+}
+
+const char* mdhtml_result_code_block_id(const mdhtml_result* result,
+                                        size_t index) {
+  const MdCodeBlock* block = CodeBlockAt(result, index);
+  return block != nullptr ? block->id.c_str() : nullptr;
+}
+
+const char* mdhtml_result_code_block_language(const mdhtml_result* result,
+                                              size_t index) {
+  const MdCodeBlock* block = CodeBlockAt(result, index);
+  return block != nullptr ? block->language.c_str() : nullptr;
+}
+
+const char* mdhtml_result_code_block_code(const mdhtml_result* result,
+                                          size_t index) {
+  const MdCodeBlock* block = CodeBlockAt(result, index);
+  return block != nullptr ? block->code.c_str() : nullptr;
 }
 
 int mdhtml_result_stats(const mdhtml_result* result, mdhtml_stats* stats) {
