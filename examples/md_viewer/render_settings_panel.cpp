@@ -101,6 +101,7 @@ void RenderSettingsPanel::initUi() {
   QVBoxLayout* appearance = nullptr;
   QWidget* appearance_card = NewCard(body, QStringLiteral("外观"), &appearance);
   theme_ = new QComboBox(appearance_card);
+  theme_->setObjectName(QStringLiteral("themeCombo"));
   theme_->addItem(QStringLiteral("浅色"),
                   static_cast<int>(MarkdownTheme::Light));
   theme_->addItem(QStringLiteral("暗色"),
@@ -155,14 +156,17 @@ void RenderSettingsPanel::initUi() {
   QVBoxLayout* content = nullptr;
   QWidget* content_card = NewCard(body, QStringLiteral("内容"), &content);
   code_line_numbers_ = CreateSwitch(view_->code_line_numbers());
+  code_line_numbers_->setObjectName(QStringLiteral("codeLineNumbersCheck"));
   AddSwitchRow(content, content_card, QStringLiteral("代码块行号"),
                code_line_numbers_,
                QStringLiteral("切换后重渲染并保留滚动位置"));
   formula_rendering_ = CreateSwitch(view_->formula_rendering_enabled());
+  formula_rendering_->setObjectName(QStringLiteral("formulaRenderingCheck"));
   AddSwitchRow(content, content_card, QStringLiteral("公式渲染"),
                formula_rendering_,
                QStringLiteral("关闭后 $…$ 原样显示，不加载 MathJax"));
   mermaid_rendering_ = CreateSwitch(view_->mermaid_rendering_enabled());
+  mermaid_rendering_->setObjectName(QStringLiteral("mermaidRenderingCheck"));
   AddSwitchRow(content, content_card, QStringLiteral("Mermaid 渲染"),
                mermaid_rendering_,
                QStringLiteral("关闭后 mermaid 围栏退回代码块"));
@@ -172,6 +176,7 @@ void RenderSettingsPanel::initUi() {
   QVBoxLayout* cache = nullptr;
   QWidget* cache_card = NewCard(body, QStringLiteral("持久缓存"), &cache);
   persistent_cache_ = CreateSwitch(view_->persistent_render_cache_enabled());
+  persistent_cache_->setObjectName(QStringLiteral("persistentCacheCheck"));
   AddSwitchRow(cache, cache_card, QStringLiteral("启用持久缓存"),
                persistent_cache_,
                QStringLiteral("关闭只跳过磁盘缓存读写，内存缓存照常"));
@@ -198,6 +203,7 @@ void RenderSettingsPanel::initUi() {
   QWidget* diagnostics_card =
       NewCard(body, QStringLiteral("诊断"), &diagnostics);
   trace_ = CreateSwitch(view_->diagnostics().trace);
+  trace_->setObjectName(QStringLiteral("traceCheck"));
   AddSwitchRow(diagnostics, diagnostics_card, QStringLiteral("trace 日志"),
                trace_,
                QStringLiteral("输出 qt.markdown.render，日志量可能较大"));
