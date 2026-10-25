@@ -31,6 +31,9 @@ Qt 适配层（examples/md_viewer/qt_adapter）
   回退 QuickJS + MathJax
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
   `md_viewer` 运行时尚未验证；原生后端目前仅 Windows
+- 对外接口：`qlitemd_mdhtml`（静态 C++）与 `qlitemd_mdhtml_c`
+  （共享 C ABI，异步 job、进度/取消、代码块与大纲访问器）；
+  `examples/avalonia_mdhtml` 用 P/Invoke 验证 C ABI 可被非 C++ GUI 调用
 - 自有代码许可证：MIT；第三方许可见 `NOTICE`
 
 ## 关于作者与 AI
@@ -107,6 +110,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build-linux --output-on-failure -L MA
 构建产物：
 
 - `build/bin/md_viewer.exe`
+- `build/bin/qlitemd_mdhtml_c.dll`（及其导入库）
 - `build/bin/tests/test_*`
 
 ### 测试
@@ -129,7 +133,8 @@ cmake --install build
 
 安装分为 `Runtime`、`Development`、`Licenses` 三个组件。`Runtime` 只含
 `md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含核心
-静态库、公开核心头文件和 `qlitemdConfig.cmake`（目标 `qlitemd::mdhtml`）；
+静态库、共享 C ABI 库（DLL/SO 与导入库）、公开核心头文件和
+`qlitemdConfig.cmake`（目标 `qlitemd::mdhtml` 与 `qlitemd::mdhtml_c`）；
 `Licenses` 含项目与第三方许可证。Qt 适配层不安装。
 
 ```bash
@@ -142,11 +147,15 @@ cmake --install build --component Licenses
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
+# C++ 管线（静态库）
 target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
+# 共享 C ABI（C#/Rust/C 宿主）
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml_c)
 ```
 
 `examples/minimal` 是只依赖已安装核心 SDK 的最小零 Qt 控制台示例，
-也是 CI 的 install/consumer smoke 用例。
+也是 CI 的 install/consumer smoke 用例。`examples/avalonia_mdhtml`
+是 C ABI 的 .NET 10/Avalonia 验证程序，不属于发布产物。
 
 ### 格式
 
@@ -160,13 +169,15 @@ clang-format --dry-run --Werror <file>
 
 ## 代码结构
 
-- `src/mdhtml/`：零 Qt 核心，目标名 `qlitemd_mdhtml`
+- `src/mdhtml/`：零 Qt 核心，目标名 `qlitemd_mdhtml`；C ABI 共享库
+  目标名 `qlitemd_mdhtml_c`（源 `mdhtml_c.h/.cpp`）
 - `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
 - `examples/md_viewer/`：FluentUI + QWindowKit 示例（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
   `text_search` / `navigation_history` / `documents_panel`）
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
+- `examples/avalonia_mdhtml/`：C ABI 的 .NET 10/Avalonia 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
 - `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层模块与文档面板的无头测试
@@ -200,6 +211,9 @@ clang-format --dry-run --Werror <file>
 
 - 本项目不使用命名空间。
 - 公开核心头文件不得暴露 qlitehtml、QuickJS 或 md4c 类型。
+- `src/mdhtml/mdhtml_c.h` 是稳定的 C ABI 边界：必须能被 C11 编译，
+  结构体用 `struct_size` 版本化，字符串为 UTF-8 NUL 结尾且归库所有；
+  修改布局或调用约定要递增 `MDHTML_ABI_VERSION` 并同步测试与 README。
 - 不在 C++ 中硬编码界面样式；主题 CSS 放在 `resources/themes/`，
   示例的 FluentUI 样式由 FluentUIStyle 负责。
 - 代码中禁止 emoji；示例图标优先使用 `QStyle` 标准图标或新增 SVG。
@@ -247,6 +261,9 @@ clang-format --dry-run --Werror <file>
 
 - 改了 CMake `option()` 默认值后，已有构建目录不会跟随；用
   `cmake -B <build> -U <option>` 或删对应缓存项，不要直接删整个构建目录。
+- `qlitemd_mdhtml_c` 复用静态核心及其静态依赖，ELF 上这些目标必须带
+  PIC；顶层已统一 `POSITION_INDEPENDENT_CODE ON`，新增静态依赖不要
+  关闭它，否则 Linux 共享库链接会报 `recompile with -fPIC`。
 - 干净 checkout 可能缺少被 vendored `.gitignore` 忽略的源文件；CI 失败
   先检查 `git ls-files` 是否包含必要的 CMake 模板。
 - Qt 6 移除了 `QSettings::setIniCodec`；Qt5/Qt6 共用代码要加版本保护。

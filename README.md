@@ -221,16 +221,20 @@ cmake --install build
 
 With the default options, the install contains `bin/md_viewer.exe`,
 `bin/resvg.dll`, `bin/merman_ffi.dll`, the `qlitemd_mdhtml` static library,
-its dependency archives (`md4c`, tree-sitter, QuickJS when selected), public
-core headers, license files and a CMake package config. On Windows,
-`windeployqt` is invoked during install, and the in-tree `FluentUI3Style` and
-`ExWidgets` DLLs are copied next to the viewer.
+the `qlitemd_mdhtml_c` shared C ABI library, dependency archives (`md4c`,
+tree-sitter, QuickJS when selected), public core headers, license files and a
+CMake package config. On Windows, `windeployqt` is invoked during install, and
+the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next to the
+viewer.
 
 Consumers can then use:
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
+# C++ pipeline
 target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
+# Shared C ABI (DLL/SO) for C#, Rust or C hosts
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml_c)
 ```
 
 For a Qt-free SDK build (no Qt discovery, no viewer, no adapter):
@@ -246,7 +250,7 @@ cmake -S . -B build-core -G Ninja \
 Install components:
 
 - `Runtime` — `md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
-- `Development` — core static libraries, public core headers and `qlitemdConfig.cmake`
+- `Development` — core static/shared libraries, public core headers and `qlitemdConfig.cmake`
 - `Licenses` — project and third-party license texts
 
 ```bash
@@ -288,6 +292,7 @@ integration for host-side policy such as link handling and settings.
 - `examples/md_viewer/qt_adapter/` — QWidget/qlitehtml/rasterizer adapter
 - `examples/md_viewer/qt_adapter/tests/` — headless adapter GoogleTest suite
 - `examples/minimal/` — zero-Qt console example for an installed SDK
+- `examples/avalonia_mdhtml/` — .NET 10/Avalonia validation harness for the shared C ABI
 - `tests/mdhtml/` — headless core GoogleTest suite
 - `tests/md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers

@@ -199,8 +199,9 @@ cmake --install build
 ```
 
 默认选项下，安装内容包含 `bin/md_viewer.exe`、`bin/resvg.dll`、
-`bin/merman_ffi.dll`、`qlitemd_mdhtml` 静态库及其静态依赖、公开核心头文件、
-许可证文件和 CMake package config。Windows 安装阶段会调用
+`bin/merman_ffi.dll`、`qlitemd_mdhtml` 静态库、`qlitemd_mdhtml_c` 共享 C ABI
+库及其静态依赖、公开核心头文件、许可证文件和 CMake package config。
+Windows 安装阶段会调用
 `windeployqt`，并拷贝项目内构建的 `FluentUI3Style.dll` 和
 `ExWidgets.dll`。
 
@@ -208,7 +209,10 @@ cmake --install build
 
 ```cmake
 find_package(qlitemd CONFIG REQUIRED)
+# C++ 管线
 target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
+# C ABI 共享库（C#/Rust/C 宿主）
+target_link_libraries(myapp PRIVATE qlitemd::mdhtml_c)
 ```
 
 只构建零 Qt 的 SDK 时：
@@ -224,7 +228,7 @@ cmake -S . -B build-core -G Ninja \
 安装组件：
 
 - `Runtime`：`md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
-- `Development`：核心静态库、公开核心头文件和 `qlitemdConfig.cmake`
+- `Development`：核心静态/共享库、公开核心头文件和 `qlitemdConfig.cmake`
 - `Licenses`：项目和第三方许可证文本
 
 ```bash
@@ -261,6 +265,7 @@ SDK 仍通过独立的 install 组件发布。
 - `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
 - `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
+- `examples/avalonia_mdhtml/`：.NET 10/Avalonia 的 C ABI 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助

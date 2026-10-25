@@ -4,6 +4,14 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Add a shared C ABI (`qlitemd_mdhtml_c`) with exported, versioned entry
+  points, synchronous and asynchronous render jobs, progress/cancel, and
+  code-block/outline accessors. The C++ core remains available as the static
+  `qlitemd::mdhtml` target; non-C++ hosts use `qlitemd::mdhtml_c`.
+- Add `examples/avalonia_mdhtml`, a .NET 10/Avalonia validation harness that
+  calls the shared library through P/Invoke, rasterizes SVG assets with
+  Svg.Skia and displays the HTML with LiteHtmlSharp.Avalonia.
+
 - Split the rendering stack into a zero-Qt core (`qlitemd_mdhtml`) and a Qt
   adapter under `examples/md_viewer/qt_adapter`. The core parses and
   assembles Markdown on a coordinator thread, runs highlight/formula/Mermaid
