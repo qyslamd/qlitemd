@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <RootNamespace>AvaloniaMdhtml</RootNamespace>
+    <AssemblyName>AvaloniaMdhtml</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="LiteHtmlSharp.Avalonia" Version="2.0.7" />
+    <PackageReference Include="Svg.Skia" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="base.css" LogicalName="base.css" />
+    <EmbeddedResource Include="..\..\resources\themes\light.css" LogicalName="light.css" />
+    <EmbeddedResource Include="..\..\resources\themes\dark.css" LogicalName="dark.css" />
+    <EmbeddedResource Include="sample.md" LogicalName="sample.md" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <QlitemdNativeDir Condition="'$(QlitemdNativeDir)' == ''">$(MSBuildProjectDirectory)\..\..\build_core_x64\bin</QlitemdNativeDir>
+  </PropertyGroup>
+
+  <!-- The validation app loads the Qt-free core DLL and its native SVG backends
+       from the core-only x64 build tree. -->
+  <Target Name="CopyQlitemdNative" AfterTargets="Build">
+    <ItemGroup>
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\qlitemd_mdhtml_c.dll" />
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\ratex_ffi.dll" />
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\merman_ffi.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(QlitemdNativeFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

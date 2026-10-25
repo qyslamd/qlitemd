@@ -1,0 +1,31 @@
+/* LiteHtmlSharp expects the host to provide the UA-like display rules; the
+   qlitemd theme CSS only adds colours and spacing on top. */
+head, style, script {
+  display: none;
+}
+html, body, div, p, h1, h2, h3, h4, h5, h6, pre, blockquote,
+ul, ol, li, table, thead, tbody, tr, td, th, section, article,
+header, footer, nav, form, hr {
+  display: block;
+}
+span, a, strong, em, code, img, br {
+  display: inline;
+}
+h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
+h2 { font-size: 1.5em; font-weight: bold; margin: 0.75em 0; }
+h3 { font-size: 1.17em; font-weight: bold; margin: 0.83em 0; }
+h4, h5, h6 { font-size: 1em; font-weight: bold; margin: 1em 0; }
+p { margin: 1em 0; }
+ul, ol { margin: 1em 0; padding-left: 2em; }
+li { display: list-item; }
+blockquote { margin: 1em 2em; }
+pre { margin: 1em 0; white-space: pre; font-family: monospace; }
+code { font-family: monospace; }
+table { display: table; border-collapse: collapse; }
+thead { display: table-row-group; }
+tbody { display: table-row-group; }
+tr { display: table-row; }
+td, th { display: table-cell; padding: 3px 6px; }
+hr { border: 1px solid #ccc; }
+a { color: #0969da; }
+img { display: block; max-width: 100%; }

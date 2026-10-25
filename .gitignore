@@ -13,6 +13,9 @@ temp/
 .vs/
 .vscode/
 CMakeUserPresets.json
+# .NET build output for the Avalonia validation harness.
+examples/avalonia_mdhtml/bin/
+examples/avalonia_mdhtml/obj/
 # CodeGraph local index; never part of the library.
 .codegraph/
 # Local conversation memory; never part of the library.
