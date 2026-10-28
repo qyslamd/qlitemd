@@ -522,8 +522,8 @@ if(QLITEMD_BUILD_TESTS)
         add_subdirectory(tests/markdown_view)
         qlitemd_skip_subdir_install(tests/markdown_view)
     endif()
-    if(QLITEMD_BUILD_MD_VIEWER
-       OR EXISTS "${PROJECT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
+    if(QLITEMD_BUILD_QT_WIDGET
+       AND EXISTS "${PROJECT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
         add_subdirectory(tests/md_viewer)
         qlitemd_skip_subdir_install(tests/md_viewer)
     endif()
