@@ -26,9 +26,10 @@ Qt 适配层（examples/md_viewer/qt_adapter）
 - 开发期本地只跑 Qt 5.15.2 x86；其余组合在功能完成后交给 GitHub CI
 - Qt 支持目标：Qt 5.12.x ~ Qt 6.12.x（当前实测覆盖以上矩阵）
 - 原生后端：`QLITEMD_SVG_BACKEND=resvg|qtsvg`、
-  `QLITEMD_MERMAID_BACKEND=merman|quickjs`；merman 要求 resvg。
-  Windows 公式走 RaTeX（`3rdparty/ratex`），不编 QuickJS；其它平台
-  回退 QuickJS + MathJax
+  `QLITEMD_MERMAID_BACKEND=quickjs|merman`；Mermaid 默认 QuickJS +
+  mermaid.js，merman 可选且要求 resvg。Windows 公式走 RaTeX
+  （`3rdparty/ratex`），Mermaid 默认由 QuickJS 渲染，因此 Windows 也会
+  编入 QuickJS；其它平台公式回退 QuickJS + MathJax
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
   `md_viewer` 运行时尚未验证；原生后端目前仅 Windows
 - 对外接口：`qlitemd_mdhtml`（静态 C++）与 `qlitemd_mdhtml_c`
@@ -237,9 +238,9 @@ clang-format --dry-run --Werror <file>
   默认只编 md_viewer 用到的控件，kissfft 不再参与构建；升级 FluentUI
   时需重放补丁。
 - `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
-  不要做行尾转换，也不要直接编辑压缩后的文件。Windows 构建不再使用
-  这些载荷（公式走 RaTeX、Mermaid 走 merman），它们只服务其它平台的
-  quickjs 回退。
+  不要做行尾转换，也不要直接编辑压缩后的文件。Windows 公式走 RaTeX；
+  Mermaid 默认使用 mermaid.js 载荷（merman 可选），所以默认 Windows
+  构建也会编入 QuickJS。
 - `patches/**` 固定使用 LF。
 - 预编原生库（resvg / merman / ratex）按 `<平台>-<架构>` 归档：
   `3rdparty/<lib>/bin/win-x64|win-x86|linux-x64|linux-arm64/`。
@@ -288,7 +289,8 @@ clang-format --dry-run --Werror <file>
 - 安装包脚本是 `installer/md_viewer.iss`；使用 Inno Setup 6.x。
 - 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe` 和
   `qlitemd-md_viewer-<version>-x64-pdb.zip`。
-- 发布构建固定 Rust 后端：`resvg + ratex + merman`，不打 QuickJS。
+- 发布构建：`resvg + ratex + QuickJS`，Mermaid 走 mermaid.js，故发布包也含
+  QuickJS；不再链接 merman。
 
 ## 变更流程
 

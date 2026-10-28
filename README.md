@@ -4,8 +4,8 @@
 
 md4c parses the document, qlitehtml lays it out, and formula rendering
 uses native RaTeX on Windows (MathJax in quickjs-ng elsewhere).
-Highlighting uses native tree-sitter, Mermaid diagrams use
-native merman-ffi, and
+Highlighting uses native tree-sitter, Mermaid diagrams use mermaid.js in
+quickjs-ng by default (native merman-ffi is selectable), and
 formula/diagram SVGs are rasterized with resvg. There is no WebEngine,
 Chromium or Node.js at runtime.
 
@@ -72,8 +72,8 @@ A standalone zero-Qt console example is in
   rust); the example renders per-line spans so line numbers stay aligned.
 - **Formulas** — RaTeX (native, Windows) or MathJax in QuickJS emits SVG for
   inline `$...$` and display `$$...$$`, with theme-aware colors.
-- **Mermaid diagrams** — merman-ffi parses Mermaid natively and emits
-  `resvg-safe` SVG; the QuickJS + mermaid.js backend remains selectable.
+- **Mermaid diagrams** — mermaid.js in QuickJS renders diagrams by default
+  for broader syntax coverage; native merman-ffi remains selectable.
 - **SVG assets** — the core never rasterizes. `md_viewer` uses resvg, with
   the legacy QtSvg backend still selectable.
 - **Themes** — built-in light and dark CSS; `SetThemeStyleSheet()` lets a host
@@ -107,8 +107,8 @@ md4c  ->  HTML skeleton + formula/Mermaid placeholders
       v
 MarkdownRenderService (worker pools)
       |-- tree-sitter   ->  highlighted HTML          (native)
-      |-- MathJax       ->  SVG  ->  resvg  ->  PNG    (QuickJS + resvg)
-      `-- merman-ffi    ->  SVG  ->  resvg  ->  PNG    (native)
+      |-- RaTeX/MathJax ->  SVG                       (native / QuickJS)
+      `-- mermaid.js    ->  SVG                       (QuickJS; merman selectable)
       |
       v
 assemble HTML  ->  qlitehtml widget  ->  painted QWidget
@@ -119,14 +119,14 @@ Key design choices:
 - **Dependency inversion.** The public API knows nothing about QuickJS,
   merman or resvg. Highlighting, formula and Mermaid work are passed in as
   plain callbacks, so tests can use fakes and hosts can swap engines.
-- **Native math and Mermaid paths (Windows).** RaTeX renders TeX to
-  standalone SVG and merman-ffi renders Mermaid diagrams, so Windows
-  builds ship no JavaScript engine at all; other platforms keep the
-  quickjs-ng fallback (MathJax and mermaid.js). On
-  Windows the default is `QLITEMD_MERMAID_BACKEND=merman` with
-  `QLITEMD_SVG_BACKEND=resvg`; both legacy backends remain selectable.
-- **Bytecode for the remaining JS (non-Windows).** MathJax and the
-  optional legacy Mermaid path are precompiled by `qjsc`; see the
+- **Native math, QuickJS Mermaid.** RaTeX renders TeX on Windows; Mermaid
+  defaults to mermaid.js in QuickJS because it has broader syntax coverage
+  than merman-ffi. Windows builds therefore include QuickJS by default.
+  Native merman-ffi remains selectable with
+  `QLITEMD_MERMAID_BACKEND=merman`; `QLITEMD_SVG_BACKEND=resvg` stays the
+  default rasterizer choice for the example.
+- **Bytecode for the remaining JS.** MathJax (non-Windows formulas) and
+  mermaid.js (default Mermaid backend) are precompiled by `qjsc`; see the
   [evaluation](docs/eval/Markdown渲染qjsc预编译评估.md).
 - **Generation filtering.** Every render bumps a request id; stale worker
   results are dropped before they touch the widget, and cancellation
@@ -197,9 +197,9 @@ Build options:
   no `resvg` binary exists for the platform)
 - `QLITEMD_FORMULA_BACKEND` — `ratex` (native FFI) or `quickjs`
   (MathJax); falls back to `quickjs` when no `ratex` binary exists
-- `QLITEMD_MERMAID_BACKEND` — `merman` or `quickjs`; `merman` requires
-  `QLITEMD_SVG_BACKEND=resvg` and falls back to `quickjs` when its binary
-  is missing
+- `QLITEMD_MERMAID_BACKEND` — `quickjs` (default, mermaid.js) or `merman`;
+  `merman` requires `QLITEMD_SVG_BACKEND=resvg` and falls back to
+  `quickjs` when its binary is missing
 
 The native backends are distributed as prebuilt DLLs under
 `3rdparty/resvg/` and `3rdparty/merman/`; a normal build does not require
@@ -220,12 +220,13 @@ cmake --install build
 ```
 
 With the default options, the install contains `bin/md_viewer.exe`,
-`bin/resvg.dll`, `bin/merman_ffi.dll`, the `qlitemd_mdhtml` static library,
+`bin/resvg.dll`, `bin/ratex_ffi.dll`, the `qlitemd_mdhtml` static library,
 the `qlitemd_mdhtml_c` shared C ABI library, dependency archives (`md4c`,
-tree-sitter, QuickJS when selected), public core headers, license files and a
-CMake package config. On Windows, `windeployqt` is invoked during install, and
-the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next to the
-viewer.
+tree-sitter, QuickJS because Mermaid uses it by default), public core headers,
+license files and a CMake package config. Selecting the native Mermaid backend
+adds `bin/merman_ffi.dll`. On Windows, `windeployqt` is invoked during
+install, and the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next
+to the viewer.
 
 Consumers can then use:
 
@@ -287,7 +288,7 @@ integration for host-side policy such as link handling and settings.
 ## Layout
 
 - `src/mdhtml/` — the zero-Qt core library (`qlitemd_mdhtml`)
-- `resources/` — theme CSS and JS payloads for the QuickJS fallback
+- `resources/` — theme CSS and JS payloads for the QuickJS Mermaid/formula paths
 - `examples/md_viewer/` — the FluentUI example application
 - `examples/md_viewer/qt_adapter/` — QWidget/qlitehtml/rasterizer adapter
 - `examples/md_viewer/qt_adapter/tests/` — headless adapter GoogleTest suite
@@ -327,7 +328,7 @@ maintainers and contributors.
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
 | [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown parser | MIT |
-| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (non-Windows fallback) | MIT |
+| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (Mermaid default; formula fallback) | MIT |
 | [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | TeX to SVG (Windows) | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | 0.27.1 | Incremental parsing core for syntax highlighting | MIT |

@@ -4,6 +4,9 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Default Mermaid rendering to mermaid.js in QuickJS for broader syntax
+  coverage; `QLITEMD_MERMAID_BACKEND=merman` remains available. Windows
+  builds now include QuickJS by default, while formulas still use RaTeX.
 - Add a shared C ABI (`qlitemd_mdhtml_c`) with exported, versioned entry
   points, synchronous and asynchronous render jobs, progress/cancel, and
   code-block/outline accessors. The C++ core remains available as the static

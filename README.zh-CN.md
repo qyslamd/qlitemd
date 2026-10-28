@@ -2,9 +2,10 @@
 
 **一个不需要浏览器内核的 Qt Widgets Markdown 渲染器。**
 
-md4c 负责解析，qlitehtml 负责排版，QuickJS 负责运行 highlight.js 与
-MathJax；Mermaid 走原生 merman-ffi，公式与图表的 SVG 由 resvg 光栅化。
-运行时不需要 WebEngine、Chromium 或 Node.js。
+md4c 负责解析，qlitehtml 负责排版，语法高亮走原生 tree-sitter；
+QuickJS 负责运行 MathJax 与 mermaid.js，Mermaid 默认走 QuickJS，原生
+merman-ffi 可选，公式与图表的 SVG 由 resvg 光栅化。运行时不需要
+WebEngine、Chromium 或 Node.js。
 
 [![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -66,8 +67,8 @@ SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
   保证行号对齐。
 - **公式**：MathJax（TeX 转 SVG 再转 QPixmap），支持行内 `$...$` 与
   独立 `$$...$$`，配色跟随主题。
-- **Mermaid 图表**：merman-ffi 原生解析并输出 `resvg-safe` SVG，图表
-  路径不执行 JavaScript；旧的 QuickJS + mermaid.js 后端仍可选择。
+- **Mermaid 图表**：默认由 QuickJS 运行 mermaid.js，语法覆盖更广；原生
+  merman-ffi 后端仍可选择。
 - **SVG 光栅化**：图表与公式默认走 resvg；旧的 QtSvg 后端仍可选择。
 - **主题**：内置明暗两套 CSS；宿主可用 `SetThemeStyleSheet()` 按主题
   注入 CSS，用 `SetPageBackground()` 控制页面底色（包括 Mica/亚克力
@@ -108,12 +109,12 @@ MarkdownRenderService（worker 池）
 
 - **依赖倒置**：公开 API 不认识 QuickJS、merman 或 resvg。高亮、公式和
   Mermaid 都通过普通回调传入，测试可以塞假实现，宿主可以替换引擎。
-- **原生 Mermaid 路径**：merman-ffi 替换 QuickJS + mermaid.js；MathJax
-  与 highlight.js 仍走 QuickJS。Windows 默认
-  `QLITEMD_MERMAID_BACKEND=merman` + `QLITEMD_SVG_BACKEND=resvg`，
-  两套旧后端仍可选择。
-- **剩余 JS 走字节码**：MathJax、highlight.js 与可选的旧 Mermaid 路径
-  仍由 `qjsc` 预编译；见
+- **Mermaid 默认 QuickJS**：mermaid.js 的兼容性优于 merman-ffi，因此
+  默认 `QLITEMD_MERMAID_BACKEND=quickjs`；Windows 构建也会编入 QuickJS。
+  原生 merman-ffi 仍可选择（要求 `QLITEMD_SVG_BACKEND=resvg`）。公式在
+  Windows 走 RaTeX，其它平台回退 MathJax。
+- **JS 走字节码**：MathJax（非 Windows 公式）与默认的 mermaid.js 路径
+  由 `qjsc` 预编译；见
   [评估文档](docs/eval/Markdown渲染qjsc预编译评估.md)。
 - **按代过滤**：每次渲染递增 request id，过期的 worker 结果在接触控件
   之前就被丢弃；取消会中断 QuickJS。
@@ -178,7 +179,7 @@ Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
 - `QLITEMD_BUILD_MD_VIEWER`：构建示例程序（默认 `ON`）
 - `QLITEMD_BUILD_TESTS`：构建测试（默认 `ON`）
 - `QLITEMD_SVG_BACKEND`：`resvg`（Windows 默认）或 `qtsvg`
-- `QLITEMD_MERMAID_BACKEND`：`merman`（Windows 默认）或 `quickjs`；
+- `QLITEMD_MERMAID_BACKEND`：`quickjs`（默认，mermaid.js）或 `merman`；
   `merman` 要求 `QLITEMD_SVG_BACKEND=resvg`
 
 原生后端以预编 DLL 形式放在 `3rdparty/resvg/` 与 `3rdparty/merman/`，
@@ -199,9 +200,9 @@ cmake --install build
 ```
 
 默认选项下，安装内容包含 `bin/md_viewer.exe`、`bin/resvg.dll`、
-`bin/merman_ffi.dll`、`qlitemd_mdhtml` 静态库、`qlitemd_mdhtml_c` 共享 C ABI
-库及其静态依赖、公开核心头文件、许可证文件和 CMake package config。
-Windows 安装阶段会调用
+`bin/ratex_ffi.dll`、`qlitemd_mdhtml` 静态库、`qlitemd_mdhtml_c` 共享 C ABI
+库及其静态依赖、公开核心头文件、许可证文件和 CMake package config；
+选择原生 Mermaid 后端时还会加入 `bin/merman_ffi.dll`。Windows 安装阶段会调用
 `windeployqt`，并拷贝项目内构建的 `FluentUI3Style.dll` 和
 `ExWidgets.dll`。
 
@@ -260,7 +261,7 @@ SDK 仍通过独立的 install 组件发布。
 ## 目录结构
 
 - `src/mdhtml/`：零 Qt 核心库（`qlitemd_mdhtml`）
-- `resources/`：主题 CSS 与 QuickJS 回退用的 JS 载荷
+- `resources/`：主题 CSS 与 QuickJS Mermaid/公式路径用的 JS 载荷
 - `examples/md_viewer/`：FluentUI 示例程序
 - `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
 - `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试

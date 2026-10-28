@@ -8,13 +8,13 @@ optional line numbers, and adds heading ids plus `data-md-slug` anchors.
 
 ## Formula and Mermaid
 
-The core only produces SVG. On Windows, TeX is rendered by native RaTeX and
-Mermaid by native merman-ffi; no JavaScript engine is built or shipped. Other
-platforms use the QuickJS fallback: MathJax for formulas and mermaid.js for
-diagrams (`QLITEMD_FORMULA_BACKEND=quickjs`, `QLITEMD_MERMAID_BACKEND=quickjs`).
-On non-Windows builds those payloads are build-time QuickJS bytecode; no
-Node.js is needed at runtime. Native backends are prebuilt DLLs under
-`3rdparty/resvg/`, `3rdparty/merman/` and `3rdparty/ratex/`.
+The core only produces SVG. TeX uses native RaTeX on Windows and MathJax in
+QuickJS elsewhere. Mermaid defaults to mermaid.js in QuickJS because it has
+broader syntax coverage than merman-ffi; select
+`QLITEMD_MERMAID_BACKEND=merman` for the native backend (it requires resvg).
+The QuickJS payloads are build-time bytecode, so no Node.js is needed at
+runtime. Native backends are prebuilt DLLs under `3rdparty/resvg/`,
+`3rdparty/merman/` and `3rdparty/ratex/`.
 
 HTML references each asset as `<img src="qlitemd-asset:<id>" width=...
 height=...>`; `<id>` is the first 128 bits of SHA-256 over the asset kind and
@@ -31,7 +31,7 @@ Each render job has a coordinator thread: it parses, submits tasks to the
 bounded worker lanes, waits for results and assembles in source order, so
 worker completion order never affects the HTML. Progress callbacks run on the
 coordinator. Cancellation drops queued tasks and interrupts QuickJS; native
-merman/RaTeX finish the current diagram.
+Mermaid/RaTeX work finishes the current diagram.
 
 The Qt adapter waits on its own thread, rasterizes SVGs off the GUI thread and
 posts the finished result back with a queued invocation. A later generation
