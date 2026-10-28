@@ -4,6 +4,8 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-28
+
 - Move the Qt layer to `src/markdown_view` and export
   `qlitemd::markdown_view`. Make the build `add_subdirectory` friendly:
   paths use `PROJECT_SOURCE_DIR`/`PROJECT_BINARY_DIR`, the MSVC runtime is
