@@ -4,6 +4,13 @@ This page is rendered by the zero-Qt `qlitemd_mdhtml` core and displayed by
 `LiteHtmlSharp.Avalonia`. The C# host only marshals HTML, SVG assets and
 code blocks across the C ABI.
 
+> [!note] MPE callout mode
+> Inline text after the marker is the title; the body starts on the next line.
+
+> [!tip] GitHub admonitions remain available
+> Set `admonition_mode` to `MDHTML_ADMONITION_GITHUB` for md4c's built-in
+> five-type admonitions.
+
 Inline math: $e^{i\pi} + 1 = 0$
 
 $$
@@ -28,6 +35,6 @@ int main() {
 | Parser | md4c |
 | Highlight | tree-sitter |
 | Formula | RaTeX |
-| Mermaid | merman |
+| Mermaid | mermaid.js (QuickJS) |
 
 [qlitemd repository](https://github.com/)

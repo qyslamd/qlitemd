@@ -5,6 +5,8 @@
 #include <QString>
 #include <QStringList>
 
+#include "markdown_types.h"
+
 enum class WindowMaterial {
   kAuto = 0,
   kAcrylic = 1,
@@ -48,6 +50,7 @@ struct MdViewerSettings {
   int reading_line_height_percent = 0;
   int reading_measure_px = -1;
   bool code_line_numbers = false;
+  MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
   bool formula_rendering = true;
   bool mermaid_rendering = true;
   bool persistent_cache = true;

@@ -62,7 +62,8 @@ SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
 ## 功能
 
 - **GFM Markdown**：通过 md4c 支持表格、任务列表、删除线、自动链接、
-  告警块（admonitions）和脚注（footnotes）；原始 HTML 原样保留。
+  告警块（callouts/admonitions）和脚注（footnotes）；默认 MPE Callout，
+  可按渲染切换 GitHub Admonition；原始 HTML 原样保留。
 - **代码高亮**：highlight.js 在 QuickJS 中运行；示例按行拆分 span，
   保证行号对齐。
 - **公式**：MathJax（TeX 转 SVG 再转 QPixmap），支持行内 `$...$` 与

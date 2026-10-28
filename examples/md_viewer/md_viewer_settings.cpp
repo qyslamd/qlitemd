@@ -22,6 +22,7 @@ constexpr char kKeyReadingMeasure[] = "reading/measure_px";
 // 旧键只用于迁移；新版本写它保持降级可读
 constexpr char kKeyWindowBlur[] = "appearance/window_blur";
 constexpr char kKeyCodeLineNumbers[] = "render/code_line_numbers";
+constexpr char kKeyAdmonitionMode[] = "render/admonition_mode";
 constexpr char kKeyFormula[] = "render/formula";
 constexpr char kKeyMermaid[] = "render/mermaid";
 constexpr char kKeyPersistentCache[] = "render/persistent_cache";
@@ -93,6 +94,11 @@ void MdViewerSettings::Load() {
       settings.value(kKeyReadingLineHeight, 0).toInt();
   reading_measure_px = settings.value(kKeyReadingMeasure, -1).toInt();
   code_line_numbers = settings.value(kKeyCodeLineNumbers, false).toBool();
+  admonition_mode = static_cast<MarkdownAdmonitionMode>(
+      settings
+          .value(kKeyAdmonitionMode,
+                 static_cast<int>(MarkdownAdmonitionMode::kMpe))
+          .toInt());
   formula_rendering = settings.value(kKeyFormula, true).toBool();
   mermaid_rendering = settings.value(kKeyMermaid, true).toBool();
   persistent_cache = settings.value(kKeyPersistentCache, true).toBool();
@@ -124,6 +130,7 @@ void MdViewerSettings::Save() const {
   settings.setValue(kKeyReadingLineHeight, reading_line_height_percent);
   settings.setValue(kKeyReadingMeasure, reading_measure_px);
   settings.setValue(kKeyCodeLineNumbers, code_line_numbers);
+  settings.setValue(kKeyAdmonitionMode, static_cast<int>(admonition_mode));
   settings.setValue(kKeyFormula, formula_rendering);
   settings.setValue(kKeyMermaid, mermaid_rendering);
   settings.setValue(kKeyPersistentCache, persistent_cache);

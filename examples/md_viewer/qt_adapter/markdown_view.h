@@ -151,6 +151,10 @@ class MarkdownView : public QWidget {
   bool formula_rendering_enabled() const { return formula_rendering_enabled_; }
   void SetMermaidRenderingEnabled(bool enabled);
   bool mermaid_rendering_enabled() const { return mermaid_rendering_enabled_; }
+  // GitHub admonitions vs MPE callouts. MPE is the default: inline text after
+  // the marker is the callout title, matching Markdown Preview Enhanced.
+  void SetAdmonitionMode(MarkdownAdmonitionMode mode);
+  MarkdownAdmonitionMode admonition_mode() const { return admonition_mode_; }
   // 主题（默认 Light）：样式表、公式前景色、Mermaid 主题一起切。切换后
   // 有文档立即重渲染并保留滚动；缓存按 key 自然隔离，不清空。
   // MD_MARKDOWN_CSS 生效时 CSS 保持覆盖文件（theme 对样式表无效），只切
@@ -330,6 +334,7 @@ class MarkdownView : public QWidget {
   bool code_line_numbers_ = false;
   bool formula_rendering_enabled_ = true;
   bool mermaid_rendering_enabled_ = true;
+  MarkdownAdmonitionMode admonition_mode_ = MarkdownAdmonitionMode::kMpe;
   MarkdownTheme theme_ = MarkdownTheme::Light;
   // 宿主按主题注入的 CSS；空 = 走 MD_MARKDOWN_CSS/内置资源
   std::array<QString, kMarkdownThemeCount> theme_style_sheets_{};

@@ -44,8 +44,14 @@ struct MarkdownHeading {
 
 // 会改变 HTML 结构的渲染选项。渲染开关（公式/Mermaid）不在这里：纯函数
 // 通过"传不传 sink"表达，视图层再翻译成这几个字段
+enum class MarkdownAdmonitionMode {
+  kGithub = 0,
+  kMpe = 1,
+};
+
 struct MarkdownRenderOptions {
   bool code_line_numbers = false;
+  MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
   std::function<void(const MarkdownHeading&)> outline;
   std::function<QString(const QString& code, const QString& language)>
       highlight;

@@ -24,6 +24,11 @@ bool Covers(const mdhtml_font_metrics& metrics, std::size_t offset,
   return metrics.struct_size >= offset + size;
 }
 
+bool Covers(const mdhtml_render_options& options, std::size_t offset,
+            std::size_t size) {
+  return options.struct_size >= offset + size;
+}
+
 class MdCFontMetrics final : public MdFontMetrics {
  public:
   explicit MdCFontMetrics(mdhtml_font_metrics callbacks)
@@ -106,6 +111,12 @@ MdRenderOptions ToRenderOptions(const mdhtml_render_options* options) {
   out.formula = options->formula_enabled != 0;
   out.mermaid = options->mermaid_enabled != 0;
   out.code_line_numbers = options->code_line_numbers != 0;
+  if (Covers(*options, offsetof(mdhtml_render_options, admonition_mode),
+             sizeof(options->admonition_mode))) {
+    out.admonition_mode = options->admonition_mode == MDHTML_ADMONITION_GITHUB
+                              ? MdAdmonitionMode::kGithub
+                              : MdAdmonitionMode::kMpe;
+  }
   return out;
 }
 
@@ -179,6 +190,7 @@ void mdhtml_render_options_init(mdhtml_render_options* options) {
   options->formula_enabled = 1;
   options->mermaid_enabled = 1;
   options->code_line_numbers = 0;
+  options->admonition_mode = MDHTML_ADMONITION_MPE;
 }
 
 mdhtml_pipeline* mdhtml_pipeline_create(void) {

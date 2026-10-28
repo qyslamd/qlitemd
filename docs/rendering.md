@@ -2,11 +2,22 @@
 
 ## Markdown to HTML
 
-md4c parses the source; raw HTML is preserved. The GFM dialect enables
-admonitions (`> [!NOTE]`) and footnotes (`[^1]`); admonition markers must be
-alone on their blockquote line. The core extracts formula segments, collects
-GFM code blocks, emits code frames with copy links and optional line numbers,
-and adds heading ids plus `data-md-slug` anchors.
+md4c parses the source; raw HTML is preserved. Footnotes (`[^1]`) are
+enabled. Admonitions are selected per render:
+
+- `MdAdmonitionMode::kGithub` uses md4c's built-in admonitions. The marker
+  must be alone on its blockquote line, the title is the type name, and only
+  note/tip/important/warning/caution are recognized.
+- `MdAdmonitionMode::kMpe` (default) rewrites blockquotes into MPE-style
+  callouts. Text after the marker on the same line is the title; a marker
+  alone uses a default title. It supports note/info/tip/important/warning/
+  caution/danger/success/question. Collapsible `[!note]+/-` is not supported.
+  Each title carries an explicit `.callout-icon` span with a Unicode glyph,
+  so hosts without CSS generated content still show the symbol.
+
+The core extracts formula segments, collects GFM code blocks, emits code
+frames with copy links and optional line numbers, and adds heading ids plus
+`data-md-slug` anchors.
 
 ## Formula and Mermaid
 

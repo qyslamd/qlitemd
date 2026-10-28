@@ -313,7 +313,8 @@ class MdRenderJobImpl : public MdRenderJob,
   void Run() {
     ++runtime_->active_jobs;
     const auto parse_start = std::chrono::steady_clock::now();
-    MdParseResult parsed = ParseMarkdown(markdown_, options_.formula);
+    MdParseResult parsed =
+        ParseMarkdown(markdown_, options_.formula, options_.admonition_mode);
     result_.stats.source_chars = static_cast<int>(markdown_.size());
     result_.stats.parse_ms = ElapsedMs(parse_start);
 

@@ -1,5 +1,8 @@
 #include "markdown_to_html.h"
 
+#include <string>
+#include <string_view>
+
 #include <QRegularExpression>
 #include <QSet>
 #include <QStringList>
@@ -9,6 +12,7 @@
 #include "code_highlighter.h"
 #include "heading_ids.h"
 #include "html_escape.h"
+#include "md_callout.h"
 
 extern "C" {
 #include "md4c-html.h"
@@ -614,7 +618,8 @@ QString AddHeadingIds(
   return out;
 }
 
-MarkdownParseResult ParseMarkdown(const QString& markdown, bool extract_math) {
+MarkdownParseResult ParseMarkdown(const QString& markdown, bool extract_math,
+                                  MarkdownAdmonitionMode admonition_mode) {
   MarkdownParseResult parsed;
   // 盐无条件生成：即使不抽公式，RestoreMath 也会用这个盐扫描；空盐会让
   // 正则退化成匹配用户正文里的字面占位符
@@ -627,13 +632,24 @@ MarkdownParseResult ParseMarkdown(const QString& markdown, bool extract_math) {
   const QByteArray utf8 = source.toUtf8();
   // SKIP_UTF8_BOM：本模块的调用方给的是已解码的 QString（BOM 早被 Qt 吃掉），
   // 但直接喂原始字节的调用方会因 BOM 把首个块解析成正文，一个 flag 免掉这个坑
+  unsigned flags = MD_DIALECT_GITHUB;
+  if (admonition_mode == MarkdownAdmonitionMode::kMpe) {
+    flags &= ~MD_FLAG_ADMONITIONS;
+  }
   const int result =
       md_html(utf8.constData(), static_cast<MD_SIZE>(utf8.size()), AppendHtml,
-              &parsed.html, MD_DIALECT_GITHUB, MD_HTML_FLAG_SKIP_UTF8_BOM);
+              &parsed.html, flags, MD_HTML_FLAG_SKIP_UTF8_BOM);
   if (result != 0) {
     parsed.html = QStringLiteral("<p class=\"error\">Markdown 解析失败</p>");
     parsed.parse_error = true;
     return parsed;
+  }
+  if (admonition_mode == MarkdownAdmonitionMode::kMpe) {
+    const QByteArray html = parsed.html.toUtf8();
+    const std::string callouts =
+        ApplyMpeCallouts(std::string_view(html.constData(), html.size()));
+    parsed.html =
+        QString::fromUtf8(callouts.data(), static_cast<int>(callouts.size()));
   }
   parsed.blocks = CollectCodeBlocks(parsed.html);
   return parsed;
@@ -680,8 +696,8 @@ QString MarkdownToHtml(const QString& markdown, const FormulaSink& formula,
                        const CodeBlockSink& code_blocks,
                        const HeadingSink& heading_ids,
                        const MarkdownRenderOptions& options) {
-  const MarkdownParseResult parsed =
-      ParseMarkdown(markdown, static_cast<bool>(formula));
+  const MarkdownParseResult parsed = ParseMarkdown(
+      markdown, static_cast<bool>(formula), options.admonition_mode);
   if (parsed.parse_error) {
     return parsed.html;
   }

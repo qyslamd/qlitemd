@@ -1088,6 +1088,14 @@ void MarkdownView::SetMermaidRenderingEnabled(bool enabled) {
   ReapplyDocument();
 }
 
+void MarkdownView::SetAdmonitionMode(MarkdownAdmonitionMode mode) {
+  if (admonition_mode_ == mode) {
+    return;
+  }
+  admonition_mode_ = mode;
+  ReapplyDocument();
+}
+
 void MarkdownView::SetTheme(MarkdownTheme theme) {
   if (theme_ == theme) {
     return;
@@ -1254,6 +1262,9 @@ void MarkdownView::StartRender(quint64 request_id) {
   options.formula = formula_rendering_enabled_;
   options.mermaid = mermaid_rendering_enabled_;
   options.code_line_numbers = code_line_numbers_;
+  options.admonition_mode = admonition_mode_ == MarkdownAdmonitionMode::kGithub
+                                ? MdAdmonitionMode::kGithub
+                                : MdAdmonitionMode::kMpe;
   options.formula_color = ToMdColor(formula_color);
 
   MarkdownRenderContextState& state =

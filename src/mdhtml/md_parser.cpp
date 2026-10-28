@@ -3,6 +3,7 @@
 #include <cctype>
 #include <utility>
 
+#include "md_callout.h"
 #include "md_text.h"
 
 extern "C" {
@@ -370,19 +371,29 @@ std::vector<MdCodeBlock> CollectCodeBlocks(std::string_view html) {
 
 }  // namespace
 
-MdParseResult ParseMarkdown(std::string_view markdown, bool extract_math) {
+MdParseResult ParseMarkdown(std::string_view markdown, bool extract_math,
+                            MdAdmonitionMode admonition_mode) {
   MdParseResult parsed;
   parsed.math_salt = RandomHexSalt(8);
   std::string source =
       extract_math ? ExtractMath(markdown, &parsed.segments, parsed.math_salt)
                    : std::string(markdown);
+  unsigned flags = MD_DIALECT_GITHUB;
+  if (admonition_mode == MdAdmonitionMode::kMpe) {
+    // MPE callouts are rewritten from blockquotes below; letting md4c
+    // consume marker-only admonitions here would split the two paths.
+    flags &= ~MD_FLAG_ADMONITIONS;
+  }
   const int result =
       md_html(source.data(), static_cast<MD_SIZE>(source.size()), AppendHtml,
-              &parsed.html, MD_DIALECT_GITHUB, MD_HTML_FLAG_SKIP_UTF8_BOM);
+              &parsed.html, flags, MD_HTML_FLAG_SKIP_UTF8_BOM);
   if (result != 0) {
     parsed.html = "<p class=\"error\">Markdown 解析失败</p>";
     parsed.parse_error = true;
     return parsed;
+  }
+  if (admonition_mode == MdAdmonitionMode::kMpe) {
+    parsed.html = ApplyMpeCallouts(parsed.html);
   }
   parsed.blocks = CollectCodeBlocks(parsed.html);
   return parsed;

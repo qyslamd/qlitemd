@@ -58,9 +58,9 @@ TEST(MdHtmlTest, GfmTableAndTaskListSurvive) {
   EXPECT_NE(html.find("type=\"checkbox\""), std::string::npos);
 }
 
-TEST(MdHtmlTest, GfmAdmonitionGetsClassAndTitle) {
-  const MdParseResult parsed =
-      ParseMarkdown("> [!IMPORTANT]\n> Read this.\n", false);
+TEST(MdHtmlTest, GithubAdmonitionGetsClassAndTitle) {
+  const MdParseResult parsed = ParseMarkdown("> [!IMPORTANT]\n> Read this.\n",
+                                             false, MdAdmonitionMode::kGithub);
   const std::string html = Assemble(parsed, ResolveNothing);
   EXPECT_NE(html.find("<div class=\"admonition-important\">"),
             std::string::npos);
@@ -70,13 +70,59 @@ TEST(MdHtmlTest, GfmAdmonitionGetsClassAndTitle) {
   EXPECT_EQ(html.find("[!IMPORTANT]"), std::string::npos);
 }
 
-TEST(MdHtmlTest, AdmonitionMarkerMustBeOnItsOwnLine) {
-  const MdParseResult parsed =
-      ParseMarkdown("> [!IMPORTANT] inline text\n", false);
+TEST(MdHtmlTest, GithubAdmonitionMarkerMustBeOnItsOwnLine) {
+  const MdParseResult parsed = ParseMarkdown("> [!IMPORTANT] inline text\n",
+                                             false, MdAdmonitionMode::kGithub);
   const std::string html = Assemble(parsed, ResolveNothing);
   EXPECT_NE(html.find("<blockquote>"), std::string::npos);
   EXPECT_NE(html.find("[!IMPORTANT] inline text"), std::string::npos);
   EXPECT_EQ(html.find("admonition-important"), std::string::npos);
+}
+
+TEST(MdHtmlTest, MpeCalloutUsesInlineTextAsTitle) {
+  const MdParseResult parsed = ParseMarkdown("> [!note] Inline title\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<div class=\"callout callout-note\">"),
+            std::string::npos);
+  EXPECT_NE(html.find("<span class=\"callout-icon\">"), std::string::npos);
+  EXPECT_NE(html.find("</span>Inline title</div>"), std::string::npos);
+  EXPECT_EQ(html.find("[!note]"), std::string::npos);
+}
+
+TEST(MdHtmlTest, MpeCalloutDefaultsTitleAndKeepsBody) {
+  const MdParseResult parsed =
+      ParseMarkdown("> [!important]\n> Read this.\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<div class=\"callout callout-important\">"),
+            std::string::npos);
+  EXPECT_NE(html.find("</span>Important</div>"), std::string::npos);
+  EXPECT_NE(html.find("<p>Read this.</p>"), std::string::npos);
+}
+
+TEST(MdHtmlTest, MpeCalloutSupportsInfoType) {
+  const MdParseResult parsed = ParseMarkdown("> [!info] A note\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<div class=\"callout callout-info\">"),
+            std::string::npos);
+  EXPECT_NE(html.find("</span>A note</div>"), std::string::npos);
+}
+
+TEST(MdHtmlTest, MpeCalloutKeepsFollowingBlocks) {
+  const MdParseResult parsed =
+      ParseMarkdown("> [!tip] Tips\n> - one\n> - two\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<div class=\"callout callout-tip\">"),
+            std::string::npos);
+  EXPECT_NE(html.find("</span>Tips</div>"), std::string::npos);
+  EXPECT_NE(html.find("<ul>"), std::string::npos);
+}
+
+TEST(MdHtmlTest, MpeCalloutLeavesUnknownTypeAlone) {
+  const MdParseResult parsed = ParseMarkdown("> [!unknown] text\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<blockquote>"), std::string::npos);
+  EXPECT_NE(html.find("[!unknown] text"), std::string::npos);
+  EXPECT_EQ(html.find("callout"), std::string::npos);
 }
 
 TEST(MdHtmlTest, GfmFootnoteGetsSectionAndBackref) {

@@ -36,8 +36,12 @@
   <Target Name="CopyQlitemdNative" AfterTargets="Build">
     <ItemGroup>
       <QlitemdNativeFiles Include="$(QlitemdNativeDir)\qlitemd_mdhtml_c.dll" />
-      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\ratex_ffi.dll" />
-      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\merman_ffi.dll" />
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\resvg.dll"
+                          Condition="Exists('$(QlitemdNativeDir)\resvg.dll')" />
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\ratex_ffi.dll"
+                          Condition="Exists('$(QlitemdNativeDir)\ratex_ffi.dll')" />
+      <QlitemdNativeFiles Include="$(QlitemdNativeDir)\merman_ffi.dll"
+                          Condition="Exists('$(QlitemdNativeDir)\merman_ffi.dll')" />
     </ItemGroup>
     <Copy SourceFiles="@(QlitemdNativeFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>

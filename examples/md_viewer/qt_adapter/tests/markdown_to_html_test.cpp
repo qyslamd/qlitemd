@@ -643,4 +643,34 @@ TEST(MarkdownToHtmlTest, CollectTasksDedupesAndKeepsMermaidFallback) {
   EXPECT_EQ(mermaid, 1);
 }
 
+// 适配层默认 MPE：标记后的同行文字是标题，正文从下一行开始
+TEST(MarkdownToHtmlTest, MpeCalloutUsesInlineTextAsTitle) {
+  const QString html =
+      MarkdownToHtml(QStringLiteral("> [!note] 电阻测量设备\n> 正文\n"));
+  EXPECT_TRUE(
+      html.contains(QStringLiteral("<div class=\"callout callout-note\">")))
+      << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("<span class=\"callout-icon\">")))
+      << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("</span>电阻测量设备</div>")))
+      << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("<p>正文</p>")))
+      << html.toStdString();
+  EXPECT_FALSE(html.contains(QStringLiteral("[!note]"))) << html.toStdString();
+}
+
+// 切到 GitHub 模式时仍由 md4c 输出 admonition 结构
+TEST(MarkdownToHtmlTest, GithubAdmonitionModeKeepsMd4cOutput) {
+  MarkdownRenderOptions options;
+  options.admonition_mode = MarkdownAdmonitionMode::kGithub;
+  const QString html = MarkdownToHtml(
+      QStringLiteral("> [!IMPORTANT]\n> 正文\n"), {}, {}, {}, {}, options);
+  EXPECT_TRUE(html.contains(QStringLiteral("class=\"admonition-important\"")))
+      << html.toStdString();
+  EXPECT_TRUE(html.contains(QStringLiteral("admonition-title")))
+      << html.toStdString();
+  EXPECT_FALSE(html.contains(QStringLiteral("class=\"callout")))
+      << html.toStdString();
+}
+
 }  // namespace

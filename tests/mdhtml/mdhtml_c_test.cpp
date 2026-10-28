@@ -176,6 +176,35 @@ TEST(MdhtmlCApiTest, AsyncCancelReturnsCancelledResult) {
   mdhtml_pipeline_destroy(pipeline);
 }
 
+TEST(MdhtmlCApiTest, AdmonitionModeDefaultsToMpe) {
+  mdhtml_pipeline* pipeline = mdhtml_pipeline_create();
+  ASSERT_NE(pipeline, nullptr);
+  mdhtml_render_options options;
+  mdhtml_render_options_init(&options);
+  EXPECT_EQ(options.admonition_mode, MDHTML_ADMONITION_MPE);
+
+  mdhtml_result* mpe =
+      mdhtml_render(pipeline, "> [!info] Inline title\n", &options);
+  ASSERT_NE(mpe, nullptr);
+  ASSERT_EQ(mdhtml_result_ok(mpe), 1) << mdhtml_result_error(mpe);
+  const std::string mpe_html = mdhtml_result_html(mpe);
+  EXPECT_NE(mpe_html.find("callout-info"), std::string::npos);
+  EXPECT_NE(mpe_html.find("Inline title"), std::string::npos);
+  mdhtml_result_destroy(mpe);
+
+  options.admonition_mode = MDHTML_ADMONITION_GITHUB;
+  mdhtml_result* github =
+      mdhtml_render(pipeline, "> [!IMPORTANT]\n> Body.\n", &options);
+  ASSERT_NE(github, nullptr);
+  ASSERT_EQ(mdhtml_result_ok(github), 1) << mdhtml_result_error(github);
+  const std::string github_html = mdhtml_result_html(github);
+  EXPECT_NE(github_html.find("admonition-important"), std::string::npos);
+  EXPECT_EQ(github_html.find("callout-important"), std::string::npos);
+  mdhtml_result_destroy(github);
+
+  mdhtml_pipeline_destroy(pipeline);
+}
+
 TEST(MdhtmlCApiTest, CustomMetricsCallbacksAreUsed) {
   MetricCounters counters;
   mdhtml_font_metrics metrics;

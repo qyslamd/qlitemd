@@ -252,3 +252,42 @@ img.mermaid { max-width: 100%; height: auto; }
 .cmt { color: #6e7681; }
 .tag { color: #7ee787; }
 .op { color: #e6edf3; }
+
+/* MPE Callout（暗色） */
+.callout {
+  max-width: 760px;
+  margin: 18px 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #10233b;
+}
+.callout-title {
+  margin: 0;
+  font-weight: 600;
+  color: #6cb6ff;
+}
+.callout-title * { color: inherit; }
+.callout-icon {
+  margin-right: 8px;
+  font-size: 16px;
+  line-height: 20px;
+}
+.callout > p { margin: 4px 0 0 0; }
+.callout-note { background: #10233b; }
+.callout-note .callout-title { color: #6cb6ff; }
+.callout-info { background: #10233b; }
+.callout-info .callout-title { color: #6cb6ff; }
+.callout-tip { background: #0f2a28; }
+.callout-tip .callout-title { color: #4dd0c4; }
+.callout-important { background: #0f2a28; }
+.callout-important .callout-title { color: #4dd0c4; }
+.callout-warning { background: #2b1a00; }
+.callout-warning .callout-title { color: #ffb74d; }
+.callout-caution { background: #2b1a00; }
+.callout-caution .callout-title { color: #ffb74d; }
+.callout-question { background: #2b1a00; }
+.callout-question .callout-title { color: #ffb74d; }
+.callout-danger { background: #2d1113; }
+.callout-danger .callout-title { color: #ff6b7a; }
+.callout-success { background: #0f2417; }
+.callout-success .callout-title { color: #4ade80; }

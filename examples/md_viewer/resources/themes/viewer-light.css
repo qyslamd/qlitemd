@@ -255,3 +255,43 @@ img.mermaid { max-width: 100%; height: auto; }
 .cmt { color: #8a9099; }
 .tag { color: #116329; }
 .op { color: #24292f; }
+
+/* MPE Callout（admonition_mode = MPE）。标题前的符号是纯文本字形，
+   litehtml 不支持 @font-face，因此不复刻 MPE 的 Material Icons 字体 */
+.callout {
+  max-width: 760px;
+  margin: 18px 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #e8f0fe;
+}
+.callout-title {
+  margin: 0;
+  font-weight: 600;
+  color: #086ddd;
+}
+.callout-title * { color: inherit; }
+.callout-icon {
+  margin-right: 8px;
+  font-size: 16px;
+  line-height: 20px;
+}
+.callout > p { margin: 4px 0 0 0; }
+.callout-note { background: #e8f0fe; }
+.callout-note .callout-title { color: #086ddd; }
+.callout-info { background: #e8f0fe; }
+.callout-info .callout-title { color: #086ddd; }
+.callout-tip { background: #e0f7f6; }
+.callout-tip .callout-title { color: #00a89a; }
+.callout-important { background: #e0f7f6; }
+.callout-important .callout-title { color: #00a89a; }
+.callout-warning { background: #fff3e0; }
+.callout-warning .callout-title { color: #ec7500; }
+.callout-caution { background: #fff3e0; }
+.callout-caution .callout-title { color: #ec7500; }
+.callout-question { background: #fff3e0; }
+.callout-question .callout-title { color: #ec7500; }
+.callout-danger { background: #fdecec; }
+.callout-danger .callout-title { color: #e93147; }
+.callout-success { background: #e6f7ed; }
+.callout-success .callout-title { color: #08b94e; }

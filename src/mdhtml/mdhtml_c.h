@@ -20,7 +20,7 @@
 // - mdhtml_render is a blocking convenience wrapper; mdhtml_render_async
 //   exposes a job handle for GUI hosts.
 
-#define MDHTML_ABI_VERSION 1u
+#define MDHTML_ABI_VERSION 2u
 
 #if defined(_WIN32)
 #if defined(MDHTML_SHARED)
@@ -74,6 +74,9 @@ typedef struct mdhtml_font_metrics {
   mdhtml_fingerprint_fn fingerprint;
 } mdhtml_font_metrics;
 
+#define MDHTML_ADMONITION_GITHUB 0
+#define MDHTML_ADMONITION_MPE 1
+
 typedef struct mdhtml_render_options {
   uint32_t struct_size;
   int theme;                    // 0 = light, 1 = dark
@@ -81,6 +84,8 @@ typedef struct mdhtml_render_options {
   int formula_enabled;
   int mermaid_enabled;
   int code_line_numbers;
+  // Appended for ABI-compatible struct_size growth. Default is MPE.
+  int admonition_mode;  // MDHTML_ADMONITION_GITHUB or _MPE
 } mdhtml_render_options;
 
 typedef struct mdhtml_stats {

@@ -8,7 +8,7 @@ namespace AvaloniaMdhtml;
 internal static class MdHtmlNative
 {
     internal const string Library = "qlitemd_mdhtml_c";
-    internal const uint AbiVersion = 1;
+    internal const uint AbiVersion = 2;
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderOptions
@@ -19,6 +19,7 @@ internal static class MdHtmlNative
         public int formula_enabled;
         public int mermaid_enabled;
         public int code_line_numbers;
+        public int admonition_mode;  // 0 = GitHub, 1 = MPE callouts
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

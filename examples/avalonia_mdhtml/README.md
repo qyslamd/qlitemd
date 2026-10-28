@@ -23,14 +23,15 @@ cmake -S . -B build_core_x64 -G Ninja `
   -DQLITEMD_CORE_ONLY=ON `
   -DQLITEMD_SVG_BACKEND=resvg `
   -DQLITEMD_FORMULA_BACKEND=ratex `
-  -DQLITEMD_MERMAID_BACKEND=merman
+  -DQLITEMD_MERMAID_BACKEND=quickjs
 cmake --build build_core_x64 --parallel 2
 ```
 
-This produces `build_core_x64/bin/qlitemd_mdhtml_c.dll`, `ratex_ffi.dll` and
-`merman_ffi.dll`. The project copies them to its output directory after each
-`dotnet build` via the `QlitemdNativeDir` property (override it if your build
-directory differs).
+This produces `build_core_x64/bin/qlitemd_mdhtml_c.dll`, `resvg.dll` and
+`ratex_ffi.dll`; `merman_ffi.dll` is only present when the optional merman
+backend is selected. The project copies whichever native files exist after
+each `dotnet build` via the `QlitemdNativeDir` property (override it if your
+build directory differs).
 
 ## Build and run
 

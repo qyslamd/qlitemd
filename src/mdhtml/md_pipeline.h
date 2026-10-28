@@ -17,6 +17,7 @@ struct MdRenderOptions {
   bool formula = true;
   bool mermaid = true;
   bool code_line_numbers = false;
+  MdAdmonitionMode admonition_mode = MdAdmonitionMode::kMpe;
   MdSvgProfile svg_profile = MdSvgProfile::kPortable;
 };
 

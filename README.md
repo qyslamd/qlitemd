@@ -66,7 +66,8 @@ A standalone zero-Qt console example is in
 ## Features
 
 - **GFM Markdown** — tables, task lists, strikethrough, autolinks,
-  admonitions and footnotes through md4c; raw HTML is preserved.
+  callouts/admonitions and footnotes through md4c; MPE callouts are the
+  default, GitHub admonitions remain selectable per render.
 - **Syntax highlighting** — native tree-sitter with 12 grammar languages
   (bash, batch, c, cpp, css, go, html, java, javascript, json, python,
   rust); the example renders per-line spans so line numbers stay aligned.

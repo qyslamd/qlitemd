@@ -34,6 +34,7 @@ TEST(ReaderAppearanceCssTest, PrototypeMeasureLandsOnTextBlocks) {
   const QString css = ReaderAppearanceCss(preferences, true);
   EXPECT_TRUE(css.contains(QStringLiteral("blockquote")));
   EXPECT_TRUE(css.contains(QStringLiteral(".admonition-important")));
+  EXPECT_TRUE(css.contains(QStringLiteral(".callout")));
   EXPECT_TRUE(css.contains(QStringLiteral("section.footnotes")));
   EXPECT_TRUE(css.contains(QStringLiteral("max-width: 900px")));
   EXPECT_FALSE(css.contains(QStringLiteral(".md-page")));

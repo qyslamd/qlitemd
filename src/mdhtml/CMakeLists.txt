@@ -65,6 +65,8 @@ endif()
 add_library(${MDHTML_TARGET} STATIC
     md_assembler.cpp
     md_assembler.h
+    md_callout.cpp
+    md_callout.h
     md_font_metrics.cpp
     md_font_metrics.h
     md_formula.cpp

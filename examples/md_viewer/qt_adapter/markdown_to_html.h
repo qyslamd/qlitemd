@@ -67,7 +67,9 @@ using MarkdownRenderResolver =
 
 // 同步解析：抽公式、跑 md4c、收集代码块。extract_math=false 时 $…$ 原样
 // 保留，不产生公式段
-MarkdownParseResult ParseMarkdown(const QString& markdown, bool extract_math);
+MarkdownParseResult ParseMarkdown(
+    const QString& markdown, bool extract_math,
+    MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe);
 
 // 用已渲染结果组装最终 HTML；不触发任何渲染
 QString AssembleMarkdown(const MarkdownParseResult& parsed,

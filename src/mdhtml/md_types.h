@@ -7,6 +7,11 @@
 
 enum class MdTheme { Light, Dark };
 
+enum class MdAdmonitionMode {
+  kGithub = 0,  // md4c's GitHub admonitions
+  kMpe = 1,     // MPE callouts (inline text is the title)
+};
+
 struct MdColor {
   uint8_t r = 0;
   uint8_t g = 0;

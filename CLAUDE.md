@@ -35,6 +35,10 @@ Qt 适配层（examples/md_viewer/qt_adapter）
 - 对外接口：`qlitemd_mdhtml`（静态 C++）与 `qlitemd_mdhtml_c`
   （共享 C ABI，异步 job、进度/取消、代码块与大纲访问器）；
   `examples/avalonia_mdhtml` 用 P/Invoke 验证 C ABI 可被非 C++ GUI 调用
+- Admonition：默认 MPE Callout（标记后同行文字是标题，支持 note/info/
+  tip/important/warning/caution/danger/success/question）；可按渲染切到
+  GitHub Admonition（标记单独成行，标题为类型名，仅五种）。MPE 模式的
+  折叠语法 `[!note]+/-` 不支持
 - 自有代码许可证：MIT；第三方许可见 `NOTICE`
 
 ## 关于作者与 AI

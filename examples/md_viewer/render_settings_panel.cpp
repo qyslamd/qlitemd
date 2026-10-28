@@ -170,6 +170,22 @@ void RenderSettingsPanel::initUi() {
   AddSwitchRow(content, content_card, QStringLiteral("Mermaid 渲染"),
                mermaid_rendering_,
                QStringLiteral("关闭后 mermaid 围栏退回代码块"));
+  content->addWidget(
+      new QLabel(QStringLiteral("Admonition 样式"), content_card));
+  admonition_mode_ = new QComboBox(content_card);
+  admonition_mode_->setObjectName(QStringLiteral("admonitionModeCombo"));
+  admonition_mode_->setToolTip(
+      QStringLiteral("MPE：标记后同一行文字作为标题，支持 info 等更多类型；"
+                     "GitHub：标记须单独成行，仅支持五种类型"));
+  admonition_mode_->addItem(QStringLiteral("MPE Callout（默认）"),
+                            static_cast<int>(MarkdownAdmonitionMode::kMpe));
+  admonition_mode_->addItem(QStringLiteral("GitHub Admonition"),
+                            static_cast<int>(MarkdownAdmonitionMode::kGithub));
+  const int admonition_index =
+      admonition_mode_->findData(static_cast<int>(view_->admonition_mode()));
+  admonition_mode_->setCurrentIndex(admonition_index >= 0 ? admonition_index
+                                                          : 0);
+  content->addWidget(admonition_mode_);
   outer->addWidget(content_card);
 
   // 持久缓存
@@ -303,6 +319,14 @@ void RenderSettingsPanel::initSignals() {
           });
   connect(transparent_reading_, &QCheckBox::toggled, this,
           &RenderSettingsPanel::transparentReadingChanged);
+  connect(admonition_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            if (index < 0) {
+              return;
+            }
+            view_->SetAdmonitionMode(static_cast<MarkdownAdmonitionMode>(
+                admonition_mode_->itemData(index).toInt()));
+          });
   connect(code_line_numbers_, &QCheckBox::toggled, view_,
           &MarkdownView::SetCodeLineNumbers);
   connect(formula_rendering_, &QCheckBox::toggled, view_,
