@@ -83,6 +83,51 @@ blockquote {
   color: #9da7b3;
 }
 
+.admonition-note,
+.admonition-tip,
+.admonition-important,
+.admonition-warning,
+.admonition-caution {
+  border-left: 3px solid #3d444d;
+  border-radius: 0 8px 8px 0;
+  background: #161b22;
+  margin: 18px 0;
+  padding: 10px 16px;
+  max-width: 760px;
+}
+
+.admonition-title {
+  margin: 0 0 6px 0;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.admonition-note { border-left-color: #4cc2ff; background: #12283c; }
+.admonition-note .admonition-title { color: #4cc2ff; }
+.admonition-tip { border-left-color: #3fb950; background: #0f2417; }
+.admonition-tip .admonition-title { color: #3fb950; }
+.admonition-important { border-left-color: #ab7df8; background: #1e1233; }
+.admonition-important .admonition-title { color: #ab7df8; }
+.admonition-warning { border-left-color: #d29922; background: #2b2100; }
+.admonition-warning .admonition-title { color: #d29922; }
+.admonition-caution { border-left-color: #f85149; background: #2d1113; }
+.admonition-caution .admonition-title { color: #f85149; }
+
+section.footnotes {
+  display: block;
+  max-width: 760px;
+  margin-top: 28px;
+  border-top: 1px solid #30363d;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #9da7b3;
+}
+
+section.footnotes ol { margin: 8px 0 0 0; padding-left: 24px; }
+section.footnotes li { margin: 4px 0; }
+.footnote-backref { text-decoration: none; margin-left: 4px; }
+sup { font-size: 75%; line-height: 0; }
+
 table {
   width: 100%;
   border-collapse: collapse;

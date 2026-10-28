@@ -1,9 +1,9 @@
 
 # MD4C Readme
 
-* Home: http://github.com/mity/md4c
-* Wiki: http://github.com/mity/md4c/wiki
-* Issue tracker: http://github.com/mity/md4c/issues
+* Home: https://github.com/mity/md4c
+* Wiki: https://github.com/mity/md4c/wiki
+* Issue tracker: https://github.com/mity/md4c/issues
 
 MD4C stands for "Markdown for C" and that's exactly what this project is about.
 
@@ -13,8 +13,8 @@ MD4C stands for "Markdown for C" and that's exactly what this project is about.
 In short, Markdown is the markup language this `README.md` file is written in.
 
 The following resources can explain more if you are unfamiliar with it:
-* [Wikipedia article](http://en.wikipedia.org/wiki/Markdown)
-* [CommonMark site](http://commonmark.org)
+* [Wikipedia article](https://en.wikipedia.org/wiki/Markdown)
+* [CommonMark site](https://commonmark.org)
 
 
 ## What is MD4C
@@ -22,7 +22,7 @@ The following resources can explain more if you are unfamiliar with it:
 MD4C is a Markdown parser implementation in C, with the following features:
 
 * **Compliance:** Generally, MD4C aims to be compliant to the latest version of
-  [CommonMark specification](http://spec.commonmark.org/). Currently, we are
+  [CommonMark specification](https://spec.commonmark.org/). Currently, we are
   fully compliant to CommonMark 0.31.
 
 * **Extensions:** MD4C supports some commonly requested and accepted extensions.
@@ -87,41 +87,79 @@ chunks into a buffer or writes them to a file.
 ## Markdown Extensions
 
 The default behavior is to recognize only Markdown syntax defined by the
-[CommonMark specification](http://spec.commonmark.org/).
+[CommonMark specification](https://spec.commonmark.org/).
 
 However, with appropriate flags, the behavior can be tuned to enable some
 extensions:
 
+* With the flag `MD_FLAG_ADMONITIONS`, GitHub-style admonitions are recognized.
+
 * With the flag `MD_FLAG_COLLAPSEWHITESPACE`, a non-trivial whitespace is
   collapsed into a single space.
+
+* With the flag `MD_FLAG_FOOTNOTES`, footnote references and definitions are
+  supported (e.g. `[^note]` and `[^note]: Footnote text`). Referenced
+  definitions are emitted at the end of the document in first-reference order.
+
+* With the flag `MD_FLAG_HARD_SOFT_BREAKS`, all soft breaks (newlines) in the
+  Markdown input are treated as hard breaks (i.e. as `<br>` in HTML output).
+
+* With the flag `MD_FLAG_HIGHLIGHT`, highlight spans are enabled
+  (text enclosed in double equals marks, e.g. `==important==`). The HTML
+  renderer outputs `<mark>`.
+
+* With the flag `MD_FLAG_INSERT`, insert spans are enabled
+  (text enclosed in double plus marks, e.g. `++foo bar++`). The HTML
+  renderer outputs `<ins>`.
+
+* With the flag `MD_FLAG_LATEXMATHSPANS`, LaTeX math spans (`$...$`) and
+  LaTeX display math spans (`$$...$$`) are supported. (Note though that the
+  HTML renderer outputs them verbatim in a custom tag `<x-equation>`.)
+
+* With the flag `MD_FLAG_PERMISSIVEATXHEADERS`, the delimiting space is
+  not required with ATX headers
+
+* With the flag `MD_FLAG_PERMISSIVEEMAILAUTOLINKS`, permissive e-mail
+  autolinks (not enclosed in `<` and `>`) are supported.
+
+* With the flag `MD_FLAG_PERMISSIVEURLAUTOLINKS`, permissive URL autolinks
+  (not enclosed in `<` and `>`) are supported.
+
+* With the flag `MD_FLAG_PERMISSIVEWWWAUTOLINKS`, permissive WWW autolinks
+  without any scheme specified (e.g. `www.example.com`) are supported. MD4C
+  then assumes `http:` scheme.
+
+* With the flag `MD_FLAG_PRESERVEBLANKLINES`, each run of blank lines between
+  blocks is reported as a `MD_BLOCK_BLANK` carrying the number of blank lines,
+  instead of being collapsed into a single block boundary. This is a deviation
+  from CommonMark, intended for WYSIWYG-like applications.
+
+* With the flag `MD_FLAG_SPOILERS`, spoiler spans are enabled
+  (text enclosed in double pipe marks, e.g. `||hidden text||`). (Note that
+  the HTML renderer outputs them in a custom tag `<x-spoiler>`.)
+
+* With the flag `MD_FLAG_STRIKETHROUGH`, strike-through spans are enabled
+  (text enclosed in tilde marks, e.g. `~~foo bar~~`).
+
+* With the flag `MD_FLAG_SUBSCRIPTS`, subscript spans are enabled
+  (text enclosed in single tilde marks, e.g. `H~2~O`). The HTML renderer
+  outputs `<sub>`. When used together with `MD_FLAG_STRIKETHROUGH`, single
+  tilde renders as subscript and double tilde `~~text~~` as strikethrough.
+
+* With the flag `MD_FLAG_SUPERSCRIPTS`, superscript spans are enabled
+  (text enclosed in caret marks, e.g. `x^2^`). The HTML renderer outputs
+  `<sup>`.
 
 * With the flag `MD_FLAG_TABLES`, GitHub-style tables are supported.
 
 * With the flag `MD_FLAG_TASKLISTS`, GitHub-style task lists are supported.
 
-* With the flag `MD_FLAG_STRIKETHROUGH`, strike-through spans are enabled
-  (text enclosed in tilde marks, e.g. `~foo bar~`).
-
-* With the flag `MD_FLAG_PERMISSIVEURLAUTOLINKS` permissive URL autolinks
-  (not enclosed in `<` and `>`) are supported.
-
-* With the flag `MD_FLAG_PERMISSIVEEMAILAUTOLINKS`, permissive e-mail
-  autolinks (not enclosed in `<` and `>`) are supported.
-
-* With the flag `MD_FLAG_PERMISSIVEWWWAUTOLINKS` permissive WWW autolinks
-  without any scheme specified (e.g. `www.example.com`) are supported. MD4C
-  then assumes `http:` scheme.
-
-* With the flag `MD_FLAG_LATEXMATHSPANS` LaTeX math spans (`$...$`) and
-  LaTeX display math spans (`$$...$$`) are supported. (Note though that the
-  HTML renderer outputs them verbatim in a custom tag `<x-equation>`.)
+* With the flag `MD_FLAG_UNDERLINE`, underscore (`_`) denotes an underline
+  instead of an ordinary emphasis or strong emphasis.
 
 * With the flag `MD_FLAG_WIKILINKS`, wiki-style links (`[[link label]]` and
   `[[target article|link label]]`) are supported. (Note that the HTML renderer
   outputs them in a custom tag `<x-wikilink>`.)
-
-* With the flag `MD_FLAG_UNDERLINE`, underscore (`_`) denotes an underline
-  instead of an ordinary emphasis or strong emphasis.
 
 Few features of CommonMark (those some people see as mis-features) may be
 disabled with the following flags:
@@ -200,7 +238,7 @@ preprocessor macros (as specified at the time MD4C is being built):
 The API of the parser is quite well documented in the comments in the `md4c.h`.
 Similarly, the markdown-to-html API is described in its header `md4c-html.h`.
 
-There is also a [project wiki](http://github.com/mity/md4c/wiki) which provides
+There is also a [project wiki](https://github.com/mity/md4c/wiki) which provides
 some more comprehensive documentation. However, note it is incomplete and some
 details may be somewhat outdated.
 
@@ -256,7 +294,7 @@ If you need to validate that the input is, say, a well-formed UTF-8 document,
 you have to do it on your own. The easiest way to do this is to simply validate
 the whole document before passing it to the MD4C parser.
 
-**Q: MD4C does not work with zero-terminated strings. Why?**
+**Q: MD4C's API does not expect/produce zero-terminated strings. Why?**
 
 **A:** There are two reasons: correctness and performance.
 
@@ -281,23 +319,30 @@ MD4C is covered with MIT license, see the file `LICENSE.md`.
 
 ## Links to Related Projects
 
-Ports and bindings to other languages:
+Bindings:
 
-* [commonmark-d](https://github.com/AuburnSounds/commonmark-d):
-  Port of MD4C to D language.
-
-* [markdown-wasm](https://github.com/rsms/markdown-wasm):
-  Port of MD4C to WebAssembly.
+* [md4c gem](https://codeberg.org/gemmaro/ruby-md4c):
+  Ruby bindings.
 
 * [md4lean](https://github.com/acmepjz/md4lean):
-  [Lean](https://lean-lang.org/) bindings for MD4C.
+  [Lean](https://lean-lang.org/) bindings.
 
 * [PECL MD4C](https://pecl.php.net/package/md4c):
-  PHP bindings for MD4C.
+  PHP bindings.
 
 * [PyMD4C](https://github.com/dominickpastore/pymd4c):
-  Python bindings for MD4C.
+  Python bindings.
 
+Ports:
+
+* [commonmark-d](https://github.com/AuburnSounds/commonmark-d):
+  Port to D language.
+
+* [markdown-wasm](https://github.com/rsms/markdown-wasm):
+  Port to WebAssembly.
+
+* [Microsoft.UI.Reactor](https://github.com/microsoft/microsoft-ui-reactor):
+  Includes port to C#.
 
 Software using MD4C:
 
@@ -305,7 +350,7 @@ Software using MD4C:
   Markdown renderer for [Dear ImGui](https://github.com/ocornut/imgui).
 
 * [LibreOffice](https://www.libreoffice.org/):
-  An open source office suite.
+  An open-source office suite.
 
 * [lnav](https://lnav.org/):
   A log file viewer for the terminal that can also render markdown.
@@ -313,8 +358,17 @@ Software using MD4C:
 * [MarkDown Monolith Assembler](https://github.com/1Hyena/mdma):
   A command line tool for building browser-based books.
 
+* [Marknote](https://github.com/KDE/marknote):
+  A simple markdown note management app for KDE.
+
+* [mdview](https://www.mdview.top/):
+  A markdown viewer and editor for Windows, MacOS and Android.
+
 * [Mdview MTX](https://github.com/step-/mdview):
   GTK markdown viewer and CLI converter.
+
+* [ONLYOFFICE](https://www.onlyoffice.com/)
+  An open-source office suite.
 
 * [QOwnNotes](https://www.qownnotes.org/):
   A plain-text file notepad and todo-list manager with markdown support and
@@ -322,6 +376,9 @@ Software using MD4C:
 
 * [Qt](https://www.qt.io/):
   Cross-platform C++ GUI framework.
+
+* [react-native-enriched-markdown](https://github.com/software-mansion-labs/react-native-enriched-markdown):
+  A React Native markdown renderer powered by MD4C.
 
 * [Textosaurus](https://github.com/martinrotter/textosaurus):
   Cross-platform text editor based on Qt and Scintilla.

@@ -1,8 +1,8 @@
 /*
  * MD4C: Markdown parser for C
- * (http://github.com/mity/md4c)
+ * (https://github.com/mity/md4c)
  *
- * Copyright (c) 2016-2024 Martin Mitáš
+ * Copyright (c) 2016-2026 Martin Mitáš
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -73,7 +73,7 @@ membuf_init(struct membuffer* buf, MD_SIZE new_asize)
     buf->data = malloc(buf->asize);
     if(buf->data == NULL) {
         fprintf(stderr, "membuf_init: malloc() failed.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -90,7 +90,7 @@ membuf_grow(struct membuffer* buf, size_t new_asize)
     buf->data = realloc(buf->data, new_asize);
     if(buf->data == NULL) {
         fprintf(stderr, "membuf_grow: realloc() failed.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     buf->asize = new_asize;
 }
@@ -98,8 +98,16 @@ membuf_grow(struct membuffer* buf, size_t new_asize)
 static void
 membuf_append(struct membuffer* buf, const char* data, MD_SIZE size)
 {
-    if(buf->asize < buf->size + size)
-        membuf_grow(buf, buf->size + buf->size / 2 + size);
+    if(size > (size_t)-1 - buf->size) {
+        fprintf(stderr, "membuf_append: size overflow.\n");
+        exit(EXIT_FAILURE);
+    }
+    if(buf->asize < buf->size + size) {
+        size_t new_asize = buf->size + buf->size / 2 + size;
+        if(new_asize < buf->size + size)
+            new_asize = buf->size + size;
+        membuf_grow(buf, new_asize);
+    }
     memcpy(buf->data + buf->size, data, size);
     buf->size += size;
 }
@@ -143,8 +151,9 @@ process_file(const char* in_path, FILE* in, FILE* out)
      * deal with the HTML header/footer and tags. */
     membuf_init(&buf_out, (MD_SIZE)(buf_in.size + buf_in.size/8 + 64));
 
-    /* Special mode for reproduce test case found with fuzzing a tool.
-     * We assume file format as produced by test/fuzzers/fuzz-mdhtml.c. */
+    /* Special mode for reproducing a test case found with a fuzzing tool.
+     * We assume file the same file format as produced by the fuzzer implemented
+     * in test/fuzzers/fuzz-mdhtml.c. */
     if(want_replay_fuzz) {
         if(buf_in.size < 2 * sizeof(unsigned)) {
             fprintf(stderr, "File %s isn't valid fuzz test case.\n", in_path);
@@ -152,18 +161,14 @@ process_file(const char* in_path, FILE* in, FILE* out)
             goto out;
         }
 
-        /* Override parser and renderer flags with those form the test case. */
+        /* Override parser and renderer flags with those from the test case. */
         p_flags = ((unsigned*)buf_in.data)[0];
-        r_flags = ((unsigned*)buf_in.data)[1];
+        r_flags = ((unsigned*)buf_in.data)[1] | MD_HTML_FLAG_DEBUG;
 
         /* And get rid of them from the text input to the parser. */
         memmove(buf_in.data, buf_in.data + 2 * sizeof(unsigned),
                     buf_in.size - 2 * sizeof(unsigned));
         buf_in.size -= 2 * sizeof(unsigned);
-
-        /* Zero the tail we have moved the contents from.
-         * It helps in debugging if make it actually a zero-terminated string. */
-        memset(buf_in.data + buf_in.size, 0, 2 * sizeof(unsigned));
     }
 
     /* Parse the document. This shall call our callbacks provided via the
@@ -244,16 +249,25 @@ static const CMDLINE_OPTION cmdline_options[] = {
 
     {  0,  "commonmark",                    'c', 0 },
     {  0,  "github",                        'g', 0 },
+    {  0,  "gfm",                           'g', 0 },
 
+    {  0,  "fadmonitions",                  'D', 0 },
     {  0,  "fcollapse-whitespace",          'W', 0 },
+    {  0,  "ffootnotes",                    'N', 0 },
+    {  0,  "fhard-soft-breaks",             'B', 0 },
+    {  0,  "fhighlight",                    'M', 0 },
+    {  0,  "finsert",                       'C', 0 },
     {  0,  "flatex-math",                   'L', 0 },
     {  0,  "fpermissive-atx-headers",       'A', 0 },
     {  0,  "fpermissive-autolinks",         'V', 0 },
-    {  0,  "fhard-soft-breaks",             'B', 0 },
     {  0,  "fpermissive-email-autolinks",   '@', 0 },
     {  0,  "fpermissive-url-autolinks",     'U', 0 },
     {  0,  "fpermissive-www-autolinks",     '.', 0 },
+    {  0,  "fpreserve-blank-lines",         'Y', 0 },
+    {  0,  "fspoilers",                     'P', 0 },
     {  0,  "fstrikethrough",                'S', 0 },
+    {  0,  "fsubscripts",                   '~', 0 },
+    {  0,  "fsuperscripts",                 '^', 0 },
     {  0,  "ftables",                       'T', 0 },
     {  0,  "ftasklists",                    'X', 0 },
     {  0,  "funderline",                    '_', 0 },
@@ -289,26 +303,36 @@ usage(void)
         "Markdown dialect options:\n"
         "(note these are equivalent to some combinations of the flags below)\n"
         "      --commonmark     CommonMark (this is default)\n"
-        "      --github         Github Flavored Markdown\n"
+        "      --gfm            Github Flavored Markdown\n"
+        "      --github         Same as --gfm\n"
         "\n"
         "Markdown extension options:\n"
+        "      --fadmonitions   Enable admonitions\n"
         "      --fcollapse-whitespace\n"
         "                       Collapse non-trivial whitespace\n"
+        "      --ffootnotes     Enable footnote references ([^label])\n"
+        "      --fhard-soft-breaks\n"
+        "                       Force all soft breaks to act as hard breaks\n"
+        "      --fhighlight     Enable highlight spans (==text==)\n"
+        "      --finsert        Enable insert spans (++text++)\n"
         "      --flatex-math    Enable LaTeX style mathematics spans\n"
         "      --fpermissive-atx-headers\n"
         "                       Allow ATX headers without delimiting space\n"
+        "      --fpermissive-email-autolinks  \n"
+        "                       Allow e-mail autolinks without '<', '>' and 'mailto:'\n"
         "      --fpermissive-url-autolinks\n"
         "                       Allow URL autolinks without '<', '>'\n"
         "      --fpermissive-www-autolinks\n"
         "                       Allow WWW autolinks without any scheme (e.g. 'www.example.com')\n"
-        "      --fpermissive-email-autolinks  \n"
-        "                       Allow e-mail autolinks without '<', '>' and 'mailto:'\n"
         "      --fpermissive-autolinks\n"
-        "                       Same as --fpermissive-url-autolinks --fpermissive-www-autolinks\n"
-        "                       --fpermissive-email-autolinks\n"
-        "      --fhard-soft-breaks\n"
-        "                       Force all soft breaks to act as hard breaks\n"
-        "      --fstrikethrough Enable strike-through spans\n"
+        "                       Same as --fpermissive-email-autolinks --fpermissive-url-autolinks\n"
+        "                       --fpermissive-www-autolinks\n"
+        "      --fpreserve-blank-lines\n"
+        "                       Render extra blank lines between blocks as <br>\n"
+        "      --fspoilers      Enable spoiler spans (||hidden text||)\n"
+        "      --fstrikethrough Enable strike-through spans (~~text~~)\n"
+        "      --fsubscripts    Enable subscript spans (~text~)\n"
+        "      --fsuperscripts  Enable superscript spans (^text^)\n"
         "      --ftables        Enable tables\n"
         "      --ftasklists     Enable task lists\n"
         "      --funderline     Enable underline spans\n"
@@ -351,7 +375,7 @@ cmdline_callback(int opt, char const* value, void* data)
             if(input_path) {
                 fprintf(stderr, "Too many arguments. Only one input file can be specified.\n");
                 fprintf(stderr, "Use --help for more info.\n");
-                exit(1);
+                exit(EXIT_FAILURE);
             }
             input_path = value;
             break;
@@ -361,8 +385,8 @@ cmdline_callback(int opt, char const* value, void* data)
         case 'x':   want_xhtml = 1; renderer_flags |= MD_HTML_FLAG_XHTML; break;
         case 's':   want_stat = 1; break;
         case 'r':   want_replay_fuzz = 1; break;
-        case 'h':   usage(); exit(0); break;
-        case 'v':   version(); exit(0); break;
+        case 'h':   usage(); exit(EXIT_SUCCESS); break;
+        case 'v':   version(); exit(EXIT_SUCCESS); break;
 
         case '1':   html_title = value; break;
         case '2':   css_path = value; break;
@@ -370,7 +394,10 @@ cmdline_callback(int opt, char const* value, void* data)
         case 'c':   parser_flags |= MD_DIALECT_COMMONMARK; break;
         case 'g':   parser_flags |= MD_DIALECT_GITHUB; break;
 
+        case 'D':   parser_flags |= MD_FLAG_ADMONITIONS; break;
         case 'E':   renderer_flags |= MD_HTML_FLAG_VERBATIM_ENTITIES; break;
+        case 'M':   parser_flags |= MD_FLAG_HIGHLIGHT; break;
+        case 'C':   parser_flags |= MD_FLAG_INSERT; break;
         case 'A':   parser_flags |= MD_FLAG_PERMISSIVEATXHEADERS; break;
         case 'I':   parser_flags |= MD_FLAG_NOINDENTEDCODEBLOCKS; break;
         case 'F':   parser_flags |= MD_FLAG_NOHTMLBLOCKS; break;
@@ -382,17 +409,22 @@ cmdline_callback(int opt, char const* value, void* data)
         case '@':   parser_flags |= MD_FLAG_PERMISSIVEEMAILAUTOLINKS; break;
         case 'V':   parser_flags |= MD_FLAG_PERMISSIVEAUTOLINKS; break;
         case 'T':   parser_flags |= MD_FLAG_TABLES; break;
+        case 'P':   parser_flags |= MD_FLAG_SPOILERS; break;
         case 'S':   parser_flags |= MD_FLAG_STRIKETHROUGH; break;
+        case '^':   parser_flags |= MD_FLAG_SUPERSCRIPTS; break;
+        case '~':   parser_flags |= MD_FLAG_SUBSCRIPTS; break;
         case 'L':   parser_flags |= MD_FLAG_LATEXMATHSPANS; break;
         case 'K':   parser_flags |= MD_FLAG_WIKILINKS; break;
         case 'X':   parser_flags |= MD_FLAG_TASKLISTS; break;
         case '_':   parser_flags |= MD_FLAG_UNDERLINE; break;
+        case 'N':   parser_flags |= MD_FLAG_FOOTNOTES; break;
         case 'B':   parser_flags |= MD_FLAG_HARD_SOFT_BREAKS; break;
+        case 'Y':   parser_flags |= MD_FLAG_PRESERVEBLANKLINES; break;
 
         default:
             fprintf(stderr, "Illegal option: %s\n", value);
             fprintf(stderr, "Use --help for more info.\n");
-            exit(1);
+            exit(EXIT_FAILURE);
             break;
     }
 
@@ -408,21 +440,21 @@ main(int argc, char** argv)
 
     if(cmdline_read(cmdline_options, argc, argv, cmdline_callback, NULL) != 0) {
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if(input_path != NULL && strcmp(input_path, "-") != 0) {
         in = fopen(input_path, "rb");
         if(in == NULL) {
             fprintf(stderr, "Cannot open %s.\n", input_path);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
     if(output_path != NULL && strcmp(output_path, "-") != 0) {
         out = fopen(output_path, "wt");
         if(out == NULL) {
             fprintf(stderr, "Cannot open %s.\n", output_path);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
 

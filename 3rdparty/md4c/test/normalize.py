@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from html.parser import HTMLParser
-import urllib
+from urllib.parse import quote, unquote
 
 try:
     from html.parser import HTMLParseError
@@ -18,7 +18,7 @@ import html
 # Normalization code, adapted from
 # https://github.com/karlcow/markdown-testsuite/
 significant_attrs = ["alt", "href", "src", "title"]
-whitespace_re = re.compile('\s+')
+whitespace_re = re.compile(r"\s+")
 class MyHTMLParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -64,7 +64,7 @@ class MyHTMLParser(HTMLParser):
                 self.output += " " + k
                 if v in ['href','src']:
                     self.output += ("=" + '"' +
-                            urllib.quote(urllib.unquote(v), safe='/') + '"')
+                            quote(unquote(v), safe='/') + '"')
                 elif v != None:
                     self.output += ("=" + '"' + html.escape(v,quote=True) + '"')
         self.output += ">"
@@ -176,7 +176,7 @@ def normalize_html(html):
         '\u2200&amp;&gt;&lt;&quot;'
 
     """
-    html_chunk_re = re.compile("(\<!\[CDATA\[.*?\]\]\>|\<[^>]*\>|[^<]+)")
+    html_chunk_re = re.compile(r"(\<!\[CDATA\[.*?\]\]\>|\<[^>]*\>|[^<]+)")
     try:
         parser = MyHTMLParser()
         # We work around HTMLParser's limitations parsing CDATA

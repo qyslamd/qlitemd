@@ -8,8 +8,8 @@
 // 再按这四字符重转义，所以两边产物可以互相接续
 QString EscapeHtml(const QString& text);
 
-// EscapeHtml 的逆操作。解码集是 md4c 产物（&amp; &lt; &gt; &quot;）加上
-// 原始 HTML 直通时可能出现的撇号实体（&#39; / &apos;）
+// EscapeHtml 的逆操作。解码集是 md4c 产物（&amp; &lt; &gt; &quot; &#x27;）
+// 加上原始 HTML 直通时可能出现的撇号实体（&#39; / &apos;）
 QString UnescapeHtml(const QString& text);
 
 #endif  // FILE_MARKDOWN_HTML_ESCAPE_H_

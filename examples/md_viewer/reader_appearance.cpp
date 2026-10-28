@@ -105,8 +105,11 @@ QString ReaderAppearanceCss(const ReaderPreferences& preferences,
                                     qBound(480, preferences.measure_px, 1600));
     if (prototype_layout) {
       rules.append(
-          QStringLiteral("h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote { "
-                         "max-width: %1; }")
+          QStringLiteral(
+              "h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, "
+              ".admonition-note, .admonition-tip, .admonition-important, "
+              ".admonition-warning, .admonition-caution, section.footnotes "
+              "{ max-width: %1; }")
               .arg(width));
     } else {
       rules.append(QStringLiteral(".md-page { max-width: %1; }").arg(width));

@@ -65,8 +65,8 @@ A standalone zero-Qt console example is in
 
 ## Features
 
-- **GFM Markdown** — tables, task lists, strikethrough and autolinks through
-  md4c; raw HTML is preserved.
+- **GFM Markdown** — tables, task lists, strikethrough, autolinks,
+  admonitions and footnotes through md4c; raw HTML is preserved.
 - **Syntax highlighting** — native tree-sitter with 12 grammar languages
   (bash, batch, c, cpp, css, go, html, java, javascript, json, python,
   rust); the example renders per-line spans so line numbers stay aligned.
@@ -327,7 +327,7 @@ maintainers and contributors.
 | --- | --- | --- | --- |
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
-| [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown parser | MIT |
+| [md4c](https://github.com/mity/md4c) | 0.6.0 | Markdown parser | MIT |
 | [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (Mermaid default; formula fallback) | MIT |
 | [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | TeX to SVG (Windows) | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |

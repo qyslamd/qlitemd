@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import re
 import argparse
+import itertools
+import multiprocessing
+import re
 import sys
-import platform
+import queue
 from prog import Prog
 from timeit import default_timer as timer
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run Markdown tests.')
-    parser.add_argument('-p', '--program', dest='program', nargs='?', default=None,
-            help='program to test')
-    args = parser.parse_args(sys.argv[1:])
 
 # list of pairs consisting of input and a regex that must match the output.
 pathological = {
@@ -37,10 +33,10 @@ pathological = {
             re.compile("(a<em><strong>a</strong></em>){32500}")),
     "many link closers with no openers":
             (("a]" * 65000),
-            re.compile("(a\]){65000}")),
+            re.compile(r"(a\]){65000}")),
     "many link openers with no closers":
             (("[a" * 65000),
-            re.compile("(\[a){65000}")),
+            re.compile(r"(\[a){65000}")),
     "mismatched openers and closers":
             (("*a_ " * 50000),
             re.compile("([*]a[_] ){49999}[*]a_")),
@@ -49,13 +45,13 @@ pathological = {
             re.compile("a[*][*]b(c[*] ){49999}c[*]")),
     "link openers and emph closers":
             (("[ a_" * 50000),
-            re.compile("(\[ a_){50000}")),
+            re.compile(r"(\[ a_){50000}")),
     "hard link/emph case":
             ("**x [a*b**c*](d)",
             re.compile("\\*\\*x <a href=\"d\">a<em>b\\*\\*c</em></a>")),
     "nested brackets":
             (("[" * 50000) + "a" + ("]" * 50000),
-            re.compile("\[{50000}a\]{50000}")),
+            re.compile(r"\[{50000}a\]{50000}")),
     "nested block quotes":
             ((("> " * 50000) + "a"),
             re.compile("(<blockquote>\r?\n){50000}")),
@@ -67,7 +63,7 @@ pathological = {
             re.compile("(<a href=\"/u\">t</a> ?){50000}")),
     "many references":
             ("".join(map(lambda x: ("[" + str(x) + "]: u\n"), range(1,20000 * 16))) + "[0] " * 20000,
-            re.compile("(\[0\] ){19999}")),
+            re.compile(r"(\[0\] ){19999}")),
     "deeply nested lists":
             ("".join(map(lambda x: ("  " * x + "* a\n"), range(0,1000))),
             re.compile("<ul>\r?\n(<li>a<ul>\r?\n){999}<li>a</li>\r?\n</ul>\r?\n(</li>\r?\n</ul>\r?\n){999}")),
@@ -85,13 +81,13 @@ pathological = {
             re.compile("(``){50000}")),
     "many broken link titles":
             (("[ (](" * 50000),
-            re.compile("(\[ \(\]\(){50000}")),
+            re.compile(r"(\[ \(\]\(){50000}")),
     "broken thematic break":
             (("* " * 50000 + "a"),
             re.compile("<ul>\r?\n(<li><ul>\r?\n){49999}<li>a</li>\r?\n</ul>\r?\n(</li>\r?\n</ul>\r?\n){49999}")),
     "nested invalid link references":
             (("[" * 50000 + "]" * 50000 + "\n\n[a]: /b"),
-            re.compile("\[{50000}\]{50000}")),
+            re.compile(r"\[{50000}\]{50000}")),
     "many broken permissive autolinks":
             (("www._" * 50000 + "x"),
             re.compile("<p>(www._){50000}x</p>"),
@@ -102,43 +98,87 @@ pathological = {
             "--ftables"),
     "many broken links":
             (("]([\n" * 50000),
-            re.compile("<p>(\]\(\[\r?\n){49999}\]\(\[</p>")),
+            re.compile(r"<p>(\]\(\[\r?\n){49999}\]\(\[</p>")),
     "many link ref. def. instantiations":
             (("[x]: " + "x" * 50000 + "\n[x]" * 50000),
-            re.compile(""))
+            re.compile("")),
+    "many nested footnotes references":
+            (("[^na]:\n\n" + "[^" * 50000 + "x" + "]" * 50000),
+            re.compile(r"<p>(\[\^){49999}.*\]{49999}</p>"),
+            "--ffootnotes"),
 }
 
 whitespace_re = re.compile('/s+/')
-passed = 0
-errored = 0
-failed = 0
 
-#print("Testing pathological cases:")
-for description in pathological:
-    if len(pathological[description]) == 2:
-        (inp, regex) = pathological[description]
-        prog = Prog(cmdline=args.program)
+def run_tests(args):
+    allowed_failures = {"many references": True}
+    TIMEOUT = 5
+
+    q = multiprocessing.Queue()
+    passed = []
+    errored = []
+    failed = []
+    ignored = []
+
+    #print("Testing pathological cases:")
+    for description in pathological:
+        if len(pathological[description]) == 2:
+            (inp, regex) = pathological[description]
+            prog = Prog(cmdline=args.program)
+        else:
+            (inp, regex, default_options) = pathological[description]
+            prog = Prog(cmdline=args.program, default_options=default_options)
+
+        start = timer()
+        p = multiprocessing.Process(
+            target=q.put(prog.to_html(inp)),
+            args=(q, inp, args.program))
+        end = timer()
+        p.start()
+        try:
+            # wait TIMEOUT seconds or until it finishes
+            rc, actual, err = q.get(True, TIMEOUT)
+            p.join()
+            if rc != 0:
+                print(description, '[ERRORED (return code %d)]' %rc)
+                print(err)
+                if description in allowed_failures:
+                    ignored.append(description)
+                else:
+                    errored.append(description)
+            elif regex.search(actual):
+                print('{:35} [PASSED] {:.3f} secs'.format(description, end-start))
+                passed.append(description)
+            else:
+                print(description, '[FAILED]')
+                print(repr(actual[:60]))
+                if description in allowed_failures:
+                    ignored.append(description)
+                else:
+                    failed.append(description)
+        except queue.Empty:
+            p.terminate()
+            p.join()
+            print(description, '[TIMEOUT]')
+            if description in allowed_failures:
+                ignored.append(description)
+            else:
+                errored.append(description)
+
+    print("%d passed, %d failed, %d errored" %
+          (len(passed), len(failed), len(errored)))
+    if ignored:
+        print("Ignoring these allowed failures:")
+        for x in ignored:
+            print(x)
+    if failed or errored:
+        exit(1)
     else:
-        (inp, regex, default_options) = pathological[description]
-        prog = Prog(cmdline=args.program, default_options=default_options)
+        exit(0)
 
-    start = timer()
-    [rc, actual, err] = prog.to_html(inp)
-    end = timer()
-    if rc != 0:
-        errored += 1
-        print('{:35} [ERRORED (exit code {})]'.format(description, rc))
-        print(err)
-    elif regex.search(actual):
-        print('{:35} [PASSED] {:.3f} secs'.format(description, end-start))
-        passed += 1
-    else:
-        print('{:35} [FAILED]'.format(description))
-        print(repr(actual))
-        failed += 1
-
-print("%d passed, %d failed, %d errored" % (passed, failed, errored))
-if (failed == 0 and errored == 0):
-    exit(0)
-else:
-    exit(1)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Run Markdown tests.')
+    parser.add_argument('-p', '--program', dest='program', nargs='?', default=None,
+                    help='program to test')
+    args = parser.parse_args(sys.argv[1:])
+    run_tests(args)

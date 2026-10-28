@@ -254,6 +254,7 @@ std::string UnescapeHtml(std::string_view text) {
   out = ReplaceAll(out, "&quot;", "\"");
   out = ReplaceAll(out, "&lt;", "<");
   out = ReplaceAll(out, "&gt;", ">");
+  out = ReplaceAll(out, "&#x27;", "'");
   out = ReplaceAll(out, "&#39;", "'");
   out = ReplaceAll(out, "&apos;", "'");
   // &amp; must be last so "&amp;lt;" is not decoded twice.

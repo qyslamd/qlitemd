@@ -61,8 +61,8 @@ SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
 
 ## 功能
 
-- **GFM Markdown**：通过 md4c 支持表格、任务列表、删除线和自动链接；
-  原始 HTML 原样保留。
+- **GFM Markdown**：通过 md4c 支持表格、任务列表、删除线、自动链接、
+  告警块（admonitions）和脚注（footnotes）；原始 HTML 原样保留。
 - **代码高亮**：highlight.js 在 QuickJS 中运行；示例按行拆分 span，
   保证行号对齐。
 - **公式**：MathJax（TeX 转 SVG 再转 QPixmap），支持行内 `$...$` 与
@@ -296,7 +296,7 @@ qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者
 | --- | --- | --- | --- |
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10（快照） | HTML/CSS 排版 | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0（快照） | Qt 控件桥接 | BSD-3-Clause |
-| [md4c](https://github.com/mity/md4c) | 0.5.3 | Markdown 解析 | MIT |
+| [md4c](https://github.com/mity/md4c) | 0.6.0 | Markdown 解析 | MIT |
 | [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript 运行时 | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | 随 litehtml 内置 | HTML5 解析 | Apache-2.0 |
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | 语法高亮 | BSD-3-Clause |

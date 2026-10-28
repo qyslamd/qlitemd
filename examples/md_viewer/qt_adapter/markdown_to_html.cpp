@@ -544,6 +544,7 @@ QString UnescapeHtml(const QString& text) {
   out.replace(QStringLiteral("&quot;"), QStringLiteral("\""));
   out.replace(QStringLiteral("&lt;"), QStringLiteral("<"));
   out.replace(QStringLiteral("&gt;"), QStringLiteral(">"));
+  out.replace(QStringLiteral("&#x27;"), QStringLiteral("'"));
   out.replace(QStringLiteral("&#39;"), QStringLiteral("'"));
   out.replace(QStringLiteral("&apos;"), QStringLiteral("'"));
   // &amp; 必须最后：先解它会把 "&amp;lt;" 变成 "&lt;"，再被上一条二次解码

@@ -83,6 +83,51 @@ blockquote {
   color: #565b63;
 }
 
+.admonition-note,
+.admonition-tip,
+.admonition-important,
+.admonition-warning,
+.admonition-caution {
+  border-left: 3px solid #d0d0d0;
+  border-radius: 0 8px 8px 0;
+  background: #f6f8fa;
+  margin: 18px 0;
+  padding: 10px 16px;
+  max-width: 760px;
+}
+
+.admonition-title {
+  margin: 0 0 6px 0;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.admonition-note { border-left-color: #0067c0; background: #e9f2fb; }
+.admonition-note .admonition-title { color: #0067c0; }
+.admonition-tip { border-left-color: #0f7b3f; background: #e6f6ec; }
+.admonition-tip .admonition-title { color: #0f7b3f; }
+.admonition-important { border-left-color: #7a3fd1; background: #f2ecfd; }
+.admonition-important .admonition-title { color: #6b2fb3; }
+.admonition-warning { border-left-color: #a76900; background: #fff4d6; }
+.admonition-warning .admonition-title { color: #8a5600; }
+.admonition-caution { border-left-color: #c42b1c; background: #fdeceb; }
+.admonition-caution .admonition-title { color: #b3261e; }
+
+section.footnotes {
+  display: block;
+  max-width: 760px;
+  margin-top: 28px;
+  border-top: 1px solid #e1e4e8;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #565b63;
+}
+
+section.footnotes ol { margin: 8px 0 0 0; padding-left: 24px; }
+section.footnotes li { margin: 4px 0; }
+.footnote-backref { text-decoration: none; margin-left: 4px; }
+sup { font-size: 75%; line-height: 0; }
+
 table {
   width: 100%;
   border-collapse: collapse;

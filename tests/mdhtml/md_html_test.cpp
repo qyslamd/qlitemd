@@ -58,6 +58,38 @@ TEST(MdHtmlTest, GfmTableAndTaskListSurvive) {
   EXPECT_NE(html.find("type=\"checkbox\""), std::string::npos);
 }
 
+TEST(MdHtmlTest, GfmAdmonitionGetsClassAndTitle) {
+  const MdParseResult parsed =
+      ParseMarkdown("> [!IMPORTANT]\n> Read this.\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<div class=\"admonition-important\">"),
+            std::string::npos);
+  EXPECT_NE(html.find("<p class=\"admonition-title\">important</p>"),
+            std::string::npos);
+  EXPECT_NE(html.find("<p>Read this.</p>"), std::string::npos);
+  EXPECT_EQ(html.find("[!IMPORTANT]"), std::string::npos);
+}
+
+TEST(MdHtmlTest, AdmonitionMarkerMustBeOnItsOwnLine) {
+  const MdParseResult parsed =
+      ParseMarkdown("> [!IMPORTANT] inline text\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<blockquote>"), std::string::npos);
+  EXPECT_NE(html.find("[!IMPORTANT] inline text"), std::string::npos);
+  EXPECT_EQ(html.find("admonition-important"), std::string::npos);
+}
+
+TEST(MdHtmlTest, GfmFootnoteGetsSectionAndBackref) {
+  const MdParseResult parsed =
+      ParseMarkdown("Text[^1].\n\n[^1]: Note.\n", false);
+  const std::string html = Assemble(parsed, ResolveNothing);
+  EXPECT_NE(html.find("<sup><a href=\"#fn-1\" id=\"fnref-1-1\">1</a></sup>"),
+            std::string::npos);
+  EXPECT_NE(html.find("<section class=\"footnotes\">"), std::string::npos);
+  EXPECT_NE(html.find("id=\"fn-1\""), std::string::npos);
+  EXPECT_NE(html.find("class=\"footnote-backref\""), std::string::npos);
+}
+
 TEST(MdHtmlTest, MathSegmentsAndRestore) {
   const MdParseResult parsed =
       ParseMarkdown("Inline $x^2$ and display $$y$$.\n", true);
@@ -120,6 +152,14 @@ TEST(MdHtmlTest, CodeBlockGetsFrameAndCopyId) {
             std::string::npos);
   EXPECT_NE(html.find("href=\"copy:0\""), std::string::npos);
   EXPECT_NE(html.find("<b>int x = 1;"), std::string::npos);
+}
+
+TEST(MdHtmlTest, CodeBlockDecodesMd4cSingleQuoteEntity) {
+  const MdParseResult parsed =
+      ParseMarkdown("```cpp\nchar c = 'x';\n```\n", false);
+  const std::string html = Assemble(parsed, EscapeOnly);
+  EXPECT_NE(html.find("char c = 'x';"), std::string::npos);
+  EXPECT_EQ(html.find("&#x27;"), std::string::npos);
 }
 
 TEST(MdHtmlTest, MermaidSinkAndFallback) {

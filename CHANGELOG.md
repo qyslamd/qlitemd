@@ -4,6 +4,9 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Upgrade md4c to 0.6.0 and enable its GFM admonitions (`> [!NOTE]`) and
+  footnotes (`[^1]`). Admonition markers must be alone on their blockquote
+  line; light/dark themes now style both features.
 - Default Mermaid rendering to mermaid.js in QuickJS for broader syntax
   coverage; `QLITEMD_MERMAID_BACKEND=merman` remains available. Windows
   builds now include QuickJS by default, while formulas still use RaTeX.

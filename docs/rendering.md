@@ -2,9 +2,11 @@
 
 ## Markdown to HTML
 
-md4c parses the source; raw HTML is preserved. The core extracts formula
-segments, collects GFM code blocks, emits code frames with copy links and
-optional line numbers, and adds heading ids plus `data-md-slug` anchors.
+md4c parses the source; raw HTML is preserved. The GFM dialect enables
+admonitions (`> [!NOTE]`) and footnotes (`[^1]`); admonition markers must be
+alone on their blockquote line. The core extracts formula segments, collects
+GFM code blocks, emits code frames with copy links and optional line numbers,
+and adds heading ids plus `data-md-slug` anchors.
 
 ## Formula and Mermaid
 
