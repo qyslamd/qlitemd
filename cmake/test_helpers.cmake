@@ -6,13 +6,13 @@ if(WIN32)
     set(QT_BIN_DIR "${_qlitemd_qt_prefix}/bin")
     set(QT_PLUGINS_DIR "${_qlitemd_qt_prefix}/plugins")
     set(TEST_ENV_QT
-        "PATH=${QT_BIN_DIR};${CMAKE_BINARY_DIR}/bin;$ENV{PATH}"
+        "PATH=${QT_BIN_DIR};${PROJECT_BINARY_DIR}/bin;$ENV{PATH}"
         "QT_PLUGIN_PATH=${QT_PLUGINS_DIR}")
 else()
     set(TEST_ENV_QT "")
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/tests)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin/tests)
 set(TEST_DEFAULT_TIMEOUT 10 CACHE STRING "Default test timeout in seconds")
 
 macro(add_unit_test)
@@ -50,7 +50,7 @@ macro(add_unit_test)
     endif()
 
     add_test(NAME ${ETEST_NAME} COMMAND ${ETEST_NAME}
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
     set_tests_properties(${ETEST_NAME} PROPERTIES
         TIMEOUT ${TEST_DEFAULT_TIMEOUT}
         LABELS "${ETEST_LABELS}"

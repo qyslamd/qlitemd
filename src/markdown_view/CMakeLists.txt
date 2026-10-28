@@ -1,4 +1,4 @@
-set(TARGET_NAME ${APP_TARGET_PREFIX}_markdown)
+set(TARGET_NAME qlitemd_markdown_view)
 
 set(TARGET_SRCS
     code_highlighter.cpp
@@ -70,7 +70,7 @@ if(NOT TARGET qjsc)
     message(FATAL_ERROR
         "qjsc 目标不存在：markdown 的 JS 载荷需要在构建期用 qjsc 预编译成"
         "字节码（本模块链接它的产物）。确认 3rdparty/quickjs-ng 的"
-        " add_subdirectory 先于 qt_adapter。")
+        " add_subdirectory 先于 markdown_view。")
 endif()
 set(QJSC_CMD "$<TARGET_FILE:qjsc>")
 set(MARKDOWN_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")
@@ -82,7 +82,7 @@ foreach(entry "md_mj:mathjax-svg.min.js"
     string(REPLACE ":" ";" parts "${entry}")
     list(GET parts 0 symbol)
     list(GET parts 1 filename)
-    set(js_file "${CMAKE_SOURCE_DIR}/resources/${filename}")
+    set(js_file "${PROJECT_SOURCE_DIR}/resources/${filename}")
     set(c_file "${MARKDOWN_BYTECODE_DIR}/${symbol}.c")
     add_custom_command(
         OUTPUT "${c_file}"
@@ -112,6 +112,7 @@ add_library(${TARGET_NAME} STATIC
     ${TARGET_SRCS}
     ${MARKDOWN_BYTECODE_SRCS}
     ${MARKDOWN_RESOURCES_CPP})
+add_library(qlitemd::markdown_view ALIAS ${TARGET_NAME})
 
 set_target_properties(${TARGET_NAME} PROPERTIES
     CXX_STANDARD 17

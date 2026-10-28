@@ -51,13 +51,32 @@ const MdHtmlResult result = pipeline.Render(markdown_utf8);
 // result.html + result.assets（公式/Mermaid SVG）+ outline
 ```
 
-SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
-高亮/公式/Mermaid 在三条 worker lane，只产出 SVG 资产。`QWidget`
-适配层（`MarkdownView`、qlitehtml、resvg/QtSvg 光栅化）位于
-`examples/md_viewer/qt_adapter`，不进入安装包。
+安装的 SDK 是零 Qt 的 `mdhtml` 核心：解析与组装在 coordinator 线程，
+高亮/公式/Mermaid 在三条 worker lane，只产出 SVG 资产。Qt 控件
+（`MarkdownView`、qlitehtml、resvg/QtSvg 光栅化）位于
+[`src/markdown_view`](src/markdown_view)，以源码方式复用，Qt 版本和
+编译器由消费方决定：
 
-独立的零 Qt 控制台示例在 [`examples/minimal`](examples/minimal)，
-可直接针对已安装的 SDK 构建。
+```cmake
+set(QLITEMD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL "" FORCE)
+set(QLITEMD_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(path/to/qlitemd)
+target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
+```
+
+发布产物包含 `qlitemd-<version>-qt-src.zip`（核心与控件源码、固定版本
+依赖）以及面向只使用 `qlitemd::mdhtml` / `qlitemd::mdhtml_c` 的宿主的
+预编译核心 SDK。
+
+嵌入构建时 qlitemd 会定义 `md4c`、`qlitehtml`、`litehtml`、`qjs`、
+`qjsc`、`tree_sitter_core`、`tree_sitter_grammars` 这些 vendored target；
+如果宿主已有同名 target，应把源码包放在隔离的子工程中消费。
+
+控件集成细节见 [`docs/qt-widget.md`](docs/qt-widget.md)。
+[`examples/qt_widget_minimal`](examples/qt_widget_minimal) 是
+`add_subdirectory` 冒烟示例。独立的零 Qt 控制台示例在
+[`examples/minimal`](examples/minimal)，可直接针对已安装的 SDK 构建。
 
 ## 功能
 
@@ -177,8 +196,12 @@ Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
 构建开关：
 
 - `QLITEMD_QT_MAJOR`：`5`（默认）或 `6`
-- `QLITEMD_BUILD_MD_VIEWER`：构建示例程序（默认 `ON`）
-- `QLITEMD_BUILD_TESTS`：构建测试（默认 `ON`）
+- `QLITEMD_BUILD_QT_WIDGET`：构建 Qt 控件 `markdown_view`（默认 `ON`；
+  纯核心构建设为 `OFF`）
+- `QLITEMD_BUILD_MD_VIEWER`：构建示例程序（顶层默认 `ON`）
+- `QLITEMD_BUILD_TESTS`：构建测试（顶层默认 `ON`）
+- `QLITEMD_INSTALL`：生成安装规则（顶层默认 `ON`；以
+  `add_subdirectory` 嵌入时默认 `OFF`）
 - `QLITEMD_SVG_BACKEND`：`resvg`（Windows 默认）或 `qtsvg`
 - `QLITEMD_MERMAID_BACKEND`：`quickjs`（默认，mermaid.js）或 `merman`；
   `merman` 要求 `QLITEMD_SVG_BACKEND=resvg`
@@ -230,7 +253,7 @@ cmake -S . -B build-core -G Ninja \
 安装组件：
 
 - `Runtime`：`md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
-- `Development`：核心静态/共享库、公开核心头文件和 `qlitemdConfig.cmake`
+- `Development`：核心静态/共享库、选中的原生后端 DLL、公开核心头文件和 `qlitemdConfig.cmake`
 - `Licenses`：项目和第三方许可证文本
 
 ```bash
@@ -262,15 +285,17 @@ SDK 仍通过独立的 install 组件发布。
 ## 目录结构
 
 - `src/mdhtml/`：零 Qt 核心库（`qlitemd_mdhtml`）
+- `src/markdown_view/`：Qt 控件组件（`qlitemd::markdown_view`）
 - `resources/`：主题 CSS 与 QuickJS Mermaid/公式路径用的 JS 载荷
 - `examples/md_viewer/`：FluentUI 示例程序
-- `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
-- `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
+- `examples/qt_widget_minimal/`：add_subdirectory 消费冒烟示例
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
 - `examples/avalonia_mdhtml/`：.NET 10/Avalonia 的 C ABI 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
+- `tests/markdown_view/`：Qt 控件无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助
+- `scripts/`：发布打包辅助（Qt 源码 SDK）
 - `installer/`：Windows 安装包的 Inno Setup 脚本
 - `licenses/`：JS 载荷的许可证文本
 - `3rdparty/`：固定版本、已打补丁的依赖快照

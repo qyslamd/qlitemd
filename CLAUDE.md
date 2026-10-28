@@ -15,7 +15,7 @@ Markdown -> mdhtml（零 Qt）-> HTML + SVG 资产
               \-> tree-sitter: 语法高亮
               \-> RaTeX: 公式（Windows 原生）/ QuickJS: MathJax（其它平台）
               \-> merman-ffi: Mermaid（原生）/ QuickJS: mermaid.js
-Qt 适配层（examples/md_viewer/qt_adapter）
+Qt 控件层（src/markdown_view）
               \-> resvg/QtSvg 光栅化 -> qlitehtml/litehtml -> QWidget
 ```
 
@@ -124,7 +124,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build-linux --output-on-failure -L MA
 ctest --test-dir build --output-on-failure -L MARKDOWN
 ```
 
-- 改到 `src/mdhtml/` 或适配层时只跑 `MARKDOWN` 测试组，不要全量。
+- 改到 `src/mdhtml/` 或 `src/markdown_view/` 时只跑 `MARKDOWN` 测试组，不要全量。
 - Linux 无显示环境使用 `QT_QPA_PLATFORM=offscreen`。
 - 行为变更必须补可无头运行的测试。
 
@@ -138,9 +138,11 @@ cmake --install build
 
 安装分为 `Runtime`、`Development`、`Licenses` 三个组件。`Runtime` 只含
 `md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含核心
-静态库、共享 C ABI 库（DLL/SO 与导入库）、公开核心头文件和
-`qlitemdConfig.cmake`（目标 `qlitemd::mdhtml` 与 `qlitemd::mdhtml_c`）；
-`Licenses` 含项目与第三方许可证。Qt 适配层不安装。
+静态库、共享 C ABI 库（DLL/SO 与导入库）、选中的原生后端 DLL、公开核心
+头文件和 `qlitemdConfig.cmake`（目标 `qlitemd::mdhtml` 与
+`qlitemd::mdhtml_c`）；`Licenses` 含项目与第三方许可证。Qt 控件
+`qlitemd::markdown_view` 不安装成二进制，以源码包 +
+`add_subdirectory` 方式复用。`QLITEMD_INSTALL=OFF` 可跳过全部安装规则。
 
 ```bash
 cmake --install build --component Runtime
@@ -176,16 +178,19 @@ clang-format --dry-run --Werror <file>
 
 - `src/mdhtml/`：零 Qt 核心，目标名 `qlitemd_mdhtml`；C ABI 共享库
   目标名 `qlitemd_mdhtml_c`（源 `mdhtml_c.h/.cpp`）
-- `examples/md_viewer/qt_adapter/`：QWidget/qlitehtml/光栅化适配层
+- `src/markdown_view/`：Qt Widget 组件，目标名 `qlitemd_markdown_view`
+  （别名 `qlitemd::markdown_view`），封装 qlitehtml、光栅化、缓存与主题
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
 - `examples/md_viewer/`：FluentUI + QWindowKit 示例（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
   `text_search` / `navigation_history` / `documents_panel`）
+- `examples/qt_widget_minimal/`：`add_subdirectory` 消费示例与 CI 冒烟
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
 - `examples/avalonia_mdhtml/`：C ABI 的 .NET 10/Avalonia 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
-- `examples/md_viewer/qt_adapter/tests/`：适配层无头 GoogleTest 测试
+- `tests/markdown_view/`：Qt 控件无头 GoogleTest 测试
 - `tests/md_viewer/`：示例层模块与文档面板的无头测试
+- `scripts/package_qt_source.py`：生成 `qlitemd-<version>-qt-src.zip`
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
 - `installer/`：Inno Setup 安装包脚本
 - `licenses/`：JS 载荷的许可证文本
@@ -291,8 +296,12 @@ clang-format --dry-run --Werror <file>
   构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
   并把 exe 对应的 PDB 打成 zip。
 - 安装包脚本是 `installer/md_viewer.iss`；使用 Inno Setup 6.x。
-- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe` 和
-  `qlitemd-md_viewer-<version>-x64-pdb.zip`。
+- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe`、
+  `qlitemd-md_viewer-<version>-x64-pdb.zip`、
+  `qlitemd-<version>-core-sdk-win-x64.zip` 和
+  `qlitemd-<version>-qt-src.zip`（附 SHA256）。
+- Qt 源码包由 `scripts/package_qt_source.py` 生成，并在发布 CI 中解压后用
+  `examples/qt_widget_minimal` 重新构建、跑 `--smoke` 验证。
 - 发布构建：`resvg + ratex + QuickJS`，Mermaid 走 mermaid.js，故发布包也含
   QuickJS；不再链接 merman。
 

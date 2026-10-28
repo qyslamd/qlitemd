@@ -66,6 +66,55 @@ jobs:
             throw "Tag version $version does not match CMake version $cmake_version"
           }
 
+      - name: Build source SDK package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          New-Item -ItemType Directory -Force dist | Out-Null
+          python scripts/package_qt_source.py --version $version --out dist
+
+      - name: Validate source SDK package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $check = Join-Path $env:GITHUB_WORKSPACE 'source-check'
+          Remove-Item $check -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -Path "dist/qlitemd-$version-qt-src.zip" -DestinationPath $check
+          $root = Join-Path $check "qlitemd-$version-qt-src"
+          cmake -S "$root/examples/qt_widget_minimal" -B source-consumer-build -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" `
+            "-DQLITEMD_SOURCE_DIR=$root" `
+            -DQLITEMD_QT_MAJOR=5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build source-consumer-build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = "$env:GITHUB_WORKSPACE\source-consumer-build\qlitemd\bin;$env:QT_ROOT_DIR\bin;$env:PATH"
+          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          .\source-consumer-build\qlitemd_qt_widget_minimal.exe --smoke
+
+      - name: Build core SDK package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          cmake --install build --prefix stage-sdk --component Development
+          cmake --install build --prefix stage-sdk --component Licenses
+          $info = @(
+            'qlitemd core SDK',
+            '================',
+            "version: $version",
+            'usage:',
+            '  find_package(qlitemd CONFIG REQUIRED)',
+            '  target_link_libraries(app PRIVATE qlitemd::mdhtml)   # C++ static core',
+            '  target_link_libraries(app PRIVATE qlitemd::mdhtml_c) # C ABI shared library'
+          ) -join "`n"
+          Set-Content -Path "$env:GITHUB_WORKSPACE\stage-sdk\CORE-SDK-INFO.txt" `
+            -Value $info -Encoding utf8
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\stage-sdk\*" `
+            -DestinationPath "dist/qlitemd-$version-core-sdk-win-x64.zip" `
+            -Force
+
       - name: Install runtime and licenses
         shell: pwsh
         run: |
@@ -117,6 +166,9 @@ jobs:
           path: |
             dist/*-setup.exe
             dist/*-pdb.zip
+            dist/*-qt-src.zip
+            dist/*-qt-src.zip.sha256
+            dist/*-core-sdk-win-x64.zip
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -125,3 +177,6 @@ jobs:
           files: |
             dist/*-setup.exe
             dist/*-pdb.zip
+            dist/*-qt-src.zip
+            dist/*-qt-src.zip.sha256
+            dist/*-core-sdk-win-x64.zip

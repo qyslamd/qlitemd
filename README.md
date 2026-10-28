@@ -55,12 +55,32 @@ const MdHtmlResult result = pipeline.Render(markdown_utf8);
 // result.html + result.assets (formula/Mermaid SVG) + outline
 ```
 
-The SDK is the zero-Qt `mdhtml` core: parsing and assembly on a coordinator
-thread, highlight/formula/Mermaid on three worker lanes, and SVG-only assets.
-The `QWidget` adapter (`MarkdownView`, qlitehtml, resvg/QtSvg rasterization)
-lives in `examples/md_viewer/qt_adapter` and is not part of the installed SDK.
+The installed SDK is the zero-Qt `mdhtml` core: parsing and assembly on a
+coordinator thread, highlight/formula/Mermaid on three worker lanes, and
+SVG-only assets. The Qt widget (`MarkdownView`, qlitehtml, resvg/QtSvg
+rasterization) lives in [`src/markdown_view`](src/markdown_view) and is
+consumed from source, so the consumer owns the Qt version and compiler:
 
-A standalone zero-Qt console example is in
+```cmake
+set(QLITEMD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL "" FORCE)
+set(QLITEMD_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(path/to/qlitemd)
+target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
+```
+
+Release assets include `qlitemd-<version>-qt-src.zip` with the core and
+widget sources plus pinned dependencies, and a compiled core SDK for hosts
+that only need `qlitemd::mdhtml` or `qlitemd::mdhtml_c`.
+
+When embedding, qlitemd defines the vendored targets `md4c`, `qlitehtml`,
+`litehtml`, `qjs`, `qjsc`, `tree_sitter_core` and `tree_sitter_grammars`;
+a host that already defines the same target names should consume the source
+package in an isolated subproject.
+
+See [`docs/qt-widget.md`](docs/qt-widget.md) for the widget integration
+details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
+`add_subdirectory` smoke example. A standalone zero-Qt console example is in
 [`examples/minimal`](examples/minimal); it builds against an installed SDK.
 
 ## Features
@@ -151,10 +171,10 @@ Validated configurations:
 
 | Qt | Architecture | Status |
 | --- | --- | --- |
-| Qt 5.15.2 | x86 | Core, adapter tests, `md_viewer`, install |
-| Qt 5.14.2 | x64 | Core, adapter tests, `md_viewer` |
-| Qt 6.8.3 | x64 | Core, adapter tests and `md_viewer` build; runtime visual check pending |
-| Qt 6.8.3 | x64 (Linux) | Core and adapter tests in CI; `md_viewer` disabled |
+| Qt 5.15.2 | x86 | Core, widget tests, `md_viewer`, install |
+| Qt 5.14.2 | x64 | Core, widget tests, `md_viewer` |
+| Qt 6.8.3 | x64 | Core, widget tests and `md_viewer` build; runtime visual check pending |
+| Qt 6.8.3 | x64 (Linux) | Core and widget tests in CI; `md_viewer` disabled |
 | Qt 5.12.12 | x64 | Not supported; Qt 5.14 is the minimum |
 
 Windows with MSVC is the primary platform. Linux library/tests are covered by
@@ -192,8 +212,13 @@ and `QT_PLUGIN_PATH` before launching the viewer.
 Build options:
 
 - `QLITEMD_QT_MAJOR` — `5` (default) or `6`
-- `QLITEMD_BUILD_MD_VIEWER` — build the example application (default `ON`)
-- `QLITEMD_BUILD_TESTS` — build the test suite (default `ON`)
+- `QLITEMD_BUILD_QT_WIDGET` — build the Qt `markdown_view` component
+  (default `ON`; set `OFF` for a core-only build)
+- `QLITEMD_BUILD_MD_VIEWER` — build the example application (default `ON`
+  at top level)
+- `QLITEMD_BUILD_TESTS` — build the test suite (default `ON` at top level)
+- `QLITEMD_INSTALL` — generate install rules (default `ON` at top level,
+  `OFF` when embedded with `add_subdirectory`)
 - `QLITEMD_SVG_BACKEND` — `resvg` or `qtsvg` (falls back to `qtsvg` when
   no `resvg` binary exists for the platform)
 - `QLITEMD_FORMULA_BACKEND` — `ratex` (native FFI) or `quickjs`
@@ -239,7 +264,7 @@ target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 target_link_libraries(myapp PRIVATE qlitemd::mdhtml_c)
 ```
 
-For a Qt-free SDK build (no Qt discovery, no viewer, no adapter):
+For a Qt-free SDK build (no Qt discovery, no viewer, no widget):
 
 ```bash
 cmake -S . -B build-core -G Ninja \
@@ -252,7 +277,7 @@ cmake -S . -B build-core -G Ninja \
 Install components:
 
 - `Runtime` — `md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
-- `Development` — core static/shared libraries, public core headers and `qlitemdConfig.cmake`
+- `Development` — core static/shared libraries, selected native backend DLLs, public core headers and `qlitemdConfig.cmake`
 - `Licenses` — project and third-party license texts
 
 ```bash
@@ -289,15 +314,17 @@ integration for host-side policy such as link handling and settings.
 ## Layout
 
 - `src/mdhtml/` — the zero-Qt core library (`qlitemd_mdhtml`)
+- `src/markdown_view/` — the Qt widget component (`qlitemd::markdown_view`)
 - `resources/` — theme CSS and JS payloads for the QuickJS Mermaid/formula paths
 - `examples/md_viewer/` — the FluentUI example application
-- `examples/md_viewer/qt_adapter/` — QWidget/qlitehtml/rasterizer adapter
-- `examples/md_viewer/qt_adapter/tests/` — headless adapter GoogleTest suite
+- `examples/qt_widget_minimal/` — add_subdirectory consumer smoke example
 - `examples/minimal/` — zero-Qt console example for an installed SDK
 - `examples/avalonia_mdhtml/` — .NET 10/Avalonia validation harness for the shared C ABI
 - `tests/mdhtml/` — headless core GoogleTest suite
+- `tests/markdown_view/` — headless widget GoogleTest suite
 - `tests/md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
+- `scripts/` — release packaging helpers (Qt source SDK)
 - `installer/` — Inno Setup script for the Windows installer
 - `licenses/` — license texts for JavaScript payloads
 - `3rdparty/` — pinned, patched dependency snapshots
@@ -311,7 +338,7 @@ integration for host-side policy such as link handling and settings.
   supported.
 - PDF export paginates by slicing the layout, so a very long element can be
   split across pages.
-- Linux and Qt 6 have core/adapter test coverage; `md_viewer` runtime and
+- Linux and Qt 6 have core/widget test coverage; `md_viewer` runtime and
   visual sign-off are still pending. A separate CI job builds the core with
   no Qt at all.
 - Ubuntu 20.04's Qt 5.12.8 is below the minimum Qt 5.14; install a newer Qt.

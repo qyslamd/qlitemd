@@ -2,7 +2,7 @@ set(MDHTML_TARGET qlitemd_mdhtml)
 
 # The bundled highlights queries are text resources owned by the core, so
 # they are embedded as generated C++ instead of Qt's resource system.
-set(MDHTML_TS_ROOT "${CMAKE_SOURCE_DIR}/3rdparty/tree-sitter-lang")
+set(MDHTML_TS_ROOT "${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter-lang")
 set(MDHTML_QUERY_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/md_queries_generated.cpp")
 set(MDHTML_LANGUAGES
@@ -17,9 +17,9 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND}
         "-DQL_TS_LANG_ROOT=${MDHTML_TS_ROOT}"
         "-DQL_OUTPUT=${MDHTML_QUERY_SOURCE}"
-        -P "${CMAKE_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
+        -P "${PROJECT_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
     DEPENDS ${MDHTML_QUERY_FILES}
-        "${CMAKE_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
+        "${PROJECT_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
     COMMENT "Embedding tree-sitter highlight queries"
     VERBATIM
 )
@@ -42,7 +42,7 @@ if(QLITEMD_NEEDS_QUICKJS)
         string(REPLACE ":" ";" parts "${entry}")
         list(GET parts 0 symbol)
         list(GET parts 1 filename)
-        set(js_file "${CMAKE_SOURCE_DIR}/resources/${filename}")
+        set(js_file "${PROJECT_SOURCE_DIR}/resources/${filename}")
         set(c_file "${MDHTML_BYTECODE_DIR}/${symbol}.c")
         add_custom_command(
             OUTPUT "${c_file}"
@@ -163,9 +163,9 @@ set_target_properties(qlitemd_mdhtml_c PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
     OUTPUT_NAME qlitemd_mdhtml_c
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
+    LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
+    ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib"
 )
 if(TARGET qlitemd_runtime_dlls)
     add_dependencies(qlitemd_mdhtml_c qlitemd_runtime_dlls)

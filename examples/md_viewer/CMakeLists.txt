@@ -36,7 +36,7 @@ set(ALL_SRCS
 add_executable(${TARGET_NAME} WIN32 ${ALL_SRCS})
 
 target_link_libraries(${TARGET_NAME} PRIVATE
-    ${APP_TARGET_PREFIX}_markdown
+    qlitemd::markdown_view
     ${APP_TARGET_PREFIX}_single_instance
     FluentUI3Style
     Frameless
@@ -72,27 +72,29 @@ set_target_properties(${TARGET_NAME} PROPERTIES
     AUTOMOC ON
     AUTOUIC ON
     AUTORCC ON
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin"
 )
 
-install(TARGETS ${TARGET_NAME}
-    RUNTIME DESTINATION bin
-    COMPONENT Runtime)
+if(QLITEMD_INSTALL)
+    install(TARGETS ${TARGET_NAME}
+        RUNTIME DESTINATION bin
+        COMPONENT Runtime)
 
-if(WIN32)
-    # FluentUI3Style/ExWidgets are built in-tree and are not Qt plugins.
-    install(TARGETS FluentUI3Style ExWidgets
-        RUNTIME DESTINATION bin COMPONENT Runtime
-        LIBRARY DESTINATION lib COMPONENT Runtime)
-    get_filename_component(_md_viewer_qt_prefix
-        "${Qt${QT_VERSION_MAJOR}_DIR}/../../.." ABSOLUTE)
-    find_program(QLITEMD_WINDEPLOYQT
-        NAMES windeployqt
-        HINTS "${_md_viewer_qt_prefix}/bin")
-    if(QLITEMD_WINDEPLOYQT)
-        install(CODE
-            "execute_process(COMMAND \"${QLITEMD_WINDEPLOYQT}\" --dir \"\${CMAKE_INSTALL_PREFIX}/bin\" \"\${CMAKE_INSTALL_PREFIX}/bin/md_viewer.exe\")"
-            COMPONENT Runtime)
+    if(WIN32)
+        # FluentUI3Style/ExWidgets are built in-tree and are not Qt plugins.
+        install(TARGETS FluentUI3Style ExWidgets
+            RUNTIME DESTINATION bin COMPONENT Runtime
+            LIBRARY DESTINATION lib COMPONENT Runtime)
+        get_filename_component(_md_viewer_qt_prefix
+            "${Qt${QT_VERSION_MAJOR}_DIR}/../../.." ABSOLUTE)
+        find_program(QLITEMD_WINDEPLOYQT
+            NAMES windeployqt
+            HINTS "${_md_viewer_qt_prefix}/bin")
+        if(QLITEMD_WINDEPLOYQT)
+            install(CODE
+                "execute_process(COMMAND \"${QLITEMD_WINDEPLOYQT}\" --dir \"\${CMAKE_INSTALL_PREFIX}/bin\" \"\${CMAKE_INSTALL_PREFIX}/bin/md_viewer.exe\")"
+                COMPONENT Runtime)
+        endif()
     endif()
 endif()
 
@@ -100,5 +102,7 @@ if(MSVC)
     target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX- /EHsc /utf-8)
 endif()
 
-configure_run_script("run_${TARGET_NAME}")
+if(QLITEMD_IS_TOP_LEVEL)
+    configure_run_script("run_${TARGET_NAME}")
+endif()
 

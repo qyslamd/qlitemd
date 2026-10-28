@@ -33,8 +33,9 @@ if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
         REQUIRED)
 endif()
 
-# Native SVG backends are optional shared libraries. The core itself only
-# produces SVG, so resvg (a rasterizer) is never part of the SDK.
+# Native backends are optional shared libraries. Formula/Mermaid native
+# backends are imported here; resvg may be present in bin/ as a convenience
+# for hosts that rasterize SVG, but the core never links it.
 set(_qlitemd_native_libraries "")
 if(WIN32)
     if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")

@@ -4,6 +4,13 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Move the Qt layer to `src/markdown_view` and export
+  `qlitemd::markdown_view`. Make the build `add_subdirectory` friendly:
+  paths use `PROJECT_SOURCE_DIR`/`PROJECT_BINARY_DIR`, the MSVC runtime is
+  scoped to qlitemd, app-only modules are skipped for widget consumers, and
+  `QLITEMD_BUILD_QT_WIDGET`/`QLITEMD_INSTALL` control the new boundaries.
+  Release CI now ships `qlitemd-<version>-qt-src.zip` and a compiled core
+  SDK, with `examples/qt_widget_minimal` validating the source package.
 - Upgrade md4c to 0.6.0 and enable footnotes (`[^1]`). Add a per-render
   admonition mode: MPE callouts are the default (inline text after the
   marker is the title, supports `info` etc.), while GitHub admonitions
@@ -21,7 +28,7 @@ All notable changes to qlitemd are documented here.
   Svg.Skia and displays the HTML with LiteHtmlSharp.Avalonia.
 
 - Split the rendering stack into a zero-Qt core (`qlitemd_mdhtml`) and a Qt
-  adapter under `examples/md_viewer/qt_adapter`. The core parses and
+  widget layer under `src/markdown_view`. The core parses and
   assembles Markdown on a coordinator thread, runs highlight/formula/Mermaid
   on three worker lanes, and returns HTML plus SVG assets
   (`qlitemd-asset:<id>`); fonts are injectable and the default metrics are

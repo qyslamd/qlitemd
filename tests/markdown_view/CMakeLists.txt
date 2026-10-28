@@ -1,12 +1,14 @@
 # 文档预览的渲染判据。
 #
+include_directories(${PROJECT_SOURCE_DIR}/tests/support)
+#
 # 这两条都是纯函数（Markdown → HTML、源码 → 着色片段），毫秒级、可逐分支断言，
 # 不必拉起窗口：渲染出来长什么样属于像素级验证，
 # 这里钉的是"表格有没有被丢掉""代码里的 < 有没有逃出去"这类会静默出错的地方
 add_unit_test(
     NAME test_markdown_to_html
     SOURCES markdown_to_html_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -14,7 +16,7 @@ add_unit_test(
 add_unit_test(
     NAME test_code_highlighter
     SOURCES code_highlighter_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -22,7 +24,7 @@ add_unit_test(
 # 该头不再引用 quickjs.h
 if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_code_highlighter PRIVATE
-        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+        ${PROJECT_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
 
 # 标题锚点：slug 规则与 ASCII id 的生成是纯字符串变换，可逐条断言。
@@ -30,7 +32,7 @@ endif()
 add_unit_test(
     NAME test_heading_ids
     SOURCES heading_ids_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -42,14 +44,14 @@ add_unit_test(
 add_unit_test(
     NAME test_formula_renderer
     SOURCES formula_renderer_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Gui
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
 if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_formula_renderer PRIVATE
-        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+        ${PROJECT_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
 # Linux 首次 fontconfig 扫描 + RaTeX 字体回退可达十余秒，默认 10s 不够
 set_tests_properties(test_formula_renderer PROPERTIES TIMEOUT 120)
@@ -58,7 +60,7 @@ set_tests_properties(test_formula_renderer PROPERTIES TIMEOUT 120)
 add_unit_test(
     NAME test_mermaid_svg_cleanup
     SOURCES mermaid_svg_cleanup_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -68,14 +70,14 @@ add_unit_test(
 add_unit_test(
     NAME test_mermaid_renderer
     SOURCES mermaid_renderer_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Gui
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
 if(QLITEMD_NEEDS_QUICKJS)
     target_include_directories(test_mermaid_renderer PRIVATE
-        ${CMAKE_SOURCE_DIR}/3rdparty/quickjs-ng)
+        ${PROJECT_SOURCE_DIR}/3rdparty/quickjs-ng)
 endif()
 set_tests_properties(test_mermaid_renderer PROPERTIES TIMEOUT 120)
 
@@ -84,7 +86,7 @@ set_tests_properties(test_mermaid_renderer PROPERTIES TIMEOUT 120)
 add_unit_test(
     NAME test_markdown_render_context
     SOURCES render_context_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -94,7 +96,7 @@ add_unit_test(
 add_unit_test(
     NAME test_render_diagnostics
     SOURCES render_diagnostics_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -104,7 +106,7 @@ add_unit_test(
 add_unit_test(
     NAME test_markdown_theme
     SOURCES theme_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -114,7 +116,7 @@ add_unit_test(
 add_unit_test(
     NAME test_css_override
     SOURCES css_override_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -126,7 +128,7 @@ set_tests_properties(test_css_override PROPERTIES TIMEOUT 120)
 add_unit_test(
     NAME test_render_cache
     SOURCES render_cache_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -135,7 +137,7 @@ add_unit_test(
 add_unit_test(
     NAME test_render_service
     SOURCES render_service_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Gui Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -146,7 +148,7 @@ set_tests_properties(test_render_service PROPERTIES TIMEOUT 120)
 add_unit_test(
     NAME test_outline_widget
     SOURCES outline_widget_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -158,7 +160,7 @@ if(QLITEMD_NEEDS_QUICKJS)
     add_unit_test(
         NAME test_js_runtime
         SOURCES js_runtime_test.cpp
-        LIBS ${APP_TARGET_PREFIX}_markdown qjs
+        LIBS qlitemd::markdown_view qjs
         QT_MODULES Core
         LABELS MARKDOWN
     )
@@ -170,7 +172,7 @@ endif()
 add_unit_test(
     NAME test_layout_debounce
     SOURCES layout_debounce_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -183,36 +185,17 @@ add_unit_test(
     NAME test_qlitehtml_image
     SOURCES qlitehtml_image_test.cpp
     LIBS qlitehtml
-    INCLUDES ${CMAKE_SOURCE_DIR}/3rdparty/qlitehtml/src
+    INCLUDES ${PROJECT_SOURCE_DIR}/3rdparty/qlitehtml/src
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
 set_tests_properties(test_qlitehtml_image PROPERTIES TIMEOUT 30)
 
-# 示例里的渲染状态面板：验证 outlineChanged -> RefreshStatus 这条刷新链路。
-# 面板用了 ExWidgets 的进度环与折叠容器，Fluent 路线关闭时不编这个测试
-if(TARGET ExWidgets::ExWidgets)
-    add_unit_test(
-        NAME test_render_settings_panel
-        SOURCES status_panel_test.cpp
-                ${CMAKE_SOURCE_DIR}/examples/md_viewer/render_status_panel.cpp
-        INCLUDES ${CMAKE_SOURCE_DIR}/examples/md_viewer
-        LIBS ${APP_TARGET_PREFIX}_markdown ExWidgets::ExWidgets
-        QT_MODULES Widgets Test
-        LABELS MARKDOWN
-        NO_GTEST_MAIN
-    )
-    set_tests_properties(test_render_settings_panel PROPERTIES TIMEOUT 120)
-    if(WIN32)
-        target_link_libraries(test_render_settings_panel PRIVATE psapi)
-    endif()
-endif()
-
 add_unit_test(
     NAME test_render_toggles
     SOURCES render_toggles_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -222,7 +205,7 @@ set_tests_properties(test_render_toggles PROPERTIES TIMEOUT 120)
 add_unit_test(
     NAME test_markdown_view
     SOURCES markdown_view_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Core
     LABELS MARKDOWN
 )
@@ -233,7 +216,7 @@ add_unit_test(
 add_unit_test(
     NAME test_markdown_view_actions
     SOURCES markdown_view_actions_test.cpp
-    LIBS ${APP_TARGET_PREFIX}_markdown
+    LIBS qlitemd::markdown_view
     QT_MODULES Widgets PrintSupport Test
     LABELS MARKDOWN
     NO_GTEST_MAIN

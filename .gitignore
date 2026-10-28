@@ -13,6 +13,8 @@ temp/
 .vs/
 .vscode/
 CMakeUserPresets.json
+__pycache__/
+*.pyc
 # .NET build output for the Avalonia validation harness.
 examples/avalonia_mdhtml/bin/
 examples/avalonia_mdhtml/obj/

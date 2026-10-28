@@ -97,6 +97,24 @@ jobs:
           $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
           .\consumer-build\qlitemd_minimal.exe
 
+      - name: Build Qt widget consumer
+        shell: pwsh
+        run: |
+          cmake -S examples/qt_widget_minimal -B consumer-widget-build -G Ninja `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR" `
+            "-DQLITEMD_SOURCE_DIR=$env:GITHUB_WORKSPACE" `
+            "-DQLITEMD_QT_MAJOR=${{ matrix.qt_major }}"
+          cmake --build consumer-widget-build --parallel
+
+      - name: Run Qt widget consumer
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:GITHUB_WORKSPACE\consumer-widget-build\qlitemd\bin;$env:QT_ROOT_DIR\bin;$env:PATH"
+          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          .\consumer-widget-build\qlitemd_qt_widget_minimal.exe --smoke
+
   core-only:
     name: Core only (no Qt, quickjs)
     runs-on: ubuntu-24.04
@@ -234,3 +252,20 @@ jobs:
           export QT_PLUGIN_PATH="$QT_ROOT_DIR/plugins"
           LD_LIBRARY_PATH="$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}" \
             ./consumer-build/qlitemd_minimal
+
+      - name: Build Qt widget consumer
+        run: |
+          cmake -S examples/qt_widget_minimal -B consumer-widget-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+            -DQLITEMD_SOURCE_DIR="$GITHUB_WORKSPACE" \
+            -DQLITEMD_QT_MAJOR=6
+          cmake --build consumer-widget-build --parallel
+
+      - name: Run Qt widget consumer
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          export QT_PLUGIN_PATH="$QT_ROOT_DIR/plugins"
+          LD_LIBRARY_PATH="$QT_ROOT_DIR/lib:${LD_LIBRARY_PATH:-}" \
+            ./consumer-widget-build/qlitemd_qt_widget_minimal --smoke

@@ -46,7 +46,8 @@ worker completion order never affects the HTML. Progress callbacks run on the
 coordinator. Cancellation drops queued tasks and interrupts QuickJS; native
 Mermaid/RaTeX work finishes the current diagram.
 
-The Qt adapter waits on its own thread, rasterizes SVGs off the GUI thread and
-posts the finished result back with a queued invocation. A later generation
+The Qt widget layer waits on its own thread, rasterizes SVGs off the GUI
+thread and posts the finished result back with a queued invocation. A later
+generation
 always wins: stale results are discarded, and cancellation rolls the view back
 to the last committed document.

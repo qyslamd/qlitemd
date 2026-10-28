@@ -25,7 +25,9 @@ endif()
 if(MSVC)
     # Keep the runtime consistent with Qt's /MD binaries and make the
     # standard CRT import libraries available to third-party C targets.
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL" CACHE STRING "" FORCE)
+    # A normal variable (not CACHE FORCE) keeps this scoped to qlitemd when
+    # the project is embedded with add_subdirectory.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     add_compile_definitions(NOMINMAX)
     add_compile_options(/utf-8)
 endif()
@@ -35,17 +37,45 @@ endif()
 # placeholder instead of failing during `cmake --install`.
 function(qlitemd_skip_subdir_install build_subdir)
     set(_install_script
-        "${CMAKE_BINARY_DIR}/${build_subdir}/cmake_install.cmake")
+        "${PROJECT_BINARY_DIR}/${build_subdir}/cmake_install.cmake")
     if(NOT EXISTS "${_install_script}")
         file(WRITE "${_install_script}"
             "# qlitemd: third-party install rules are disabled\n")
     endif()
 endfunction()
 
-option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ON)
-option(QLITEMD_BUILD_MD_VIEWER "Build the md_viewer example" ON)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(QLITEMD_IS_TOP_LEVEL ON)
+else()
+    set(QLITEMD_IS_TOP_LEVEL OFF)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/mdhtml/CMakeLists.txt")
+    set(_qlitemd_tests_default ${QLITEMD_IS_TOP_LEVEL})
+else()
+    set(_qlitemd_tests_default OFF)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
+    set(_qlitemd_viewer_default ${QLITEMD_IS_TOP_LEVEL})
+else()
+    set(_qlitemd_viewer_default OFF)
+endif()
+
+option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ${_qlitemd_tests_default})
+option(QLITEMD_BUILD_QT_WIDGET
+    "Build the Qt markdown_view component" ON)
+option(QLITEMD_BUILD_MD_VIEWER
+    "Build the md_viewer example" ${_qlitemd_viewer_default})
+option(QLITEMD_INSTALL
+    "Install qlitemd targets" ${QLITEMD_IS_TOP_LEVEL})
 option(QLITEMD_CORE_ONLY "Build only the Qt-free mdhtml core (no Qt)" OFF)
 if(QLITEMD_CORE_ONLY)
+    set(QLITEMD_BUILD_QT_WIDGET OFF CACHE BOOL
+        "Build the Qt markdown_view component" FORCE)
+    set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL
+        "Build the md_viewer example" FORCE)
+endif()
+if(NOT QLITEMD_BUILD_QT_WIDGET)
     set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL
         "Build the md_viewer example" FORCE)
 endif()
@@ -85,9 +115,9 @@ else()
     set(QLITEMD_PLATFORM_DIR "linux-${QLITEMD_ARCH}")
 endif()
 
-set(_qlitemd_resvg_dir "${CMAKE_SOURCE_DIR}/3rdparty/resvg")
-set(_qlitemd_merman_dir "${CMAKE_SOURCE_DIR}/3rdparty/merman")
-set(_qlitemd_ratex_dir "${CMAKE_SOURCE_DIR}/3rdparty/ratex")
+set(_qlitemd_resvg_dir "${PROJECT_SOURCE_DIR}/3rdparty/resvg")
+set(_qlitemd_merman_dir "${PROJECT_SOURCE_DIR}/3rdparty/merman")
+set(_qlitemd_ratex_dir "${PROJECT_SOURCE_DIR}/3rdparty/ratex")
 
 # 本平台的原生产物文件名：Windows 是 <name>.dll，Linux 是 lib<name>.so
 function(qlitemd_native_lib_name out_var lib_name)
@@ -205,53 +235,70 @@ endif()
 # manually adjusted PATH/LD_LIBRARY_PATH.
 if(_qlitemd_runtime_libs)
     add_custom_target(qlitemd_runtime_dlls ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/tests"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/bin"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/bin/tests"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${_qlitemd_runtime_libs} "${CMAKE_BINARY_DIR}/bin"
+            ${_qlitemd_runtime_libs} "${PROJECT_BINARY_DIR}/bin"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${_qlitemd_runtime_libs} "${CMAKE_BINARY_DIR}/bin/tests"
+            ${_qlitemd_runtime_libs} "${PROJECT_BINARY_DIR}/bin/tests"
         COMMENT "Stage native backend libraries"
         VERBATIM)
 endif()
 
-if(NOT QLITEMD_CORE_ONLY)
-    set(QLITEMD_QT_MAJOR 5 CACHE STRING "Qt major version (5 or 6)")
+if(QLITEMD_BUILD_QT_WIDGET OR QLITEMD_BUILD_MD_VIEWER)
+    if(NOT DEFINED QLITEMD_QT_MAJOR)
+        if(TARGET Qt6::Core)
+            set(_qlitemd_qt_default 6)
+        elseif(TARGET Qt5::Core)
+            set(_qlitemd_qt_default 5)
+        else()
+            set(_qlitemd_qt_default 5)
+        endif()
+        set(QLITEMD_QT_MAJOR ${_qlitemd_qt_default} CACHE STRING
+            "Qt major version (5 or 6)")
+    endif()
     set(QT_VERSION_MAJOR ${QLITEMD_QT_MAJOR})
+    set(_qlitemd_qt_components Core Gui Widgets Svg PrintSupport)
+    if(QLITEMD_BUILD_MD_VIEWER)
+        list(APPEND _qlitemd_qt_components Network)
+    endif()
+    if(QLITEMD_BUILD_TESTS)
+        list(APPEND _qlitemd_qt_components Test)
+    endif()
     if(QLITEMD_QT_MAJOR EQUAL 6)
-        find_package(Qt6 REQUIRED COMPONENTS
-            Core Gui Widgets Svg Network PrintSupport Test)
+        find_package(Qt6 REQUIRED COMPONENTS ${_qlitemd_qt_components})
     else()
-        find_package(Qt5 5.12 REQUIRED COMPONENTS
-            Core Gui Widgets Svg Network PrintSupport Test)
+        find_package(Qt5 5.12 REQUIRED COMPONENTS ${_qlitemd_qt_components})
     endif()
 
     include(cmake/run_app.cmake)
 endif()
 
 # ---------------------------------------------------------------- spdlog
-if(NOT QLITEMD_CORE_ONLY)
+if(QLITEMD_BUILD_MD_VIEWER)
     set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
     set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
     set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
     add_subdirectory(3rdparty/spdlog)
     qlitemd_skip_subdir_install(3rdparty/spdlog)
+endif()
 
+if(QLITEMD_BUILD_QT_WIDGET)
     # ------------------------------------------------------------ litehtml
     set(CMAKE_SKIP_INSTALL_RULES TRUE)
-    add_subdirectory(3rdparty/litehtml "${CMAKE_BINARY_DIR}/litehtml")
+    add_subdirectory(3rdparty/litehtml "${PROJECT_BINARY_DIR}/litehtml")
     unset(CMAKE_SKIP_INSTALL_RULES)
     qlitemd_skip_subdir_install(litehtml)
     target_include_directories(litehtml SYSTEM INTERFACE
-        "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/include"
-        "${CMAKE_SOURCE_DIR}/3rdparty/litehtml/src")
+        "${PROJECT_SOURCE_DIR}/3rdparty/litehtml/include"
+        "${PROJECT_SOURCE_DIR}/3rdparty/litehtml/src")
 
     # ----------------------------------------------------------- qlitehtml
     set(QLITEHTML_LIBRARY_TYPE STATIC)
     set(CMAKE_SKIP_INSTALL_RULES TRUE)
     add_subdirectory(3rdparty/qlitehtml/src
-                     "${CMAKE_BINARY_DIR}/qlitehtml")
+                     "${PROJECT_BINARY_DIR}/qlitehtml")
     unset(CMAKE_SKIP_INSTALL_RULES)
     qlitemd_skip_subdir_install(qlitehtml)
     set_target_properties(qlitehtml PROPERTIES AUTOMOC ON)
@@ -259,11 +306,11 @@ endif()
 
 # --------------------------------------------------------------- md4c
 add_library(md4c STATIC
-    "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src/md4c.c"
-    "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src/md4c-html.c"
-    "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src/entity.c")
+    "${PROJECT_SOURCE_DIR}/3rdparty/md4c/src/md4c.c"
+    "${PROJECT_SOURCE_DIR}/3rdparty/md4c/src/md4c-html.c"
+    "${PROJECT_SOURCE_DIR}/3rdparty/md4c/src/entity.c")
 target_include_directories(md4c PUBLIC
-    "${CMAKE_SOURCE_DIR}/3rdparty/md4c/src")
+    "${PROJECT_SOURCE_DIR}/3rdparty/md4c/src")
 set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # ------------------------------------------------------------- QuickJS
@@ -313,28 +360,32 @@ unset(CMAKE_SKIP_INSTALL_RULES)
 endif()
 
 # ------------------------------------------------------------ modules
-if(NOT QLITEMD_CORE_ONLY)
-add_subdirectory(src/logging)
-qlitemd_skip_subdir_install(src/logging)
+if(QLITEMD_BUILD_MD_VIEWER)
+    add_subdirectory(src/logging)
+    qlitemd_skip_subdir_install(src/logging)
 
-add_library(qlitemd_single_instance STATIC
-    src/common/single_instance.cpp
-    src/common/single_instance.h)
-set_target_properties(qlitemd_single_instance PROPERTIES AUTOMOC ON)
-target_include_directories(qlitemd_single_instance PUBLIC
-    "${CMAKE_SOURCE_DIR}/src")
-target_link_libraries(qlitemd_single_instance PUBLIC
-    Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network qlitemd_log)
-if(WIN32)
-    target_link_libraries(qlitemd_single_instance PRIVATE user32)
+    add_library(qlitemd_single_instance STATIC
+        src/common/single_instance.cpp
+        src/common/single_instance.h)
+    set_target_properties(qlitemd_single_instance PROPERTIES AUTOMOC ON)
+    target_include_directories(qlitemd_single_instance PUBLIC
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(qlitemd_single_instance PUBLIC
+        Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network qlitemd_log)
+    if(WIN32)
+        target_link_libraries(qlitemd_single_instance PRIVATE user32)
+    endif()
 endif()
 
-add_subdirectory(examples/md_viewer/qt_adapter)
-endif()  # NOT QLITEMD_CORE_ONLY
+if(QLITEMD_BUILD_QT_WIDGET)
+    add_subdirectory(src/markdown_view)
+endif()
 
 # ------------------------------------------------------- core SDK install
-# The SDK is the Qt-free mdhtml core. qlitehtml/litehtml and the Qt adapter
-# stay implementation details of the md_viewer example and are not installed.
+# The installed SDK is the Qt-free mdhtml core. The Qt markdown view is
+# consumed from source (see examples/qt_widget_minimal), not as a prebuilt
+# binary component.
+if(QLITEMD_INSTALL)
 install(FILES
     "$<TARGET_FILE:qlitemd_mdhtml>"
     "$<TARGET_FILE:md4c>"
@@ -420,9 +471,15 @@ if(_qlitemd_runtime_libs)
     if(WIN32)
         install(FILES ${_qlitemd_runtime_libs}
             DESTINATION bin COMPONENT Runtime)
+        # The core SDK is usable without the viewer installer; include the
+        # selected native backends in Development as well.
+        install(FILES ${_qlitemd_runtime_libs}
+            DESTINATION bin COMPONENT Development)
     else()
         install(FILES ${_qlitemd_runtime_libs}
             DESTINATION lib COMPONENT Runtime)
+        install(FILES ${_qlitemd_runtime_libs}
+            DESTINATION lib COMPONENT Development)
     endif()
 endif()
 if(WIN32)
@@ -450,6 +507,7 @@ install(FILES licenses/mermaid/LICENSE
     DESTINATION licenses/mermaid COMPONENT Licenses)
 install(FILES licenses/mermaidx/LICENSE
     DESTINATION licenses/mermaidx COMPONENT Licenses)
+endif()  # QLITEMD_INSTALL
 
 # --------------------------------------------------------------- tests
 if(QLITEMD_BUILD_TESTS)
@@ -460,9 +518,12 @@ if(QLITEMD_BUILD_TESTS)
     include(cmake/test_helpers.cmake)
     add_subdirectory(tests/mdhtml)
     qlitemd_skip_subdir_install(tests/mdhtml)
-    if(NOT QLITEMD_CORE_ONLY)
-        add_subdirectory(examples/md_viewer/qt_adapter/tests)
-        qlitemd_skip_subdir_install(examples/md_viewer/qt_adapter/tests)
+    if(QLITEMD_BUILD_QT_WIDGET)
+        add_subdirectory(tests/markdown_view)
+        qlitemd_skip_subdir_install(tests/markdown_view)
+    endif()
+    if(QLITEMD_BUILD_MD_VIEWER
+       OR EXISTS "${PROJECT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
         add_subdirectory(tests/md_viewer)
         qlitemd_skip_subdir_install(tests/md_viewer)
     endif()
