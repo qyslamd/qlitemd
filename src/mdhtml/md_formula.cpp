@@ -11,7 +11,7 @@
 
 #if defined(QLITEMD_MDHTML_FORMULA_RATEX)
 #include "ratex_ffi.h"
-#elif defined(QLITEMD_MDHTML_QUICKJS)
+#elif defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
 #include <quickjs.h>
 
 #include "md_bytecode.h"
@@ -20,7 +20,7 @@
 
 namespace {
 
-#if defined(QLITEMD_MDHTML_QUICKJS)
+#if defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
 
 // MathJax emits width/height in ex; the bundled payload uses em=16px, ex=8px.
 bool ParseExAttribute(std::string_view svg, std::string_view name,
@@ -77,17 +77,17 @@ std::string EscapeJsSingleQuoted(std::string_view text) {
   return escaped;
 }
 
-#endif  // QLITEMD_MDHTML_QUICKJS
+#endif  // QLITEMD_MDHTML_FORMULA_QUICKJS
 
 }  // namespace
 
 struct MdFormulaEngine::Impl {
-#if defined(QLITEMD_MDHTML_QUICKJS)
+#if defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
   MdJsRuntime runtime;
 #endif
 
   void SetInterruptFlag(std::atomic<bool>* flag) {
-#if defined(QLITEMD_MDHTML_QUICKJS)
+#if defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
     runtime.SetInterruptFlag(flag);
 #else
     (void)flag;
@@ -149,7 +149,7 @@ MdFormulaResult MdFormulaEngine::Render(std::string_view tex, bool display,
   result.svg.svg = std::move(root);
   result.ok = true;
   return result;
-#elif defined(QLITEMD_MDHTML_QUICKJS)
+#elif defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
   if (impl_->runtime.status().permanently_failed) {
     result.error = "formula engine failed to load";
     return result;

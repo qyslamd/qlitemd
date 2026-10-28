@@ -108,6 +108,12 @@ if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND TARGET qlitemd::ratex)
     target_compile_definitions(${MDHTML_TARGET} PUBLIC
         QLITEMD_MDHTML_FORMULA_RATEX=1)
 endif()
+# QuickJS can be present for Mermaid even when formulas use RaTeX, so the
+# formula translation unit needs its own backend marker.
+if(QLITEMD_FORMULA_BACKEND STREQUAL "quickjs")
+    target_compile_definitions(${MDHTML_TARGET} PUBLIC
+        QLITEMD_MDHTML_FORMULA_QUICKJS=1)
+endif()
 if(QLITEMD_MERMAID_BACKEND STREQUAL "merman" AND TARGET qlitemd::merman)
     target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::merman)
     target_compile_definitions(${MDHTML_TARGET} PUBLIC

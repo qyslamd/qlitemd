@@ -1,7 +1,7 @@
 #ifndef FILE_MARKDOWN_MARKDOWN_ENGINE_STATE_H_
 #define FILE_MARKDOWN_MARKDOWN_ENGINE_STATE_H_
 
-#ifndef QLITEMD_FORMULA_BACKEND_RATEX
+#ifdef QLITEMD_HAS_QUICKJS
 #include <quickjs.h>
 #endif
 
@@ -9,7 +9,7 @@
 #include <QString>
 #include <QVector>
 
-#ifndef QLITEMD_FORMULA_BACKEND_RATEX
+#ifdef QLITEMD_HAS_QUICKJS
 #include "js_runtime.h"
 #endif
 #include "markdown_types.h"

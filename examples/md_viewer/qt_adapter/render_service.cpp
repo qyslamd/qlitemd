@@ -46,10 +46,14 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       // native tree-sitter：无 JS 运行时，不可中断由解析时长兜底
       break;
     case MarkdownRenderKind::Formula:
+#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
       runtime = &formula.runtime;
+#endif
       break;
     case MarkdownRenderKind::Mermaid:
+#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
       runtime = &mermaid.runtime;
+#endif
       break;
   }
   if (runtime != nullptr) {

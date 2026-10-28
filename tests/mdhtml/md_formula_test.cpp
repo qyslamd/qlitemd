@@ -6,7 +6,8 @@
 
 namespace {
 
-#if defined(QLITEMD_MDHTML_FORMULA_RATEX) || defined(QLITEMD_MDHTML_QUICKJS)
+#if defined(QLITEMD_MDHTML_FORMULA_RATEX) || \
+    defined(QLITEMD_MDHTML_FORMULA_QUICKJS)
 
 TEST(MdFormulaTest, RendersInlineSvgWithColor) {
   MdFormulaEngine engine;

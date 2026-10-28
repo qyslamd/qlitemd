@@ -55,9 +55,11 @@ set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
 set(QLITEMD_FORMULA_BACKEND "ratex" CACHE STRING
     "Formula backend: ratex (native FFI) or quickjs (MathJax)")
 set_property(CACHE QLITEMD_FORMULA_BACKEND PROPERTY STRINGS ratex quickjs)
-set(QLITEMD_MERMAID_BACKEND "merman" CACHE STRING
-    "Mermaid backend: merman or quickjs")
-set_property(CACHE QLITEMD_MERMAID_BACKEND PROPERTY STRINGS merman quickjs)
+# mermaid.js has broader syntax coverage than merman; keep the native
+# backend selectable but default to the QuickJS path.
+set(QLITEMD_MERMAID_BACKEND "quickjs" CACHE STRING
+    "Mermaid backend: quickjs (mermaid.js) or merman")
+set_property(CACHE QLITEMD_MERMAID_BACKEND PROPERTY STRINGS quickjs merman)
 if(NOT QLITEMD_SVG_BACKEND MATCHES "^(resvg|qtsvg)$")
     message(FATAL_ERROR "QLITEMD_SVG_BACKEND must be resvg or qtsvg")
 endif()
@@ -345,10 +347,9 @@ if(QLITEMD_NEEDS_QUICKJS)
         DESTINATION lib COMPONENT Development)
 endif()
 install(TARGETS qlitemd_mdhtml_c
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    COMPONENT Development)
+    RUNTIME DESTINATION bin COMPONENT Development
+    LIBRARY DESTINATION lib COMPONENT Development
+    ARCHIVE DESTINATION lib COMPONENT Development)
 
 set(QLITEMD_CORE_PUBLIC_HEADERS
     src/mdhtml/md_types.h
@@ -389,7 +390,7 @@ install(FILES 3rdparty/litehtml/src/gumbo/LICENSE
     DESTINATION licenses/gumbo COMPONENT Licenses)
 install(FILES 3rdparty/md4c/LICENSE.md
     DESTINATION licenses/md4c COMPONENT Licenses)
-if(NOT WIN32)
+if(QLITEMD_NEEDS_QUICKJS)
     install(FILES 3rdparty/quickjs-ng/LICENSE
         DESTINATION licenses/quickjs COMPONENT Licenses)
 endif()
