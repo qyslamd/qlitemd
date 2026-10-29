@@ -21,15 +21,15 @@ frames with copy links and optional line numbers, and adds heading ids plus
 
 ## Formula and Mermaid
 
-The core only produces SVG. TeX uses native RaTeX on Windows and MathJax in
-QuickJS elsewhere. Mermaid compiles both engines in — native merman-ffi
-and mermaid.js in QuickJS — and picks one per render through
-`MdRenderOptions.mermaid_backend`: `kAuto` (default) renders with merman
-first and retries a failed diagram with mermaid.js; `kNative` and `kQuickjs`
-pin one engine and degrade to the other when it is not compiled in (platforms
-without the merman prebuilt, e.g. linux-arm64). merman's SVG targets resvg.
-The QuickJS payloads are build-time bytecode, so no Node.js is needed at
-runtime. Native backends are prebuilt DLLs under `3rdparty/resvg/`,
+The core only produces SVG. Formulas and Mermaid compile both engines in —
+native RaTeX/merman-ffi plus MathJax/mermaid.js in QuickJS — and pick one per
+render through `MdRenderOptions.formula_backend` / `mermaid_backend`:
+`kAuto` (default) renders with the native backend first and retries a failed
+formula or diagram with QuickJS; `kNative` and `kQuickjs` pin one engine and
+degrade to the other when it is not compiled in (platforms without the
+ratex/merman prebuilt, e.g. linux-arm64). merman's SVG targets resvg. The
+QuickJS payloads are build-time bytecode, so no Node.js is needed at runtime.
+Native backends are prebuilt DLLs under `3rdparty/resvg/`,
 `3rdparty/merman/` and `3rdparty/ratex/`.
 
 HTML references each asset as `<img src="qlitemd-asset:<id>" width=...

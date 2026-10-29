@@ -131,6 +131,20 @@ MdRenderOptions ToRenderOptions(const mdhtml_render_options* options) {
         break;
     }
   }
+  if (Covers(*options, offsetof(mdhtml_render_options, formula_backend),
+             sizeof(options->formula_backend))) {
+    switch (options->formula_backend) {
+      case MDHTML_FORMULA_NATIVE:
+        out.formula_backend = MdFormulaBackend::kNative;
+        break;
+      case MDHTML_FORMULA_QUICKJS:
+        out.formula_backend = MdFormulaBackend::kQuickjs;
+        break;
+      default:
+        out.formula_backend = MdFormulaBackend::kAuto;
+        break;
+    }
+  }
   return out;
 }
 
@@ -206,6 +220,7 @@ void mdhtml_render_options_init(mdhtml_render_options* options) {
   options->code_line_numbers = 0;
   options->admonition_mode = MDHTML_ADMONITION_MPE;
   options->mermaid_backend = MDHTML_MERMAID_AUTO;
+  options->formula_backend = MDHTML_FORMULA_AUTO;
 }
 
 mdhtml_pipeline* mdhtml_pipeline_create(void) {

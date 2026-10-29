@@ -59,6 +59,7 @@ class RenderSettingsPanel : public QWidget {
   QCheckBox* transparent_reading_ = nullptr;
   QComboBox* admonition_mode_ = nullptr;
   QComboBox* mermaid_backend_ = nullptr;
+  QComboBox* formula_backend_ = nullptr;
   QCheckBox* code_line_numbers_ = nullptr;
   QCheckBox* formula_rendering_ = nullptr;
   QCheckBox* mermaid_rendering_ = nullptr;

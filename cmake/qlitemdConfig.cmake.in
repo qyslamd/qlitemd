@@ -36,7 +36,8 @@ find_library(QLITEMD_QJS_LIBRARY
 # for hosts that rasterize SVG, but the core never links it.
 set(_qlitemd_native_libraries "")
 if(WIN32)
-    if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")
+    # Formula ships ratex whenever the platform has its prebuilt library.
+    if(EXISTS "${PACKAGE_PREFIX_DIR}/bin/ratex_ffi.dll")
         if(NOT TARGET qlitemd::ratex)
             add_library(qlitemd::ratex SHARED IMPORTED)
             set_target_properties(qlitemd::ratex PROPERTIES
@@ -58,12 +59,11 @@ if(WIN32)
         list(APPEND _qlitemd_native_libraries qlitemd::merman)
     endif()
 else()
-    if("@QLITEMD_FORMULA_BACKEND@" STREQUAL "ratex")
-        find_library(QLITEMD_RATEX_LIBRARY
-            NAMES ratex_ffi
-            PATHS "${_qlitemd_libdir}"
-            NO_DEFAULT_PATH
-            REQUIRED)
+    find_library(QLITEMD_RATEX_LIBRARY
+        NAMES ratex_ffi
+        PATHS "${_qlitemd_libdir}"
+        NO_DEFAULT_PATH)
+    if(QLITEMD_RATEX_LIBRARY)
         list(APPEND _qlitemd_native_libraries ${QLITEMD_RATEX_LIBRARY})
     endif()
     find_library(QLITEMD_MERMAN_LIBRARY

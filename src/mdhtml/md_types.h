@@ -20,6 +20,15 @@ enum class MdMermaidBackend {
   kQuickjs = 2,  // mermaid.js in QuickJS only
 };
 
+// Which TeX backend renders a formula. RaTeX is the native FFI backend;
+// QuickJS runs MathJax. Availability follows the same degradation rule as
+// Mermaid.
+enum class MdFormulaBackend {
+  kAuto = 0,     // native (RaTeX) first, per-formula quickjs fallback
+  kNative = 1,   // RaTeX only
+  kQuickjs = 2,  // MathJax in QuickJS only
+};
+
 struct MdColor {
   uint8_t r = 0;
   uint8_t g = 0;

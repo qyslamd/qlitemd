@@ -720,17 +720,32 @@ QString MermaidFontFamily() {
   return family;
 }
 
-QString MermaidRenderVariant(MarkdownTheme theme) {
-  // 主题名进 key；字体指纹让字体更新后的旧图自然失效。后端版本也进 key，
-  // 切换/升级后不会命中旧后端的磁盘图。
+QString MermaidBackendToken(MarkdownMermaidBackend backend) {
+  switch (backend) {
+    case MarkdownMermaidBackend::kNative:
+      return QStringLiteral("merman");
+    case MarkdownMermaidBackend::kQuickjs:
+      return QStringLiteral("quickjs");
+    case MarkdownMermaidBackend::kAuto:
+      break;
+  }
+  return QStringLiteral("auto");
+}
+
+QString MermaidRenderVariant(MarkdownTheme theme,
+                             MarkdownMermaidBackend backend) {
+  // 主题名进 key；字体指纹让字体更新后的旧图自然失效。后端版本和请求的
+  // 引擎也进 key，切换/升级后不会命中旧后端的磁盘图。
   QString variant = QString::fromLatin1(ThemeName(theme)) + QLatin1Char('|') +
                     FontFingerprint();
 #if defined(QLITEMD_MERMAID_MERMAN)
   variant += QLatin1Char('|') + MermanVersion();
 #endif
+  variant += QLatin1Char('|') + MermaidBackendToken(backend);
   return variant;
 }
 
-QString MermaidRenderKey(const QString& code, MarkdownTheme theme) {
-  return MermaidRenderVariant(theme) + QLatin1Char('|') + code;
+QString MermaidRenderKey(const QString& code, MarkdownTheme theme,
+                         MarkdownMermaidBackend backend) {
+  return MermaidRenderVariant(theme, backend) + QLatin1Char('|') + code;
 }

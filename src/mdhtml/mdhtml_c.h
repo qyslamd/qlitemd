@@ -20,7 +20,7 @@
 // - mdhtml_render is a blocking convenience wrapper; mdhtml_render_async
 //   exposes a job handle for GUI hosts.
 
-#define MDHTML_ABI_VERSION 3u
+#define MDHTML_ABI_VERSION 4u
 
 #if defined(_WIN32)
 #if defined(MDHTML_SHARED)
@@ -81,6 +81,10 @@ typedef struct mdhtml_font_metrics {
 #define MDHTML_MERMAID_NATIVE 1
 #define MDHTML_MERMAID_QUICKJS 2
 
+#define MDHTML_FORMULA_AUTO 0
+#define MDHTML_FORMULA_NATIVE 1
+#define MDHTML_FORMULA_QUICKJS 2
+
 typedef struct mdhtml_render_options {
   uint32_t struct_size;
   int theme;                    // 0 = light, 1 = dark
@@ -93,6 +97,8 @@ typedef struct mdhtml_render_options {
   // Appended for ABI-compatible struct_size growth. Default is AUTO. A
   // backend not compiled into the library degrades to the other one.
   int mermaid_backend;  // MDHTML_MERMAID_AUTO, _NATIVE or _QUICKJS
+  // Same contract as mermaid_backend, for TeX formulas.
+  int formula_backend;  // MDHTML_FORMULA_AUTO, _NATIVE or _QUICKJS
 } mdhtml_render_options;
 
 typedef struct mdhtml_stats {

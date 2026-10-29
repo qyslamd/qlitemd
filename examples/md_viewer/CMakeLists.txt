@@ -43,8 +43,8 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     ExWidgets::ExWidgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
 )
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
-    set(_md_viewer_formula_label "RaTeX")
+if(TARGET qlitemd::ratex)
+    set(_md_viewer_formula_label "formula:auto")
 else()
     set(_md_viewer_formula_label "QuickJS")
 endif()

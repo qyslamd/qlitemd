@@ -82,14 +82,8 @@ endif()
 
 set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
 set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
-set(QLITEMD_FORMULA_BACKEND "ratex" CACHE STRING
-    "Formula backend: ratex (native FFI) or quickjs (MathJax)")
-set_property(CACHE QLITEMD_FORMULA_BACKEND PROPERTY STRINGS ratex quickjs)
 if(NOT QLITEMD_SVG_BACKEND MATCHES "^(resvg|qtsvg)$")
     message(FATAL_ERROR "QLITEMD_SVG_BACKEND must be resvg or qtsvg")
-endif()
-if(NOT QLITEMD_FORMULA_BACKEND MATCHES "^(ratex|quickjs)$")
-    message(FATAL_ERROR "QLITEMD_FORMULA_BACKEND must be ratex or quickjs")
 endif()
 
 # 原生库目录按「平台-架构」组织：win-x64 / win-x86 / linux-x64 / linux-arm64
@@ -132,33 +126,37 @@ qlitemd_native_available(_qlitemd_has_resvg "${_qlitemd_resvg_dir}" resvg)
 qlitemd_native_available(_qlitemd_has_merman "${_qlitemd_merman_dir}" merman_ffi)
 qlitemd_native_available(_qlitemd_has_ratex "${_qlitemd_ratex_dir}" ratex_ffi)
 
-# 请求了本平台缺产物的后端时回退到 quickjs/qtsvg，保证配置总能成功
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND NOT _qlitemd_has_ratex)
-    message(STATUS
-        "ratex binary missing for ${QLITEMD_PLATFORM_DIR}; using quickjs")
-    set(QLITEMD_FORMULA_BACKEND quickjs)
-endif()
+# 请求了本平台缺产物的 SVG 后端时回退到 qtsvg，保证配置总能成功
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg" AND NOT _qlitemd_has_resvg)
     message(STATUS
         "resvg binary missing for ${QLITEMD_PLATFORM_DIR}; using qtsvg")
     set(QLITEMD_SVG_BACKEND qtsvg)
 endif()
 
-# Mermaid renders at runtime through whichever backends were compiled in:
-# merman (fast, partial syntax support) when its prebuilt library exists for
-# this platform, and mermaid.js in QuickJS as the always-available fallback.
-# QuickJS is unconditionally part of the build: the mermaid fallback and the
-# MathJax formula builds both depend on it.
+# Formula and Mermaid each compile every backend the platform can provide:
+# RaTeX/merman when their prebuilt libraries exist, plus QuickJS/MathJax and
+# mermaid.js. The renderer picks one per render at runtime.
+#
+# QuickJS is unconditionally part of the build.
 
 # 日志自报家门：CI 与本地排查不用反推缓存里到底配了哪个后端
+set(_qlitemd_formula_backends "quickjs")
+if(_qlitemd_has_ratex)
+    set(_qlitemd_formula_backends "ratex+quickjs")
+endif()
+set(_qlitemd_mermaid_backends "quickjs")
+if(_qlitemd_has_merman)
+    set(_qlitemd_mermaid_backends "merman+quickjs")
+endif()
 message(STATUS
     "qlitemd backends: SVG=${QLITEMD_SVG_BACKEND}, "
-    "Formula=${QLITEMD_FORMULA_BACKEND}, "
-    "Mermaid=merman+quickjs (runtime switch), arch=${QLITEMD_ARCH}")
+    "Formula=${_qlitemd_formula_backends} (runtime switch), "
+    "Mermaid=${_qlitemd_mermaid_backends} (runtime switch), "
+    "arch=${QLITEMD_ARCH}")
 
 # Prebuilt native backends. Keep them as imported targets so the rest of the
 # build never needs Rust; upgrade instructions live in their VERSION.md files.
-# 只有当前构建确实选中的后端才需要导入与拷贝。
+# 平台有产物的原生库都导入并拷贝，运行时再选择是否使用。
 set(_qlitemd_runtime_libs "")
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     qlitemd_native_lib_name(_resvg_file resvg)
@@ -194,7 +192,7 @@ if(_qlitemd_has_merman)
         "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_merman_file}")
 endif()
 
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+if(_qlitemd_has_ratex)
     qlitemd_native_lib_name(_ratex_file ratex_ffi)
     add_library(qlitemd_ratex SHARED IMPORTED)
     set_target_properties(qlitemd_ratex PROPERTIES
@@ -467,7 +465,7 @@ if(WIN32)
         list(APPEND _qlitemd_native_import_libs
             "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi.dll.lib")
     endif()
-    if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+    if(_qlitemd_has_ratex)
         list(APPEND _qlitemd_native_import_libs
             "${_qlitemd_ratex_dir}/bin/${QLITEMD_PLATFORM_DIR}/ratex_ffi.dll.lib")
     endif()

@@ -46,7 +46,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
       // native tree-sitter：无 JS 运行时，不可中断由解析时长兜底
       break;
     case MarkdownRenderKind::Formula:
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
       runtime = &formula.runtime;
 #endif
       break;

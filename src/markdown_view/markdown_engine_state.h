@@ -24,7 +24,7 @@ struct HighlightEngineState {
 };
 
 struct FormulaEngineState {
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
   JsRuntime runtime;
 #endif
   // RaTeX 后端无引擎状态：每次调用直接走 FFI
@@ -47,7 +47,7 @@ struct MermaidEngineState {
 
 // 只负责加载 runtime，不更新上下文计数；失败是永久性的，除取消后的
 // ResetForReload() 外不会重试
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
 bool EnsureFormulaEngine(FormulaEngineState& engine);
 #endif
 bool EnsureMermaidEngine(MermaidEngineState& engine);

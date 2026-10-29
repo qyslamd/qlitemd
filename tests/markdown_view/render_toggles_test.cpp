@@ -12,9 +12,11 @@
 
 #include <gtest/gtest.h>
 
+#include "formula_renderer.h"
 #include "markdown_render_context.h"
 #include "markdown_test_wait.h"
 #include "markdown_view.h"
+#include "mermaid_renderer.h"
 
 // 开关的行为判据。用真正的 MarkdownView + QLiteHtmlWidget（offscreen），
 // 通过 Q_INVOKABLE html() 读回渲染后的 HTML；不依赖控件内部类型。
@@ -125,6 +127,23 @@ TEST(ImageTokenTest, TokenIsStableAndUrlSafe) {
                                   QStringLiteral("D#ff0000|x^2")));
   EXPECT_NE(token,
             MakeImageToken(QStringLiteral("f/"), QStringLiteral("D#ff0000|y")));
+}
+
+TEST(RenderKeyTest, BackendModeChangesCacheKey) {
+  const QColor color(0xff, 0x00, 0x00);
+  EXPECT_NE(FormulaRenderKey(QStringLiteral("x^2"), false, color,
+                             MarkdownFormulaBackend::kAuto),
+            FormulaRenderKey(QStringLiteral("x^2"), false, color,
+                             MarkdownFormulaBackend::kNative));
+  EXPECT_NE(FormulaRenderKey(QStringLiteral("x^2"), false, color,
+                             MarkdownFormulaBackend::kNative),
+            FormulaRenderKey(QStringLiteral("x^2"), false, color,
+                             MarkdownFormulaBackend::kQuickjs));
+  EXPECT_NE(
+      MermaidRenderKey(QStringLiteral("graph TD; A-->B;"), MarkdownTheme::Light,
+                       MarkdownMermaidBackend::kAuto),
+      MermaidRenderKey(QStringLiteral("graph TD; A-->B;"), MarkdownTheme::Light,
+                       MarkdownMermaidBackend::kNative));
 }
 
 TEST(RenderTogglesTest, LineNumbersToggleChangesStructure) {

@@ -882,6 +882,7 @@ struct MdMermaidEngine::Impl {
 #endif
 #if defined(QLITEMD_MDHTML_QUICKJS)
   std::optional<MdMermaidJs> js;
+  std::atomic<bool>* interrupt_flag = nullptr;
 #endif
 
 #if defined(QLITEMD_MDHTML_MERMAID_MERMAN)
@@ -896,6 +897,11 @@ struct MdMermaidEngine::Impl {
   MdMermaidJs& Js() {
     if (!js.has_value()) {
       js.emplace(metrics);
+      if (interrupt_flag != nullptr) {
+        // A native attempt may have failed before this lazy fallback; the
+        // flag was already set on the engine, so hand it to the new runtime.
+        js->SetInterruptFlag(interrupt_flag);
+      }
     }
     return *js;
   }
@@ -1025,8 +1031,9 @@ struct MdMermaidEngine::Impl {
 
   void SetInterruptFlag(std::atomic<bool>* flag) {
 #if defined(QLITEMD_MDHTML_QUICKJS)
-    // Constructing the JS runtime just to set a flag would start the
-    // payload load; only forward when it already exists.
+    // Constructing the JS runtime just to set a flag would start the payload
+    // load; remember it and apply it when the runtime is created.
+    interrupt_flag = flag;
     if (js.has_value()) {
       js->SetInterruptFlag(flag);
     }

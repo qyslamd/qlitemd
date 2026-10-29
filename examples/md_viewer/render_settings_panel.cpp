@@ -165,6 +165,22 @@ void RenderSettingsPanel::initUi() {
   AddSwitchRow(content, content_card, QStringLiteral("公式渲染"),
                formula_rendering_,
                QStringLiteral("关闭后 $…$ 原样显示，不加载 MathJax"));
+  content->addWidget(new QLabel(QStringLiteral("公式引擎"), content_card));
+  formula_backend_ = new QComboBox(content_card);
+  formula_backend_->setObjectName(QStringLiteral("formulaBackendCombo"));
+  formula_backend_->setToolTip(
+      QStringLiteral("自动：RaTeX 优先，单条公式失败自动用 MathJax 重试；"
+                     "RaTeX 快，MathJax 兼容性更强但需要加载 QuickJS"));
+  formula_backend_->addItem(QStringLiteral("自动（RaTeX 优先）"),
+                            static_cast<int>(MarkdownFormulaBackend::kAuto));
+  formula_backend_->addItem(QStringLiteral("RaTeX（原生）"),
+                            static_cast<int>(MarkdownFormulaBackend::kNative));
+  formula_backend_->addItem(QStringLiteral("QuickJS（MathJax）"),
+                            static_cast<int>(MarkdownFormulaBackend::kQuickjs));
+  const int formula_index =
+      formula_backend_->findData(static_cast<int>(view_->formula_backend()));
+  formula_backend_->setCurrentIndex(formula_index >= 0 ? formula_index : 0);
+  content->addWidget(formula_backend_);
   mermaid_rendering_ = CreateSwitch(view_->mermaid_rendering_enabled());
   mermaid_rendering_->setObjectName(QStringLiteral("mermaidRenderingCheck"));
   AddSwitchRow(content, content_card, QStringLiteral("Mermaid 渲染"),
@@ -347,6 +363,14 @@ void RenderSettingsPanel::initSignals() {
           &MarkdownView::SetCodeLineNumbers);
   connect(formula_rendering_, &QCheckBox::toggled, view_,
           &MarkdownView::SetFormulaRenderingEnabled);
+  connect(formula_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            if (index < 0) {
+              return;
+            }
+            view_->SetFormulaBackend(static_cast<MarkdownFormulaBackend>(
+                formula_backend_->itemData(index).toInt()));
+          });
   connect(mermaid_rendering_, &QCheckBox::toggled, view_,
           &MarkdownView::SetMermaidRenderingEnabled);
   connect(mermaid_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),

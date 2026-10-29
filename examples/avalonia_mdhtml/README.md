@@ -21,14 +21,14 @@ developer build is Qt x86. From a Visual Studio x64 developer prompt:
 cmake -S . -B build_core_x64 -G Ninja `
   -DCMAKE_BUILD_TYPE=RelWithDebInfo `
   -DQLITEMD_CORE_ONLY=ON `
-  -DQLITEMD_SVG_BACKEND=resvg `
-  -DQLITEMD_FORMULA_BACKEND=ratex
+  -DQLITEMD_SVG_BACKEND=resvg
 cmake --build build_core_x64 --parallel 2
 ```
 
 This produces `build_core_x64/bin/qlitemd_mdhtml_c.dll`, `resvg.dll`,
-`ratex_ffi.dll` and, because Windows x64 ships the prebuilt library,
-`merman_ffi.dll`. Mermaid chooses merman or mermaid.js at render time.
+`ratex_ffi.dll` and, because Windows x64 ships the prebuilt libraries,
+`merman_ffi.dll`. Formulas and Mermaid choose their native or QuickJS
+backend at render time.
 The project copies whichever native files exist after each `dotnet build`
 via the `QlitemdNativeDir` property (override it if your build directory
 differs).

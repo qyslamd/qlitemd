@@ -140,7 +140,7 @@ endif()
 if(TARGET qlitemd::merman)
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::merman)
 endif()
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
+if(TARGET qlitemd::ratex)
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::ratex)
 endif()
 target_link_libraries(${TARGET_NAME} PRIVATE qjs)
@@ -152,11 +152,11 @@ target_include_directories(${TARGET_NAME} PUBLIC
 # PUBLIC：决定 FormulaEngineState/MermaidEngineState 是否存在 JS 成员
 target_compile_definitions(${TARGET_NAME} PUBLIC
     QLITEMD_HAS_QUICKJS=1)
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
-    # PUBLIC：决定 FormulaEngineState 的成员布局，所有包含
+if(TARGET qlitemd::ratex)
+    # PUBLIC：该宏决定 FormulaEngineState 的成员布局，所有包含
     # markdown_engine_state.h 的 TU 必须看到同一个值
     target_compile_definitions(${TARGET_NAME} PUBLIC
-        QLITEMD_FORMULA_BACKEND_RATEX=1)
+        QLITEMD_FORMULA_RATEX=1)
 endif()
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     target_compile_definitions(${TARGET_NAME} PRIVATE

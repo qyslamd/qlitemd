@@ -2,8 +2,9 @@
 
 **A Qt Widgets Markdown renderer that doesn't need a browser engine.**
 
-md4c parses the document, qlitehtml lays it out, and formula rendering
-uses native RaTeX on Windows (MathJax in quickjs-ng elsewhere).
+md4c parses the document, qlitehtml lays it out, and formulas render
+through a runtime-selectable engine (native RaTeX where its prebuilt library
+exists, with a per-formula MathJax fallback in quickjs-ng).
 Highlighting uses native tree-sitter, Mermaid diagrams render through a
 runtime-selectable engine (native merman-ffi with a per-diagram mermaid.js
 fallback, or either engine pinned), and
@@ -92,8 +93,9 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
 - **Syntax highlighting** — native tree-sitter with 12 grammar languages
   (bash, batch, c, cpp, css, go, html, java, javascript, json, python,
   rust); the example renders per-line spans so line numbers stay aligned.
-- **Formulas** — RaTeX (native, Windows) or MathJax in QuickJS emits SVG for
-  inline `$...$` and display `$$...$$`, with theme-aware colors.
+- **Formulas** — native RaTeX or MathJax in QuickJS emits SVG for inline
+  `$...$` and display `$$...$$`, with theme-aware colors. The render option
+  picks the engine; `auto` retries a failed formula with MathJax.
 - **Mermaid diagrams** — both engines compile in: native merman-ffi (fast)
   and mermaid.js in QuickJS (broadest syntax coverage). The render option
   picks one per render; `auto` retries a failed diagram with mermaid.js.
@@ -142,13 +144,13 @@ Key design choices:
 - **Dependency inversion.** The public API knows nothing about QuickJS,
   merman or resvg. Highlighting, formula and Mermaid work are passed in as
   plain callbacks, so tests can use fakes and hosts can swap engines.
-- **Native engines, QuickJS fallback.** RaTeX renders TeX on Windows;
-  Mermaid renders with native merman by default and falls back to
-  mermaid.js per diagram, so QuickJS is always part of the build.
+- **Native engines, QuickJS fallback.** Formulas and Mermaid render with
+  native RaTeX/merman where available and fall back to MathJax/mermaid.js
+  per item, so QuickJS is always part of the build.
   `QLITEMD_SVG_BACKEND=resvg` stays the default rasterizer choice for the
   example.
-- **Bytecode for the remaining JS.** MathJax (non-Windows formulas) and
-  mermaid.js (default Mermaid backend) are precompiled by `qjsc`; see the
+- **Bytecode for the JS paths.** MathJax and mermaid.js are precompiled by
+  `qjsc`; see the
   [evaluation](docs/eval/Markdown渲染qjsc预编译评估.md).
 - **Generation filtering.** Every render bumps a request id; stale worker
   results are dropped before they touch the widget, and cancellation
@@ -222,14 +224,13 @@ Build options:
   `OFF` when embedded with `add_subdirectory`)
 - `QLITEMD_SVG_BACKEND` — `resvg` or `qtsvg` (falls back to `qtsvg` when
   no `resvg` binary exists for the platform)
-- `QLITEMD_FORMULA_BACKEND` — `ratex` (native FFI) or `quickjs`
-  (MathJax); falls back to `quickjs` when no `ratex` binary exists
 
-Mermaid has no build-time backend switch: merman (when its prebuilt library
-exists for the platform) and mermaid.js/QuickJS are both compiled in. The
-renderer picks `auto`, `native` or `quickjs` at run time through
-`MdRenderOptions::mermaid_backend` (C ABI: `mermaid_backend`); `auto` tries
-merman first and retries a failed diagram with mermaid.js.
+Formulas and Mermaid have no build-time backend switch: RaTeX/merman (when
+their prebuilt libraries exist for the platform) and
+MathJax/QuickJS/mermaid.js all compile in. The renderer picks `auto`, `native`
+or `quickjs` at run time through `MdRenderOptions::formula_backend` and
+`mermaid_backend` (C ABI: the same fields); `auto` tries the native backend
+first and retries a failed formula or diagram with QuickJS.
 
 The native backends are distributed as prebuilt DLLs under
 `3rdparty/resvg/`, `3rdparty/merman/` and `3rdparty/ratex/`; a normal build
@@ -274,8 +275,7 @@ For a Qt-free SDK build (no Qt discovery, no viewer, no widget):
 ```bash
 cmake -S . -B build-core -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DQLITEMD_CORE_ONLY=ON \
-  -DQLITEMD_FORMULA_BACKEND=quickjs
+  -DQLITEMD_CORE_ONLY=ON
 ```
 
 Install components:
@@ -360,8 +360,8 @@ maintainers and contributors.
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10 (snapshot) | HTML/CSS layout | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0 (snapshot) | Qt widget bridge | BSD-3-Clause |
 | [md4c](https://github.com/mity/md4c) | 0.6.0 | Markdown parser | MIT |
-| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (Mermaid default; formula fallback) | MIT |
-| [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | TeX to SVG (Windows) | MIT |
+| [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (MathJax and mermaid.js fallback) | MIT |
+| [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | Native TeX to SVG | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | 0.27.1 | Incremental parsing core for syntax highlighting | MIT |
 | [tree-sitter grammars](https://github.com/tree-sitter/tree-sitter) | 0.23.x-0.25.x | Language grammars (12 languages) | MIT |

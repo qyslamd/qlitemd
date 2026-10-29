@@ -77,6 +77,40 @@ TEST(MdPipelineTest, DisabledFormulaLeavesSourceLiteral) {
   }
 }
 
+TEST(MdPipelineTest, FormulaBackendSelectionChangesAsset) {
+  MdHtmlPipeline pipeline = CreatePipeline(1);
+  MdRenderOptions options;
+  options.formula_color = MdColor{0xff, 0x00, 0x00, 0xff};
+
+  options.formula_backend = MdFormulaBackend::kQuickjs;
+  const MdHtmlResult quickjs = pipeline.Render("Inline $x^2$.\n", options);
+  ASSERT_TRUE(quickjs.ok) << quickjs.error;
+  const MdAsset* quickjs_asset = nullptr;
+  for (const MdAsset& asset : quickjs.assets) {
+    if (asset.kind == MdAssetKind::Formula) {
+      quickjs_asset = &asset;
+    }
+  }
+  ASSERT_NE(quickjs_asset, nullptr);
+  EXPECT_NE(quickjs_asset->image.svg.find("#ff0000"), std::string::npos)
+      << quickjs_asset->image.svg;
+
+#if defined(QLITEMD_MDHTML_FORMULA_RATEX)
+  options.formula_backend = MdFormulaBackend::kNative;
+  const MdHtmlResult native = pipeline.Render("Inline $x^2$.\n", options);
+  ASSERT_TRUE(native.ok) << native.error;
+  const MdAsset* native_asset = nullptr;
+  for (const MdAsset& asset : native.assets) {
+    if (asset.kind == MdAssetKind::Formula) {
+      native_asset = &asset;
+    }
+  }
+  ASSERT_NE(native_asset, nullptr);
+  EXPECT_NE(native_asset->image.svg.find("rgba(255,0,0,1)"), std::string::npos)
+      << native_asset->image.svg;
+#endif
+}
+
 TEST(MdPipelineTest, ProgressIsMonotonicAndFinishes) {
   MdHtmlPipeline pipeline = CreatePipeline(1);
   std::mutex mutex;

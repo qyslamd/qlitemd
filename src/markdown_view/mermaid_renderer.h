@@ -3,16 +3,20 @@
 
 #include <QString>
 
-enum class MarkdownTheme;
+#include "markdown_types.h"
 
 // mermaid 渲染的 key/variant 与共享配置。渲染本体是 markdown_engine_state.h
 // 的 RenderMermaidOnEngine（worker 直接调用，quickjs / merman 双后端）；
 // key 同时是图片 token 的哈希输入，二者必须同源。
 
-// 内存/任务去重用的稳定 key；主题与字体指纹参与
-QString MermaidRenderKey(const QString& code, MarkdownTheme theme);
-// key 的 variant 部分（主题|字体指纹[|merman 版本]），磁盘缓存 key 也要用
-QString MermaidRenderVariant(MarkdownTheme theme);
+// 内存/任务去重用的稳定 key；主题、字体指纹与请求的引擎参与
+QString MermaidRenderKey(
+    const QString& code, MarkdownTheme theme,
+    MarkdownMermaidBackend backend = MarkdownMermaidBackend::kAuto);
+// key 的 variant 部分（主题|字体指纹[|merman 版本]|引擎），磁盘缓存也要用
+QString MermaidRenderVariant(
+    MarkdownTheme theme,
+    MarkdownMermaidBackend backend = MarkdownMermaidBackend::kAuto);
 
 // 度量与绘制共用的字体族名。空串表示没找到带 CJK 的族，此时不改写 SVG 里的
 // font-family（度量按 SVG 自己写的族名走）。供排查与单测用。

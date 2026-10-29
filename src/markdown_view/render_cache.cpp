@@ -97,31 +97,20 @@ QByteArray PayloadHash(const QString& kind) {
     const uint8_t* data;
     uint32_t size;
   };
+  // 两种引擎都可能被运行期选中，所以公式和 Mermaid 都始终把 JS 载荷纳入
+  // 哈希；原生引擎版本由各自的渲染 key 携带。
   QList<BytecodePayload> payloads;
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
   if (kind == QLatin1String("formula")) {
     payloads << BytecodePayload{"mathjax-svg.min.js", md_mj, md_mj_size};
-  }
-#endif
-#if !defined(QLITEMD_MERMAID_MERMAN)
-  if (kind == QLatin1String("mermaid")) {
+  } else if (kind == QLatin1String("mermaid")) {
     payloads << BytecodePayload{"path_bbox.js", md_pb, md_pb_size}
              << BytecodePayload{"dom_shim.js", md_ds, md_ds_size}
              << BytecodePayload{"mermaid.js", md_mm, md_mm_size};
   }
-#endif
   QCryptographicHash hash(QCryptographicHash::Sha256);
   for (const BytecodePayload& payload : payloads) {
     hash.addData(payload.name, strlen(payload.name));
     hash.addData(reinterpret_cast<const char*>(payload.data), payload.size);
-  }
-  if (payloads.isEmpty()) {
-    // 原生后端：把引擎标识写进 key，引擎升级时旧条目自然失效
-#if defined(QLITEMD_FORMULA_BACKEND_RATEX)
-    if (kind == QLatin1String("formula")) {
-      hash.addData("ratex-0.1.15");
-    }
-#endif
   }
   const QByteArray result = hash.result();
   cache.insert(kind, result);

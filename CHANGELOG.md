@@ -4,11 +4,17 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
-- Switch the Mermaid engine at runtime instead of configure time: both
-  native merman-ffi and mermaid.js in QuickJS compile into every build, and
-  `MdRenderOptions.mermaid_backend` picks per render — `auto` renders with
-  merman and retries a failed diagram with mermaid.js. The C ABI gains
-  `mdhtml_render_options.mermaid_backend` (version 3); md_viewer exposes a
+- Switch the formula engine at runtime too: RaTeX (where its prebuilt
+  library exists) and MathJax/QuickJS both compile in, and
+  `MdRenderOptions.formula_backend` picks per render — `auto` renders with
+  RaTeX and retries a failed formula with MathJax. The C ABI gains
+  `mdhtml_render_options.formula_backend` (version 4); md_viewer exposes a
+  formula engine selector. `QLITEMD_FORMULA_BACKEND` is gone.
+- Switch the Mermaid engine at runtime instead of configure time: native
+  merman-ffi (where available) and mermaid.js in QuickJS both compile in,
+  and `MdRenderOptions.mermaid_backend` picks per render — `auto` renders
+  with merman and retries a failed diagram with mermaid.js. The C ABI gains
+  `mdhtml_render_options.mermaid_backend` (version 4); md_viewer exposes a
   Mermaid engine selector in its render settings. The
   `QLITEMD_MERMAID_BACKEND` configure option is gone.
 

@@ -43,7 +43,6 @@ jobs:
           -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
           -DQLITEMD_QT_MAJOR=5
           -DQLITEMD_SVG_BACKEND=resvg
-          -DQLITEMD_FORMULA_BACKEND=ratex
 
       - name: Build
         run: cmake --build build --parallel

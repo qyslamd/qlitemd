@@ -101,18 +101,12 @@ target_link_libraries(${MDHTML_TARGET}
     Threads::Threads
 )
 
-# Native SVG backends stay optional: other platforms fall back to QuickJS
-# (not ported yet), and the core must still build without the native libs.
-if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND TARGET qlitemd::ratex)
+# Formula compiles both backends: RaTeX when the platform provides the
+# prebuilt library, plus MathJax in QuickJS everywhere.
+if(TARGET qlitemd::ratex)
     target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::ratex)
     target_compile_definitions(${MDHTML_TARGET} PUBLIC
         QLITEMD_MDHTML_FORMULA_RATEX=1)
-endif()
-# QuickJS can be present for Mermaid even when formulas use RaTeX, so the
-# formula translation unit needs its own backend marker.
-if(QLITEMD_FORMULA_BACKEND STREQUAL "quickjs")
-    target_compile_definitions(${MDHTML_TARGET} PUBLIC
-        QLITEMD_MDHTML_FORMULA_QUICKJS=1)
 endif()
 if(TARGET qlitemd::merman)
     target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::merman)

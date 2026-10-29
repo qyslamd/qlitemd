@@ -387,7 +387,8 @@ class MdRenderJobImpl : public MdRenderJob,
           continue;
         }
         add(MdLaneTaskKind::Formula,
-            MdFormulaRenderKey(tex, segment.display, options_.formula_color),
+            MdFormulaRenderKey(tex, segment.display, options_.formula_color,
+                               options_.formula_backend),
             tex, std::string(), segment.display);
       }
     }
@@ -496,7 +497,8 @@ class MdRenderJobImpl : public MdRenderJob,
     MdFormulaResult rendered;
     try {
       rendered =
-          engine.Render(task.payload, task.display, options_.formula_color);
+          engine.Render(task.payload, task.display, options_.formula_color,
+                        options_.formula_backend);
     } catch (...) {
       rendered.ok = false;
     }
@@ -545,8 +547,8 @@ class MdRenderJobImpl : public MdRenderJob,
       return it != highlight_results_.end() ? it->second : std::string();
     }
     if (kind == MdRenderKind::Formula) {
-      const std::string key =
-          MdFormulaRenderKey(payload, display, options_.formula_color);
+      const std::string key = MdFormulaRenderKey(
+          payload, display, options_.formula_color, options_.formula_backend);
       std::lock_guard<std::mutex> lock(results_mutex_);
       const auto it = formula_results_.find(key);
       if (it == formula_results_.end()) {

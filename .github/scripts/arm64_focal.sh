@@ -25,14 +25,13 @@ python3 -m pip install --no-cache-dir --disable-pip-version-check \
 cmake --version
 qmake --version || true
 
-# No linux-arm64 native backends in the tree yet: use the portable
-# QuickJS + QtSvg path, which is also what CMake would fall back to.
+# No linux-arm64 native backends in the tree yet: formulas and Mermaid use
+# the portable QuickJS paths, and SVG uses QtSvg.
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DQLITEMD_QT_MAJOR=5 \
   -DQLITEMD_BUILD_MD_VIEWER=OFF \
-  -DQLITEMD_SVG_BACKEND=qtsvg \
-  -DQLITEMD_FORMULA_BACKEND=quickjs
+  -DQLITEMD_SVG_BACKEND=qtsvg
 
 cmake --build build --parallel 2
 QT_QPA_PLATFORM=offscreen ctest --test-dir build \

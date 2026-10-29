@@ -3,10 +3,9 @@
 **一个不需要浏览器内核的 Qt Widgets Markdown 渲染器。**
 
 md4c 负责解析，qlitehtml 负责排版，语法高亮走原生 tree-sitter；
-QuickJS 负责运行 MathJax 与 mermaid.js；Mermaid 的两个引擎（原生
-merman-ffi 与 mermaid.js）同时编入，渲染时按需切换，公式与图表的 SVG
-由 resvg 光栅化。运行时不需要
-WebEngine、Chromium 或 Node.js。
+QuickJS 负责运行 MathJax 与 mermaid.js；公式与 Mermaid 的原生/QuickJS
+引擎都编入构建，渲染时按需切换，公式与图表的 SVG 由 resvg 光栅化。
+运行时不需要 WebEngine、Chromium 或 Node.js。
 
 [![Build](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/qyslamd/qlitemd/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -86,8 +85,9 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
   可按渲染切换 GitHub Admonition；原始 HTML 原样保留。
 - **代码高亮**：highlight.js 在 QuickJS 中运行；示例按行拆分 span，
   保证行号对齐。
-- **公式**：MathJax（TeX 转 SVG 再转 QPixmap），支持行内 `$...$` 与
-  独立 `$$...$$`，配色跟随主题。
+- **公式**：原生 RaTeX 或 MathJax（TeX 转 SVG 再转 QPixmap），支持行内
+  `$...$` 与独立 `$$...$$`，配色跟随主题；默认 auto，RaTeX 优先，失败
+  自动回退 MathJax。
 - **Mermaid 图表**：原生 merman-ffi 与 QuickJS 的 mermaid.js 同时编入，
   按渲染切换引擎；默认 auto——merman 优先，单图失败自动用 mermaid.js
   重试。
@@ -131,13 +131,12 @@ MarkdownRenderService（worker 池）
 
 - **依赖倒置**：公开 API 不认识 QuickJS、merman 或 resvg。高亮、公式和
   Mermaid 都通过普通回调传入，测试可以塞假实现，宿主可以替换引擎。
-- **Mermaid 运行期切换**：merman-ffi（快，语法覆盖较少）与
-  mermaid.js/QuickJS（慢，兼容性强）都编入构建，渲染时用
-  `MdRenderOptions::mermaid_backend`（C ABI 为 `mermaid_backend`）选择
-  `auto`、`native` 或 `quickjs`；`auto` 先试 merman，单图失败再交给
-  mermaid.js。公式在 Windows 走 RaTeX，其它平台回退 MathJax。
-- **JS 走字节码**：MathJax（非 Windows 公式）与默认的 mermaid.js 路径
-  由 `qjsc` 预编译；见
+- **公式与 Mermaid 运行期切换**：RaTeX/merman-ffi（原生、快）与
+  MathJax/mermaid.js（QuickJS、兼容性强）都编入构建；渲染时用
+  `MdRenderOptions::formula_backend` / `mermaid_backend`（C ABI 同名字段）
+  选择 `auto`、`native` 或 `quickjs`。`auto` 先试原生后端，单条公式或
+  单张图失败再交给 QuickJS。
+- **JS 走字节码**：MathJax 与 mermaid.js 路径由 `qjsc` 预编译；见
   [评估文档](docs/eval/Markdown渲染qjsc预编译评估.md)。
 - **按代过滤**：每次渲染递增 request id，过期的 worker 结果在接触控件
   之前就被丢弃；取消会中断 QuickJS。
@@ -207,11 +206,11 @@ Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
   `add_subdirectory` 嵌入时默认 `OFF`）
 - `QLITEMD_SVG_BACKEND`：`resvg`（Windows 默认）或 `qtsvg`
 
-Mermaid 没有编译期后端开关：平台有预编库时 merman 与
-mermaid.js/QuickJS 一起编入，渲染时通过
-`MdRenderOptions::mermaid_backend`（C ABI 为 `mermaid_backend`）选择
-`auto`、`native` 或 `quickjs`。`auto` 先试 merman，单图失败再回退
-mermaid.js。
+公式与 Mermaid 都没有编译期后端开关：平台有预编库时 RaTeX/merman 与
+MathJax/QuickJS/mermaid.js 一起编入，渲染时通过
+`MdRenderOptions::formula_backend` / `mermaid_backend`（C ABI 同名字段）
+选择 `auto`、`native` 或 `quickjs`。`auto` 先试原生后端，单条公式或
+单张图失败再回退 QuickJS。
 
 原生后端以预编 DLL 形式放在 `3rdparty/resvg/`、`3rdparty/merman/` 与
 `3rdparty/ratex/`，普通构建不需要 Rust。平台缺原生库时自动回退到
@@ -253,8 +252,7 @@ target_link_libraries(myapp PRIVATE qlitemd::mdhtml_c)
 ```bash
 cmake -S . -B build-core -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DQLITEMD_CORE_ONLY=ON \
-  -DQLITEMD_FORMULA_BACKEND=quickjs
+  -DQLITEMD_CORE_ONLY=ON
 ```
 
 安装组件：
@@ -330,7 +328,8 @@ qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者
 | [litehtml](https://github.com/litehtml/litehtml) | 0.10（快照） | HTML/CSS 排版 | BSD-3-Clause |
 | [qlitehtml](https://github.com/qtproject/qlitehtml) | 1.0（快照） | Qt 控件桥接 | BSD-3-Clause |
 | [md4c](https://github.com/mity/md4c) | 0.6.0 | Markdown 解析 | MIT |
-| [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript 运行时 | MIT |
+| [QuickJS](https://bellard.org/quickjs/) | 0.17.0 | JavaScript 运行时（MathJax / mermaid.js） | MIT |
+| [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | 原生 TeX 转 SVG | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | 随 litehtml 内置 | HTML5 解析 | Apache-2.0 |
 | [highlight.js](https://highlightjs.org/) | 11.12.0 | 语法高亮 | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1（mathjax-full） | TeX 转 SVG | Apache-2.0 |

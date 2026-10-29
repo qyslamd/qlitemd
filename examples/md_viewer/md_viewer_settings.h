@@ -52,6 +52,7 @@ struct MdViewerSettings {
   bool code_line_numbers = false;
   MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
   MarkdownMermaidBackend mermaid_backend = MarkdownMermaidBackend::kAuto;
+  MarkdownFormulaBackend formula_backend = MarkdownFormulaBackend::kAuto;
   bool formula_rendering = true;
   bool mermaid_rendering = true;
   bool persistent_cache = true;

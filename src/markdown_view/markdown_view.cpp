@@ -295,30 +295,34 @@ QString AssetKindName(const MdAsset& asset) {
 // Keep the adapter's historical mj: token scheme: public APIs, the qlitehtml
 // pixmap callback and ExportHtml all key on it.
 QString AssetToken(const MdAsset& asset, MarkdownTheme theme,
-                   const QColor& formula_color) {
+                   const QColor& formula_color,
+                   MarkdownMermaidBackend mermaid_backend,
+                   MarkdownFormulaBackend formula_backend) {
   if (asset.kind == MdAssetKind::Formula) {
-    return MakeImageToken(QStringLiteral("f/"),
-                          FormulaRenderKey(QString::fromStdString(asset.source),
-                                           asset.display, formula_color));
+    return MakeImageToken(
+        QStringLiteral("f/"),
+        FormulaRenderKey(QString::fromStdString(asset.source), asset.display,
+                         formula_color, formula_backend));
   }
-  return MakeImageToken(
-      QStringLiteral("m/"),
-      MermaidRenderKey(QString::fromStdString(asset.source), theme));
+  return MakeImageToken(QStringLiteral("m/"),
+                        MermaidRenderKey(QString::fromStdString(asset.source),
+                                         theme, mermaid_backend));
 }
 
 QString AssetDiskKey(const MdAsset& asset, MarkdownTheme theme,
-                     const QColor& formula_color) {
+                     const QColor& formula_color,
+                     MarkdownMermaidBackend mermaid_backend,
+                     MarkdownFormulaBackend formula_backend) {
   if (asset.kind == MdAssetKind::Formula) {
-    const QString variant =
-        (asset.display ? QStringLiteral("D") : QStringLiteral("I")) +
-        QLatin1Char('|') + formula_color.name();
-    return MakeRenderCacheKey(QStringLiteral("formula"),
-                              QString::fromStdString(asset.source).trimmed(),
-                              variant);
+    return MakeRenderCacheKey(
+        QStringLiteral("formula"),
+        QString::fromStdString(asset.source).trimmed(),
+        FormulaRenderKey(QString::fromStdString(asset.source), asset.display,
+                         formula_color, formula_backend));
   }
   return MakeRenderCacheKey(QStringLiteral("mermaid"),
                             QString::fromStdString(asset.source),
-                            MermaidRenderVariant(theme));
+                            MermaidRenderVariant(theme, mermaid_backend));
 }
 
 bool RasterizeAssetSvg(const MdAsset& asset, QImage* image, QString* error) {
@@ -358,12 +362,15 @@ QByteArray EncodePngImage(const QImage& image) {
 // tokens. GUI work (QPixmap) is left to OnCoreRenderFinished.
 void PrepareCoreAssets(const MdHtmlResult& result, MarkdownTheme theme,
                        const QColor& formula_color,
+                       MarkdownFormulaBackend formula_backend,
+                       MarkdownMermaidBackend mermaid_backend,
                        const RenderCacheConfig& formula_config,
                        const RenderCacheConfig& mermaid_config,
                        MdViewCorePrepared* prepared) {
   prepared->body_html = QString::fromStdString(result.html);
   for (const MdAsset& asset : result.assets) {
-    const QString token = AssetToken(asset, theme, formula_color);
+    const QString token = AssetToken(asset, theme, formula_color,
+                                     mermaid_backend, formula_backend);
     MdViewPreparedAsset entry;
     entry.token = token;
     if (asset.kind == MdAssetKind::Formula) {
@@ -379,7 +386,8 @@ void PrepareCoreAssets(const MdHtmlResult& result, MarkdownTheme theme,
     const QString kind_name = AssetKindName(asset);
     const RenderCacheConfig& config =
         asset.kind == MdAssetKind::Formula ? formula_config : mermaid_config;
-    const QString disk_key = AssetDiskKey(asset, theme, formula_color);
+    const QString disk_key = AssetDiskKey(asset, theme, formula_color,
+                                          mermaid_backend, formula_backend);
     CachedImage cached;
     if (config.enabled &&
         LoadRenderCacheEntry(config, kind_name, disk_key, &cached) &&
@@ -1096,6 +1104,14 @@ void MarkdownView::SetMermaidBackend(MarkdownMermaidBackend backend) {
   ReapplyDocument();
 }
 
+void MarkdownView::SetFormulaBackend(MarkdownFormulaBackend backend) {
+  if (formula_backend_ == backend) {
+    return;
+  }
+  formula_backend_ = backend;
+  ReapplyDocument();
+}
+
 void MarkdownView::SetAdmonitionMode(MarkdownAdmonitionMode mode) {
   if (admonition_mode_ == mode) {
     return;
@@ -1284,6 +1300,17 @@ void MarkdownView::StartRender(quint64 request_id) {
       options.mermaid_backend = MdMermaidBackend::kAuto;
       break;
   }
+  switch (formula_backend_) {
+    case MarkdownFormulaBackend::kNative:
+      options.formula_backend = MdFormulaBackend::kNative;
+      break;
+    case MarkdownFormulaBackend::kQuickjs:
+      options.formula_backend = MdFormulaBackend::kQuickjs;
+      break;
+    default:
+      options.formula_backend = MdFormulaBackend::kAuto;
+      break;
+  }
   options.formula_color = ToMdColor(formula_color);
 
   MarkdownRenderContextState& state =
@@ -1300,6 +1327,8 @@ void MarkdownView::StartRender(quint64 request_id) {
 
   QPointer<MarkdownView> self(this);
   const MarkdownTheme theme = theme_;
+  const MarkdownFormulaBackend formula_backend = formula_backend_;
+  const MarkdownMermaidBackend mermaid_backend = mermaid_backend_;
   const std::string markdown = markdown_.toUtf8().toStdString();
   std::shared_ptr<MdRenderJob> job = CorePipeline().RenderAsync(
       markdown, options,
@@ -1326,12 +1355,13 @@ void MarkdownView::StartRender(quint64 request_id) {
 
   // The core job owns its own coordinator thread; this thread only waits and
   // rasterizes SVG assets (QImage work is safe off the GUI thread).
-  std::thread([self, request_id, job, theme, formula_color, formula_config,
-               mermaid_config]() {
+  std::thread([self, request_id, job, theme, formula_color, formula_backend,
+               mermaid_backend, formula_config, mermaid_config]() {
     auto result = std::make_shared<MdHtmlResult>(job->Wait());
     auto prepared = std::make_shared<MdViewCorePrepared>();
-    PrepareCoreAssets(*result, theme, formula_color, formula_config,
-                      mermaid_config, prepared.get());
+    PrepareCoreAssets(*result, theme, formula_color, formula_backend,
+                      mermaid_backend, formula_config, mermaid_config,
+                      prepared.get());
     if (self.isNull()) {
       return;
     }

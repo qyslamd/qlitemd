@@ -57,10 +57,18 @@ enum class MarkdownMermaidBackend {
   kQuickjs = 2,
 };
 
+// 公式引擎的运行时选择。RaTeX 为原生后端，QuickJS 跑 MathJax。
+enum class MarkdownFormulaBackend {
+  kAuto = 0,
+  kNative = 1,
+  kQuickjs = 2,
+};
+
 struct MarkdownRenderOptions {
   bool code_line_numbers = false;
   MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
   MarkdownMermaidBackend mermaid_backend = MarkdownMermaidBackend::kAuto;
+  MarkdownFormulaBackend formula_backend = MarkdownFormulaBackend::kAuto;
   std::function<void(const MarkdownHeading&)> outline;
   std::function<QString(const QString& code, const QString& language)>
       highlight;

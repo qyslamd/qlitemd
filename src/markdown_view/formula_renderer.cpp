@@ -1,6 +1,6 @@
 #include "formula_renderer.h"
 
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
 #include <quickjs.h>
 #endif
 
@@ -14,7 +14,7 @@
 #include <QRegularExpression>
 #include <QSizeF>
 
-#if defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if defined(QLITEMD_FORMULA_RATEX)
 #include "ratex_ffi.h"
 #else
 #include "js_runtime.h"
@@ -28,6 +28,28 @@
 #include "svg_rasterizer.h"
 
 namespace {
+
+QString FormulaBackendToken(MarkdownFormulaBackend backend) {
+  switch (backend) {
+    case MarkdownFormulaBackend::kNative:
+      return QStringLiteral("ratex");
+    case MarkdownFormulaBackend::kQuickjs:
+      return QStringLiteral("quickjs");
+    case MarkdownFormulaBackend::kAuto:
+      break;
+  }
+  return QStringLiteral("auto");
+}
+
+QString FormulaNativeVersion() {
+#if defined(QLITEMD_FORMULA_RATEX)
+  // Keep in sync with 3rdparty/ratex/VERSION.md so an engine upgrade
+  // invalidates the persistent PNG cache.
+  return QStringLiteral("ratex-0.1.15");
+#else
+  return QStringLiteral("no-ratex");
+#endif
+}
 
 void AddArtifact(const MarkdownDiagnostics& diagnostics, const QString& name,
                  const QByteArray& data,
@@ -81,7 +103,7 @@ RenderedImage RasterizeSizedSvg(const QString& svg, qreal width, qreal height,
   return out;
 }
 
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
 
 // 同步入口的线程局部引擎；异步 worker 自己持有 state
 FormulaEngineState& DefaultEngine() {
@@ -168,11 +190,11 @@ RenderedImage SvgToImage(const QString& svg, const QColor& color,
                            artifacts);
 }
 
-#endif  // !QLITEMD_FORMULA_BACKEND_RATEX
+#endif  // !QLITEMD_FORMULA_RATEX
 
 }  // namespace
 
-#if !defined(QLITEMD_FORMULA_BACKEND_RATEX)
+#if !defined(QLITEMD_FORMULA_RATEX)
 
 bool EnsureFormulaEngine(FormulaEngineState& engine) {
   if (engine.runtime.status().loaded) {
@@ -292,7 +314,7 @@ RenderedImage RenderFormulaOnEngine(
   return tag;
 }
 
-#else  // QLITEMD_FORMULA_BACKEND_RATEX
+#else  // QLITEMD_FORMULA_RATEX
 
 MarkdownEngineStatus FormulaEngineStatus(const FormulaEngineState& /*engine*/) {
   // RaTeX 是直接 FFI，没有引擎加载阶段：恒就绪
@@ -395,15 +417,16 @@ RenderedImage RenderFormulaOnEngine(
   return image;
 }
 
-#endif  // QLITEMD_FORMULA_BACKEND_RATEX
+#endif  // QLITEMD_FORMULA_RATEX
 
-QString FormulaRenderKey(const QString& tex, bool display,
-                         const QColor& color) {
+QString FormulaRenderKey(const QString& tex, bool display, const QColor& color,
+                         MarkdownFormulaBackend backend) {
   // MathJax 在数学模式下对首尾空白不敏感：key 与渲染输入统一用 trim 后的
   // 文本，避免 "x" 与 " x " 生成两条内容相同的缓存
   const QString normalized = tex.trimmed();
   const QString variant =
       color.isValid() ? color.name() : QStringLiteral("legacy");
   return (display ? QStringLiteral("D") : QStringLiteral("I")) + variant +
-         QLatin1Char('|') + normalized;
+         QLatin1Char('|') + FormulaNativeVersion() + QLatin1Char('|') +
+         FormulaBackendToken(backend) + QLatin1Char('|') + normalized;
 }

@@ -27,9 +27,8 @@ The installed SDK contains layers 1 and 2 (`find_package(qlitemd)` →
 `add_subdirectory`; release CI ships it as `qlitemd-<version>-qt-src.zip`
 alongside the compiled core SDK. qlitehtml, QuickJS, merman, resvg and md4c
 types stay out of the public core headers so the backend can be replaced
-without changing callers. Mermaid compiles both engines in and switches
-at render time: native merman first, per-diagram mermaid.js fallback.
-Formulas use RaTeX on Windows and MathJax in QuickJS elsewhere.
+without changing callers. Formulas and Mermaid compile both engines in and
+switch at render time: native RaTeX/merman first, per-item QuickJS fallback.
 `md_viewer` rasterizes with resvg by default, with the legacy QtSvg path
 still selectable.
 
