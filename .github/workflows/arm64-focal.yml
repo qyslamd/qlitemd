@@ -4,29 +4,11 @@ name: arm64-focal
 # that kit only exists in Focal's apt archive. Emulate arm64 Focal in Docker
 # on an x64 runner so the arm64 build/tests use the same Qt 5.12.8 as the
 # oldest supported x64 kit.
+#
+# QEMU makes this job very slow, so it is manual-only: start it from the
+# Actions page or with `gh workflow run arm64-focal.yml`.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'CMakeLists.txt'
-      - 'cmake/**'
-      - 'src/**'
-      - 'resources/**'
-      - '3rdparty/**'
-      - 'tests/**'
-      - '.github/workflows/arm64-focal.yml'
-      - '.github/scripts/arm64_focal.sh'
-  pull_request:
-    paths:
-      - 'CMakeLists.txt'
-      - 'cmake/**'
-      - 'src/**'
-      - 'resources/**'
-      - '3rdparty/**'
-      - 'tests/**'
-      - '.github/workflows/arm64-focal.yml'
-      - '.github/scripts/arm64_focal.sh'
 
 permissions:
   contents: read
