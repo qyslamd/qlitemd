@@ -2,6 +2,12 @@
 
 All notable changes to qlitemd are documented here.
 
+## 0.2.1 - 2026-10-29
+
+- Include the merman prebuilt library in the Qt source package so
+  `add_subdirectory` consumers get the full Mermaid runtime selection
+  instead of QuickJS only.
+
 ## 0.2.0 - 2026-10-29
 
 - Switch the formula engine at runtime too: RaTeX (where its prebuilt
