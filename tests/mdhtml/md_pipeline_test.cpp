@@ -106,7 +106,7 @@ TEST(MdPipelineTest, FormulaBackendSelectionChangesAsset) {
     }
   }
   ASSERT_NE(native_asset, nullptr);
-  EXPECT_NE(native_asset->image.svg.find("rgba(255,0,0,1)"), std::string::npos)
+  EXPECT_NE(native_asset->image.svg.find("#ff0000"), std::string::npos)
       << native_asset->image.svg;
 #endif
 }

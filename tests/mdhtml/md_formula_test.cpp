@@ -66,7 +66,7 @@ TEST(MdFormulaTest, ExplicitNativeRendersAndReportsBackend) {
   ASSERT_TRUE(result.ok) << result.error;
   EXPECT_EQ(used, MdFormulaBackend::kNative);
   EXPECT_EQ(result.backend_used, MdFormulaBackend::kNative);
-  EXPECT_NE(result.svg.svg.find("rgba(255,0,0,1)"), std::string::npos)
+  EXPECT_NE(result.svg.svg.find("#ff0000"), std::string::npos)
       << result.svg.svg;
 }
 

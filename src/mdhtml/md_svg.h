@@ -24,6 +24,11 @@ bool MdSvgIntrinsicSize(std::string_view svg, int* width, int* height);
 // Lowercase "#rrggbb"; alpha is not part of SVG paint strings.
 std::string MdColorHex(MdColor color);
 
+// Rewrites CSS rgba(r,g,b,a) paint values to #rrggbb. RaTeX emits rgba(),
+// which strict consumers such as QtSvg do not parse; alpha is ignored,
+// matching MdApplySvgColor.
+std::string MdSvgMakePaintPortable(std::string_view svg);
+
 // Portable-profile colour handling: replaces every currentColor with the
 // opaque #rrggbb value, or injects fill on the first group when the payload
 // carries no currentColor and no explicit fill. Alpha is ignored.

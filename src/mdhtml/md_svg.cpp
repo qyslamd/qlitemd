@@ -13,6 +13,22 @@ bool IsSpace(char c) {
          c == '\v';
 }
 
+// Parses one 0..255 channel from "r, g, b[, a]" and advances past it.
+bool ParseRgbaChannel(const std::string& body, std::size_t* pos, int* value) {
+  while (*pos < body.size() && (IsSpace(body[*pos]) || body[*pos] == ',')) {
+    ++*pos;
+  }
+  const char* begin = body.c_str() + *pos;
+  char* end = nullptr;
+  const long parsed = std::strtol(begin, &end, 10);
+  if (end == begin || parsed < 0 || parsed > 255) {
+    return false;
+  }
+  *pos += static_cast<std::size_t>(end - begin);
+  *value = static_cast<int>(parsed);
+  return true;
+}
+
 std::string_view TrimViewLocal(std::string_view text) {
   std::size_t begin = 0;
   std::size_t end = text.size();
@@ -183,6 +199,34 @@ std::string MdColorHex(MdColor color) {
     out.push_back(kHex[channel & 0x0F]);
   }
   return out;
+}
+
+std::string MdSvgMakePaintPortable(std::string_view svg) {
+  std::string result(svg);
+  std::size_t pos = 0;
+  while ((pos = result.find("rgba(", pos)) != std::string::npos) {
+    const std::size_t end = result.find(')', pos + 5);
+    if (end == std::string::npos) {
+      break;
+    }
+    const std::string body = result.substr(pos + 5, end - pos - 5);
+    std::size_t cursor = 0;
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    if (ParseRgbaChannel(body, &cursor, &r) &&
+        ParseRgbaChannel(body, &cursor, &g) &&
+        ParseRgbaChannel(body, &cursor, &b)) {
+      const std::string hex =
+          MdColorHex(MdColor{static_cast<uint8_t>(r), static_cast<uint8_t>(g),
+                             static_cast<uint8_t>(b), 0xff});
+      result.replace(pos, end - pos + 1, hex);
+      pos += hex.size();
+    } else {
+      pos += 5;
+    }
+  }
+  return result;
 }
 
 std::string MdApplySvgColor(std::string_view svg, MdColor color) {

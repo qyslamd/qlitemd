@@ -22,6 +22,7 @@
 #endif
 #include "markdown_engine_state.h"
 #include "markdown_render_context_internal.h"
+#include "md_svg.h"
 #include "mermaid_renderer.h"
 #include "render_cache.h"
 #include "render_diagnostics.h"
@@ -369,7 +370,8 @@ RenderedImage RenderFormulaOnEngine(
     ratex_free_display_list(result.data);
     return {};
   }
-  const QString svg = QString::fromUtf8(result.data);
+  const QString svg =
+      QString::fromStdString(MdSvgMakePaintPortable(result.data));
   ratex_free_display_list(result.data);
 
   static const QRegularExpression kViewBox(

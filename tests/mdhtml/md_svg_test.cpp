@@ -74,6 +74,15 @@ TEST(MdSvgTest, ColorDoesNotDuplicateExistingFill) {
   EXPECT_EQ(MdApplySvgColor(svg, MdColor{0xff, 0, 0, 0xff}), svg);
 }
 
+TEST(MdSvgTest, PaintPortableConvertsRgbaPaint) {
+  const std::string svg = MdSvgMakePaintPortable(
+      "<svg><path fill=\"rgba(255, 0, 128, 1)\" stroke=\"rgba(0,0,0,0.5)\"/>"
+      "</svg>");
+  EXPECT_NE(svg.find("fill=\"#ff0080\""), std::string::npos) << svg;
+  EXPECT_NE(svg.find("stroke=\"#000000\""), std::string::npos) << svg;
+  EXPECT_EQ(svg.find("rgba("), std::string::npos) << svg;
+}
+
 TEST(MdHashTest, Sha256KnownVectors) {
   EXPECT_EQ(MdSha256Hex(""),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");

@@ -195,7 +195,7 @@ MdFormulaResult RenderWithRatex(std::string_view normalized, bool display,
     ratex_free_display_list(rendered.data);
     return result;
   }
-  const std::string raw(rendered.data);
+  const std::string raw = MdSvgMakePaintPortable(rendered.data);
   ratex_free_display_list(rendered.data);
 
   const std::string root = MdExtractSvgRoot(raw);
