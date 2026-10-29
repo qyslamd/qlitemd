@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.2.0 - 2026-10-29
 
 - Switch the formula engine at runtime too: RaTeX (where its prebuilt
   library exists) and MathJax/QuickJS both compile in, and
@@ -17,6 +17,10 @@ All notable changes to qlitemd are documented here.
   `mdhtml_render_options.mermaid_backend` (version 4); md_viewer exposes a
   Mermaid engine selector in its render settings. The
   `QLITEMD_MERMAID_BACKEND` configure option is gone.
+- Normalize RaTeX SVG paint colors to `#rrggbb` so QtSvg-based
+  rasterization keeps formula colors.
+- The arm64 Focal CI job is manual-only again; it no longer runs on every
+  push or pull request.
 
 ## 0.1.0 - 2026-10-28
 
