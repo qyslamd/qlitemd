@@ -2,9 +2,8 @@
 """Build the qlitemd Qt widget source package.
 
 The package is consumed with add_subdirectory(), not find_package(). It
-contains the Qt widget, the zero-Qt core source, the resources they need and
-the pinned third-party sources, but not the md_viewer application shell or
-the optional merman backend.
+contains the Qt widget, the zero-Qt core source, the resources and native
+backends they need, but not the md_viewer application shell.
 """
 
 import argparse
@@ -104,13 +103,13 @@ def stage_package(root: Path, stage: Path) -> None:
                   dst_lang / "queries" / "highlights.scm")
         copy_file(src_lang / "LICENSE", dst_lang / "LICENSE")
 
-    for name in ("resvg", "ratex"):
+    for name in ("resvg", "ratex", "merman"):
         src_lib = root / "3rdparty" / name
         dst_lib = stage / "3rdparty" / name
         copy_tree(src_lib / "include", dst_lib / "include")
         copy_tree(src_lib / "bin", dst_lib / "bin")
         for license_name in ("LICENSE", "LICENSE-APACHE", "LICENSE-MIT",
-                             "VERSION.md"):
+                             "THIRD_PARTY_NOTICES.md", "VERSION.md"):
             license_file = src_lib / license_name
             if license_file.is_file():
                 copy_file(license_file, dst_lib / license_name)
@@ -122,9 +121,9 @@ version: {project_version(root)}
 commit: {git_commit(root)}
 
 This package is for add_subdirectory() consumers. It contains the
-zero-Qt core, the Qt MarkdownView component and the pinned sources
-needed by both. The md_viewer application shell and the optional
-merman backend are not included.
+zero-Qt core, the Qt MarkdownView component and the pinned sources and
+native backends needed by both. The md_viewer application shell is not
+included.
 
 Quick start:
   cmake -S examples/qt_widget_minimal -B build -G Ninja

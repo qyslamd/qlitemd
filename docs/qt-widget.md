@@ -58,10 +58,10 @@ required.
 
 Release CI produces `qlitemd-<version>-qt-src.zip`. It contains the core
 and widget sources, themes/JS payloads, the 12 tree-sitter grammars, md4c,
-qlitehtml/litehtml, QuickJS, and the Windows/Linux native backend binaries.
-It does not contain the `md_viewer` application shell or the optional
-merman backend. `examples/qt_widget_minimal` inside the package is the
-reference consumer and CI smoke test.
+qlitehtml/litehtml, QuickJS, and the Windows/Linux native backend binaries
+(resvg, RaTeX and merman). It does not contain the `md_viewer` application
+shell. `examples/qt_widget_minimal` inside the package is the reference
+consumer and CI smoke test.
 
 ## Constraints
 
