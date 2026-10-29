@@ -4,8 +4,9 @@
 
 md4c parses the document, qlitehtml lays it out, and formula rendering
 uses native RaTeX on Windows (MathJax in quickjs-ng elsewhere).
-Highlighting uses native tree-sitter, Mermaid diagrams use mermaid.js in
-quickjs-ng by default (native merman-ffi is selectable), and
+Highlighting uses native tree-sitter, Mermaid diagrams render through a
+runtime-selectable engine (native merman-ffi with a per-diagram mermaid.js
+fallback, or either engine pinned), and
 formula/diagram SVGs are rasterized with resvg. There is no WebEngine,
 Chromium or Node.js at runtime.
 
@@ -93,8 +94,9 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
   rust); the example renders per-line spans so line numbers stay aligned.
 - **Formulas** — RaTeX (native, Windows) or MathJax in QuickJS emits SVG for
   inline `$...$` and display `$$...$$`, with theme-aware colors.
-- **Mermaid diagrams** — mermaid.js in QuickJS renders diagrams by default
-  for broader syntax coverage; native merman-ffi remains selectable.
+- **Mermaid diagrams** — both engines compile in: native merman-ffi (fast)
+  and mermaid.js in QuickJS (broadest syntax coverage). The render option
+  picks one per render; `auto` retries a failed diagram with mermaid.js.
 - **SVG assets** — the core never rasterizes. `md_viewer` uses resvg, with
   the legacy QtSvg backend still selectable.
 - **Themes** — built-in light and dark CSS; `SetThemeStyleSheet()` lets a host
@@ -129,7 +131,7 @@ md4c  ->  HTML skeleton + formula/Mermaid placeholders
 MarkdownRenderService (worker pools)
       |-- tree-sitter   ->  highlighted HTML          (native)
       |-- RaTeX/MathJax ->  SVG                       (native / QuickJS)
-      `-- mermaid.js    ->  SVG                       (QuickJS; merman selectable)
+      `-- mermaid.js    ->  SVG   (QuickJS; native merman selectable per render)
       |
       v
 assemble HTML  ->  qlitehtml widget  ->  painted QWidget
@@ -140,12 +142,11 @@ Key design choices:
 - **Dependency inversion.** The public API knows nothing about QuickJS,
   merman or resvg. Highlighting, formula and Mermaid work are passed in as
   plain callbacks, so tests can use fakes and hosts can swap engines.
-- **Native math, QuickJS Mermaid.** RaTeX renders TeX on Windows; Mermaid
-  defaults to mermaid.js in QuickJS because it has broader syntax coverage
-  than merman-ffi. Windows builds therefore include QuickJS by default.
-  Native merman-ffi remains selectable with
-  `QLITEMD_MERMAID_BACKEND=merman`; `QLITEMD_SVG_BACKEND=resvg` stays the
-  default rasterizer choice for the example.
+- **Native engines, QuickJS fallback.** RaTeX renders TeX on Windows;
+  Mermaid renders with native merman by default and falls back to
+  mermaid.js per diagram, so QuickJS is always part of the build.
+  `QLITEMD_SVG_BACKEND=resvg` stays the default rasterizer choice for the
+  example.
 - **Bytecode for the remaining JS.** MathJax (non-Windows formulas) and
   mermaid.js (default Mermaid backend) are precompiled by `qjsc`; see the
   [evaluation](docs/eval/Markdown渲染qjsc预编译评估.md).
@@ -223,13 +224,17 @@ Build options:
   no `resvg` binary exists for the platform)
 - `QLITEMD_FORMULA_BACKEND` — `ratex` (native FFI) or `quickjs`
   (MathJax); falls back to `quickjs` when no `ratex` binary exists
-- `QLITEMD_MERMAID_BACKEND` — `quickjs` (default, mermaid.js) or `merman`;
-  `merman` requires `QLITEMD_SVG_BACKEND=resvg` and falls back to
-  `quickjs` when its binary is missing
+
+Mermaid has no build-time backend switch: merman (when its prebuilt library
+exists for the platform) and mermaid.js/QuickJS are both compiled in. The
+renderer picks `auto`, `native` or `quickjs` at run time through
+`MdRenderOptions::mermaid_backend` (C ABI: `mermaid_backend`); `auto` tries
+merman first and retries a failed diagram with mermaid.js.
 
 The native backends are distributed as prebuilt DLLs under
-`3rdparty/resvg/` and `3rdparty/merman/`; a normal build does not require
-Rust. Linux/WSL currently falls back to `qtsvg` + `quickjs`.
+`3rdparty/resvg/`, `3rdparty/merman/` and `3rdparty/ratex/`; a normal build
+does not require Rust. Platforms without a native library fall back to the
+QuickJS/QtSvg paths.
 
 ## Test
 
@@ -248,9 +253,9 @@ cmake --install build
 With the default options, the install contains `bin/md_viewer.exe`,
 `bin/resvg.dll`, `bin/ratex_ffi.dll`, the `qlitemd_mdhtml` static library,
 the `qlitemd_mdhtml_c` shared C ABI library, dependency archives (`md4c`,
-tree-sitter, QuickJS because Mermaid uses it by default), public core headers,
-license files and a CMake package config. Selecting the native Mermaid backend
-adds `bin/merman_ffi.dll`. On Windows, `windeployqt` is invoked during
+tree-sitter, QuickJS), public core headers, license files and a CMake package
+config. Where the platform has the prebuilt library, `bin/merman_ffi.dll` is
+included too. On Windows, `windeployqt` is invoked during
 install, and the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next
 to the viewer.
 
@@ -270,8 +275,7 @@ For a Qt-free SDK build (no Qt discovery, no viewer, no widget):
 cmake -S . -B build-core -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DQLITEMD_CORE_ONLY=ON \
-  -DQLITEMD_FORMULA_BACKEND=quickjs \
-  -DQLITEMD_MERMAID_BACKEND=quickjs
+  -DQLITEMD_FORMULA_BACKEND=quickjs
 ```
 
 Install components:

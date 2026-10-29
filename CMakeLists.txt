@@ -85,19 +85,11 @@ set_property(CACHE QLITEMD_SVG_BACKEND PROPERTY STRINGS resvg qtsvg)
 set(QLITEMD_FORMULA_BACKEND "ratex" CACHE STRING
     "Formula backend: ratex (native FFI) or quickjs (MathJax)")
 set_property(CACHE QLITEMD_FORMULA_BACKEND PROPERTY STRINGS ratex quickjs)
-# mermaid.js has broader syntax coverage than merman; keep the native
-# backend selectable but default to the QuickJS path.
-set(QLITEMD_MERMAID_BACKEND "quickjs" CACHE STRING
-    "Mermaid backend: quickjs (mermaid.js) or merman")
-set_property(CACHE QLITEMD_MERMAID_BACKEND PROPERTY STRINGS quickjs merman)
 if(NOT QLITEMD_SVG_BACKEND MATCHES "^(resvg|qtsvg)$")
     message(FATAL_ERROR "QLITEMD_SVG_BACKEND must be resvg or qtsvg")
 endif()
 if(NOT QLITEMD_FORMULA_BACKEND MATCHES "^(ratex|quickjs)$")
     message(FATAL_ERROR "QLITEMD_FORMULA_BACKEND must be ratex or quickjs")
-endif()
-if(NOT QLITEMD_MERMAID_BACKEND MATCHES "^(merman|quickjs)$")
-    message(FATAL_ERROR "QLITEMD_MERMAID_BACKEND must be merman or quickjs")
 endif()
 
 # 原生库目录按「平台-架构」组织：win-x64 / win-x86 / linux-x64 / linux-arm64
@@ -146,34 +138,23 @@ if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex" AND NOT _qlitemd_has_ratex)
         "ratex binary missing for ${QLITEMD_PLATFORM_DIR}; using quickjs")
     set(QLITEMD_FORMULA_BACKEND quickjs)
 endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman" AND NOT _qlitemd_has_merman)
-    message(STATUS
-        "merman binary missing for ${QLITEMD_PLATFORM_DIR}; using quickjs")
-    set(QLITEMD_MERMAID_BACKEND quickjs)
-endif()
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg" AND NOT _qlitemd_has_resvg)
     message(STATUS
         "resvg binary missing for ${QLITEMD_PLATFORM_DIR}; using qtsvg")
     set(QLITEMD_SVG_BACKEND qtsvg)
 endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman"
-   AND NOT QLITEMD_SVG_BACKEND STREQUAL "resvg")
-    message(FATAL_ERROR
-        "merman backend emits resvg-safe SVG and requires QLITEMD_SVG_BACKEND=resvg")
-endif()
 
-if(QLITEMD_FORMULA_BACKEND STREQUAL "quickjs"
-   OR QLITEMD_MERMAID_BACKEND STREQUAL "quickjs")
-    set(QLITEMD_NEEDS_QUICKJS TRUE)
-else()
-    set(QLITEMD_NEEDS_QUICKJS FALSE)
-endif()
+# Mermaid renders at runtime through whichever backends were compiled in:
+# merman (fast, partial syntax support) when its prebuilt library exists for
+# this platform, and mermaid.js in QuickJS as the always-available fallback.
+# QuickJS is unconditionally part of the build: the mermaid fallback and the
+# MathJax formula builds both depend on it.
 
 # 日志自报家门：CI 与本地排查不用反推缓存里到底配了哪个后端
 message(STATUS
     "qlitemd backends: SVG=${QLITEMD_SVG_BACKEND}, "
     "Formula=${QLITEMD_FORMULA_BACKEND}, "
-    "Mermaid=${QLITEMD_MERMAID_BACKEND}, arch=${QLITEMD_ARCH}")
+    "Mermaid=merman+quickjs (runtime switch), arch=${QLITEMD_ARCH}")
 
 # Prebuilt native backends. Keep them as imported targets so the rest of the
 # build never needs Rust; upgrade instructions live in their VERSION.md files.
@@ -196,7 +177,7 @@ if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
         "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/${_resvg_file}")
 endif()
 
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+if(_qlitemd_has_merman)
     qlitemd_native_lib_name(_merman_file merman_ffi)
     add_library(qlitemd_merman SHARED IMPORTED)
     set_target_properties(qlitemd_merman PROPERTIES
@@ -314,12 +295,10 @@ target_include_directories(md4c PUBLIC
 set_target_properties(md4c PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 # ------------------------------------------------------------- QuickJS
-# 只有选了 quickjs 后端（公式或 Mermaid）才编译 QuickJS 与 JS 载荷
-if(QLITEMD_NEEDS_QUICKJS)
-    set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
-    add_subdirectory(3rdparty/quickjs-ng)
-    qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
-endif()
+# Mermaid 的 mermaid.js 回退与 MathJax 公式都依赖它，始终编入。
+set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
+add_subdirectory(3rdparty/quickjs-ng)
+qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 
 # ------------------------------------------------- tree-sitter (native)
 add_subdirectory(3rdparty/tree-sitter)
@@ -393,10 +372,8 @@ install(FILES
     "$<TARGET_FILE:tree_sitter_grammars>"
     DESTINATION lib
     COMPONENT Development)
-if(QLITEMD_NEEDS_QUICKJS)
-    install(FILES "$<TARGET_FILE:qjs>"
-        DESTINATION lib COMPONENT Development)
-endif()
+install(FILES "$<TARGET_FILE:qjs>"
+    DESTINATION lib COMPONENT Development)
 install(TARGETS qlitemd_mdhtml_c
     RUNTIME DESTINATION bin COMPONENT Development
     LIBRARY DESTINATION lib COMPONENT Development
@@ -441,10 +418,8 @@ install(FILES 3rdparty/litehtml/src/gumbo/LICENSE
     DESTINATION licenses/gumbo COMPONENT Licenses)
 install(FILES 3rdparty/md4c/LICENSE.md
     DESTINATION licenses/md4c COMPONENT Licenses)
-if(QLITEMD_NEEDS_QUICKJS)
-    install(FILES 3rdparty/quickjs-ng/LICENSE
-        DESTINATION licenses/quickjs COMPONENT Licenses)
-endif()
+install(FILES 3rdparty/quickjs-ng/LICENSE
+    DESTINATION licenses/quickjs COMPONENT Licenses)
 install(FILES 3rdparty/spdlog/LICENSE
     DESTINATION licenses/spdlog COMPONENT Licenses)
 install(FILES 3rdparty/qwindowkit/LICENSE
@@ -488,7 +463,7 @@ if(WIN32)
         list(APPEND _qlitemd_native_import_libs
             "${_qlitemd_resvg_dir}/bin/${QLITEMD_PLATFORM_DIR}/resvg.dll.lib")
     endif()
-    if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+    if(_qlitemd_has_merman)
         list(APPEND _qlitemd_native_import_libs
             "${_qlitemd_merman_dir}/bin/${QLITEMD_PLATFORM_DIR}/merman_ffi.dll.lib")
     endif()

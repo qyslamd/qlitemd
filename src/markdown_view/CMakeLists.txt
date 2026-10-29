@@ -65,7 +65,6 @@ endif()
 # configure 期拦住。字节码与 QuickJS 版本/位数/编译开关绑定，各构建目录
 # 各自生成、不入库；载荷文件变化时 DEPENDS 自动重编
 # -----------------------------------------------------------------------------
-if(QLITEMD_NEEDS_QUICKJS)
 if(NOT TARGET qjsc)
     message(FATAL_ERROR
         "qjsc 目标不存在：markdown 的 JS 载荷需要在构建期用 qjsc 预编译成"
@@ -95,18 +94,13 @@ foreach(entry "md_mj:mathjax-svg.min.js"
     )
     list(APPEND MARKDOWN_BYTECODE_SRCS "${c_file}")
 endforeach()
-else()
-    set(MARKDOWN_BYTECODE_SRCS "")
-endif()
 
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+if(TARGET qlitemd::merman)
     list(APPEND TARGET_SRCS merman_renderer.cpp)
 else()
     list(APPEND TARGET_SRCS merman_renderer_stub.cpp)
 endif()
-if(QLITEMD_NEEDS_QUICKJS)
-    list(APPEND TARGET_SRCS js_runtime.cpp js_runtime.h markdown_bytecode.h)
-endif()
+list(APPEND TARGET_SRCS js_runtime.cpp js_runtime.h markdown_bytecode.h)
 
 add_library(${TARGET_NAME} STATIC
     ${TARGET_SRCS}
@@ -143,25 +137,21 @@ endif()
 if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::resvg)
 endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+if(TARGET qlitemd::merman)
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::merman)
 endif()
 if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
     target_link_libraries(${TARGET_NAME} PRIVATE qlitemd::ratex)
 endif()
-if(QLITEMD_NEEDS_QUICKJS)
-    target_link_libraries(${TARGET_NAME} PRIVATE qjs)
-endif()
+target_link_libraries(${TARGET_NAME} PRIVATE qjs)
 
 target_include_directories(${TARGET_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-if(QLITEMD_NEEDS_QUICKJS)
-    # PUBLIC：决定 FormulaEngineState/MermaidEngineState 是否存在 JS 成员
-    target_compile_definitions(${TARGET_NAME} PUBLIC
-        QLITEMD_HAS_QUICKJS=1)
-endif()
+# PUBLIC：决定 FormulaEngineState/MermaidEngineState 是否存在 JS 成员
+target_compile_definitions(${TARGET_NAME} PUBLIC
+    QLITEMD_HAS_QUICKJS=1)
 if(QLITEMD_FORMULA_BACKEND STREQUAL "ratex")
     # PUBLIC：决定 FormulaEngineState 的成员布局，所有包含
     # markdown_engine_state.h 的 TU 必须看到同一个值
@@ -172,12 +162,12 @@ if(QLITEMD_SVG_BACKEND STREQUAL "resvg")
     target_compile_definitions(${TARGET_NAME} PRIVATE
         QLITEMD_SVG_BACKEND_RESVG=1)
 endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman")
+if(TARGET qlitemd::merman)
     # PUBLIC：该宏决定 markdown_engine_state.h 里 MermaidEngineState 的
     # 成员布局，所有包含该头的 TU（测试/使用方）必须看到同一个值，
     # 否则同一类型在两侧布局不同（ODR 违规，运行期崩溃）
     target_compile_definitions(${TARGET_NAME} PUBLIC
-        QLITEMD_MERMAID_BACKEND_MERMAN=1)
+        QLITEMD_MERMAID_MERMAN=1)
 endif()
 if(TARGET qlitemd_runtime_dlls)
     add_dependencies(${TARGET_NAME} qlitemd_runtime_dlls)

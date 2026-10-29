@@ -4,6 +4,14 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Switch the Mermaid engine at runtime instead of configure time: both
+  native merman-ffi and mermaid.js in QuickJS compile into every build, and
+  `MdRenderOptions.mermaid_backend` picks per render — `auto` renders with
+  merman and retries a failed diagram with mermaid.js. The C ABI gains
+  `mdhtml_render_options.mermaid_backend` (version 3); md_viewer exposes a
+  Mermaid engine selector in its render settings. The
+  `QLITEMD_MERMAID_BACKEND` configure option is gone.
+
 ## 0.1.0 - 2026-10-28
 
 - Move the Qt layer to `src/markdown_view` and export

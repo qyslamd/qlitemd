@@ -32,8 +32,7 @@ cmake -S . -B build -G Ninja \
   -DQLITEMD_QT_MAJOR=5 \
   -DQLITEMD_BUILD_MD_VIEWER=OFF \
   -DQLITEMD_SVG_BACKEND=qtsvg \
-  -DQLITEMD_FORMULA_BACKEND=quickjs \
-  -DQLITEMD_MERMAID_BACKEND=quickjs
+  -DQLITEMD_FORMULA_BACKEND=quickjs
 
 cmake --build build --parallel 2
 QT_QPA_PLATFORM=offscreen ctest --test-dir build \

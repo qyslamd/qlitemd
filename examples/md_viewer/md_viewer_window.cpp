@@ -249,6 +249,7 @@ void MdViewerWindow::initUi() {
                                         : MarkdownTheme::Light);
   view_->SetCodeLineNumbers(settings_->code_line_numbers);
   view_->SetAdmonitionMode(settings_->admonition_mode);
+  view_->SetMermaidBackend(settings_->mermaid_backend);
   view_->SetFormulaRenderingEnabled(settings_->formula_rendering);
   view_->SetMermaidRenderingEnabled(settings_->mermaid_rendering);
   view_->SetPersistentRenderCacheEnabled(settings_->persistent_cache);
@@ -1909,6 +1910,7 @@ void MdViewerWindow::SaveSettings() {
   settings_->dark_theme = view_->theme() == MarkdownTheme::Dark;
   settings_->code_line_numbers = view_->code_line_numbers();
   settings_->admonition_mode = view_->admonition_mode();
+  settings_->mermaid_backend = view_->mermaid_backend();
   settings_->formula_rendering = view_->formula_rendering_enabled();
   settings_->mermaid_rendering = view_->mermaid_rendering_enabled();
   settings_->persistent_cache = view_->persistent_render_cache_enabled();

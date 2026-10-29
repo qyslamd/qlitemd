@@ -131,7 +131,6 @@ jobs:
           -DQLITEMD_CORE_ONLY=ON
           -DQLITEMD_SVG_BACKEND=qtsvg
           -DQLITEMD_FORMULA_BACKEND=quickjs
-          -DQLITEMD_MERMAID_BACKEND=quickjs
 
       - name: Build
         run: cmake --build build-core --parallel
@@ -172,12 +171,10 @@ jobs:
             backend_args: >-
               -DQLITEMD_SVG_BACKEND=resvg
               -DQLITEMD_FORMULA_BACKEND=ratex
-              -DQLITEMD_MERMAID_BACKEND=merman
           - backend: quickjs
             backend_args: >-
               -DQLITEMD_SVG_BACKEND=qtsvg
               -DQLITEMD_FORMULA_BACKEND=quickjs
-              -DQLITEMD_MERMAID_BACKEND=quickjs
           - backend: default
             backend_args: ""
 

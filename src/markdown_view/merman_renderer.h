@@ -7,7 +7,7 @@
 
 #include "markdown_types.h"
 
-// Native Mermaid backend used when QLITEMD_MERMAID_BACKEND=merman.
+// Native Mermaid backend, built when the platform provides merman.
 // One instance per worker/thread; the C ABI engine is not safe to share
 // between concurrent operations when a text-measure callback is configured.
 class MermanEngine {

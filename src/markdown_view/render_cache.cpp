@@ -103,7 +103,7 @@ QByteArray PayloadHash(const QString& kind) {
     payloads << BytecodePayload{"mathjax-svg.min.js", md_mj, md_mj_size};
   }
 #endif
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
   if (kind == QLatin1String("mermaid")) {
     payloads << BytecodePayload{"path_bbox.js", md_pb, md_pb_size}
              << BytecodePayload{"dom_shim.js", md_ds, md_ds_size}

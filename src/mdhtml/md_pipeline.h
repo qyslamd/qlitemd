@@ -18,6 +18,7 @@ struct MdRenderOptions {
   bool mermaid = true;
   bool code_line_numbers = false;
   MdAdmonitionMode admonition_mode = MdAdmonitionMode::kMpe;
+  MdMermaidBackend mermaid_backend = MdMermaidBackend::kAuto;
   MdSvgProfile svg_profile = MdSvgProfile::kPortable;
 };
 

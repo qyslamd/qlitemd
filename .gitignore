@@ -1,6 +1,10 @@
 build/
 build-*/
 build_*/
+build-*.bat
+build-*.sh
+build_*.bat
+build_*.sh
 install/
 dist/
 stage/

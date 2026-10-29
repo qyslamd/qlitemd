@@ -1,6 +1,6 @@
 #include "mermaid_renderer.h"
 
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
 #include <quickjs.h>
 #endif
 
@@ -22,7 +22,7 @@
 #include <QSizeF>
 #include <QStringList>
 
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
 #include "js_runtime.h"
 #include "markdown_bytecode.h"
 #endif
@@ -130,7 +130,7 @@ const char* ThemeName(MarkdownTheme theme) {
 }
 
 // merman 后端不需要这些 JS 度量回调，整段编译期裁掉
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
 // mermaid 的度量回调：QFontMetricsF 走的是 QFont 的替换链，与 QSvgRenderer
 // 绘制时同一条路。不用 QRawFont——它的 advancesForGlyphs 不做字体替换，
 // 缺字时会与绘制对不上。
@@ -517,7 +517,7 @@ QString RenderMermaidSvg(MermaidEngineState& engine, const QString& code,
   return svg;
 }
 
-#endif  // !QLITEMD_MERMAID_BACKEND_MERMAN
+#endif  // !QLITEMD_MERMAID_MERMAN
 
 // 后处理三层，顺序不可颠倒：CleanSvg（文本定标）→ InlineSvgCss（CSS 内联 +
 // 字体族强制）→ InlineSvgMarkers（marker 展开，颜色来自上一步内联的规则）
@@ -653,7 +653,7 @@ QString FontFingerprint() {
 }  // namespace
 
 bool EnsureMermaidEngine(MermaidEngineState& engine) {
-#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if defined(QLITEMD_MERMAID_MERMAN)
   return engine.merman.EnsureLoaded();
 #else
   return EnsureLoaded(engine);
@@ -661,7 +661,7 @@ bool EnsureMermaidEngine(MermaidEngineState& engine) {
 }
 
 MarkdownEngineStatus MermaidEngineStatus(const MermaidEngineState& engine) {
-#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if defined(QLITEMD_MERMAID_MERMAN)
   return MermanEngineStatus(engine.merman);
 #else
   return engine.runtime.status();
@@ -676,7 +676,7 @@ RenderedImage RenderMermaidOnEngine(
     MermaidEngineState& engine, const QString& code, MarkdownTheme theme,
     const MarkdownDiagnostics& diagnostics,
     QVector<MarkdownRenderArtifact>* artifacts) {
-#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if defined(QLITEMD_MERMAID_MERMAN)
   QElapsedTimer render_clock;
   render_clock.start();
   RenderedImage image =
@@ -725,7 +725,7 @@ QString MermaidRenderVariant(MarkdownTheme theme) {
   // 切换/升级后不会命中旧后端的磁盘图。
   QString variant = QString::fromLatin1(ThemeName(theme)) + QLatin1Char('|') +
                     FontFingerprint();
-#if defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if defined(QLITEMD_MERMAID_MERMAN)
   variant += QLatin1Char('|') + MermanVersion();
 #endif
   return variant;

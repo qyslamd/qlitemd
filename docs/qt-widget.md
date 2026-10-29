@@ -41,13 +41,17 @@ application shell code and are not part of the widget.
 | `QLITEMD_QT_MAJOR` | inferred or `5` | Qt major version |
 | `QLITEMD_SVG_BACKEND` | `resvg` | `resvg` or `qtsvg` |
 | `QLITEMD_FORMULA_BACKEND` | `ratex` | `ratex` or `quickjs` |
-| `QLITEMD_MERMAID_BACKEND` | `quickjs` | `quickjs` or `merman` |
 
-When a native backend is selected, its DLL/SO must be next to the host
-executable at runtime, or found through `PATH`/`LD_LIBRARY_PATH`. qlitemd
-stages the selected libraries under its own `bin/` directory during the
-build; the host packager is responsible for the final application layout.
-With `qtsvg` + `quickjs`, no native backend DLL is required.
+Mermaid has no build-time backend switch. merman (when the platform has its
+prebuilt library) and mermaid.js/QuickJS are both compiled in; use
+`MarkdownView::SetMermaidBackend()` to choose auto/native/QuickJS at run
+time.
+
+A selected native backend's DLL/SO must be next to the host executable at
+runtime, or found through `PATH`/`LD_LIBRARY_PATH`. qlitemd stages the
+selected libraries under its own `bin/` directory during the build; the
+host packager is responsible for the final application layout. With
+`qtsvg` + `quickjs`, no native backend DLL is required.
 
 ## Source package
 

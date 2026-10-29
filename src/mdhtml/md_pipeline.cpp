@@ -402,7 +402,8 @@ class MdRenderJobImpl : public MdRenderJob,
           block.language, false);
       if (options_.mermaid && block.language == "mermaid") {
         add(MdLaneTaskKind::Mermaid,
-            MdMermaidRenderKey(block.code, options_.theme, *runtime_->metrics),
+            MdMermaidRenderKey(block.code, options_.theme, *runtime_->metrics,
+                               options_.mermaid_backend),
             block.code, "mermaid", false);
       }
     }
@@ -513,7 +514,8 @@ class MdRenderJobImpl : public MdRenderJob,
     engine.SetInterruptFlag(&cancel_);
     MdMermaidResult rendered;
     try {
-      rendered = engine.Render(task.payload, options_.theme);
+      rendered =
+          engine.Render(task.payload, options_.theme, options_.mermaid_backend);
     } catch (...) {
       rendered.ok = false;
     }
@@ -552,8 +554,8 @@ class MdRenderJobImpl : public MdRenderJob,
       }
       return AssetImgTag(MdAssetKind::Formula, key, it->second, display);
     }
-    const std::string key =
-        MdMermaidRenderKey(payload, options_.theme, *runtime_->metrics);
+    const std::string key = MdMermaidRenderKey(
+        payload, options_.theme, *runtime_->metrics, options_.mermaid_backend);
     std::lock_guard<std::mutex> lock(results_mutex_);
     const auto it = mermaid_results_.find(key);
     if (it == mermaid_results_.end()) {

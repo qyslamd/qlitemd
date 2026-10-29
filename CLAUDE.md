@@ -14,7 +14,7 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 Markdown -> mdhtml（零 Qt）-> HTML + SVG 资产
               \-> tree-sitter: 语法高亮
               \-> RaTeX: 公式（Windows 原生）/ QuickJS: MathJax（其它平台）
-              \-> merman-ffi: Mermaid（原生）/ QuickJS: mermaid.js
+              \-> Mermaid: merman（原生）/ QuickJS: mermaid.js，运行时切换
 Qt 控件层（src/markdown_view）
               \-> resvg/QtSvg 光栅化 -> qlitehtml/litehtml -> QWidget
 ```
@@ -25,13 +25,18 @@ Qt 控件层（src/markdown_view）
   - WSL：Qt 5.12.8 x64
 - 开发期本地只跑 Qt 5.15.2 x86；其余组合在功能完成后交给 GitHub CI
 - Qt 支持目标：Qt 5.12.x ~ Qt 6.12.x（当前实测覆盖以上矩阵）
-- 原生后端：`QLITEMD_SVG_BACKEND=resvg|qtsvg`、
-  `QLITEMD_MERMAID_BACKEND=quickjs|merman`；Mermaid 默认 QuickJS +
-  mermaid.js，merman 可选且要求 resvg。Windows 公式走 RaTeX
-  （`3rdparty/ratex`），Mermaid 默认由 QuickJS 渲染，因此 Windows 也会
-  编入 QuickJS；其它平台公式回退 QuickJS + MathJax
+- 后端：编译期只剩 `QLITEMD_SVG_BACKEND=resvg|qtsvg` 与
+  `QLITEMD_FORMULA_BACKEND=ratex|quickjs`。Mermaid 编译全量
+  （merman + mermaid.js/QuickJS 同时编入），渲染时按
+  `MdRenderOptions.mermaid_backend` 运行时切换：auto = merman 优先，
+  单图失败自动用 mermaid.js 重试；请求了未编入的后端会退化到另一个。
+  merman 的 SVG 是 resvg-safe 产物。Windows 公式走 RaTeX
+  （`3rdparty/ratex`）
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
-  `md_viewer` 运行时尚未验证；原生后端目前仅 Windows
+  `md_viewer` 运行时尚未验证；原生后端提供 win-x64/x86 与 linux-x64，
+  linux-arm64 回退 QuickJS/QtSvg
+- arm64 Focal（Qt 5.12.8，QEMU）很慢，CI 仅在手动
+  `workflow_dispatch` 时运行，不再随 push/PR 触发
 - 对外接口：`qlitemd_mdhtml`（静态 C++）与 `qlitemd_mdhtml_c`
   （共享 C ABI，异步 job、进度/取消、代码块与大纲访问器）；
   `examples/avalonia_mdhtml` 用 P/Invoke 验证 C ABI 可被非 C++ GUI 调用
@@ -302,8 +307,8 @@ clang-format --dry-run --Werror <file>
   `qlitemd-<version>-qt-src.zip`（附 SHA256）。
 - Qt 源码包由 `scripts/package_qt_source.py` 生成，并在发布 CI 中解压后用
   `examples/qt_widget_minimal` 重新构建、跑 `--smoke` 验证。
-- 发布构建：`resvg + ratex + QuickJS`，Mermaid 走 mermaid.js，故发布包也含
-  QuickJS；不再链接 merman。
+- 发布构建：`resvg + ratex + QuickJS`，Mermaid 同时带 merman 与
+  mermaid.js（运行时可切，默认 auto）。
 
 ## 变更流程
 

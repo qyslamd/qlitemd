@@ -24,43 +24,41 @@ add_custom_command(
     VERBATIM
 )
 
-# QuickJS fallback (formula MathJax / Mermaid JS) is compiled only when the
-# selected backends need it. Payloads are qjsc bytecode, generated per build
-# directory just like the Qt module's copy.
+# QuickJS is always part of the build: mermaid.js is the mermaid fallback
+# and the MathJax formula builds use it too. Payloads are qjsc bytecode,
+# generated per build directory just like the Qt module's copy.
 set(MDHTML_QUICKJS_SOURCES "")
-if(QLITEMD_NEEDS_QUICKJS)
-    if(NOT TARGET qjsc)
-        message(FATAL_ERROR
-            "qlitemd_mdhtml 需要 qjsc：请确认 quickjs-ng 在 src/mdhtml 之前加入")
-    endif()
-    set(MDHTML_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")
-    set(MDHTML_BYTECODE_SRCS "")
-    foreach(entry "md_mj:mathjax-svg.min.js"
-                  "md_mm:mermaid.js"
-                  "md_ds:dom_shim.js"
-                  "md_pb:path_bbox.js")
-        string(REPLACE ":" ";" parts "${entry}")
-        list(GET parts 0 symbol)
-        list(GET parts 1 filename)
-        set(js_file "${PROJECT_SOURCE_DIR}/resources/${filename}")
-        set(c_file "${MDHTML_BYTECODE_DIR}/${symbol}.c")
-        add_custom_command(
-            OUTPUT "${c_file}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${MDHTML_BYTECODE_DIR}"
-            COMMAND "$<TARGET_FILE:qjsc>" -C -s -s -N ${symbol}
-                    -o "${c_file}" "${js_file}"
-            DEPENDS "${js_file}" qjsc
-            COMMENT "qjsc(mdhtml): ${filename} -> ${symbol}.c"
-            VERBATIM
-        )
-        list(APPEND MDHTML_BYTECODE_SRCS "${c_file}")
-    endforeach()
-    list(APPEND MDHTML_QUICKJS_SOURCES
-        md_bytecode.h
-        md_js_runtime.cpp
-        md_js_runtime.h
-        ${MDHTML_BYTECODE_SRCS})
+if(NOT TARGET qjsc)
+    message(FATAL_ERROR
+        "qlitemd_mdhtml 需要 qjsc：请确认 quickjs-ng 在 src/mdhtml 之前加入")
 endif()
+set(MDHTML_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")
+set(MDHTML_BYTECODE_SRCS "")
+foreach(entry "md_mj:mathjax-svg.min.js"
+              "md_mm:mermaid.js"
+              "md_ds:dom_shim.js"
+              "md_pb:path_bbox.js")
+    string(REPLACE ":" ";" parts "${entry}")
+    list(GET parts 0 symbol)
+    list(GET parts 1 filename)
+    set(js_file "${PROJECT_SOURCE_DIR}/resources/${filename}")
+    set(c_file "${MDHTML_BYTECODE_DIR}/${symbol}.c")
+    add_custom_command(
+        OUTPUT "${c_file}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${MDHTML_BYTECODE_DIR}"
+        COMMAND "$<TARGET_FILE:qjsc>" -C -s -s -N ${symbol}
+                -o "${c_file}" "${js_file}"
+        DEPENDS "${js_file}" qjsc
+        COMMENT "qjsc(mdhtml): ${filename} -> ${symbol}.c"
+        VERBATIM
+    )
+    list(APPEND MDHTML_BYTECODE_SRCS "${c_file}")
+endforeach()
+list(APPEND MDHTML_QUICKJS_SOURCES
+    md_bytecode.h
+    md_js_runtime.cpp
+    md_js_runtime.h
+    ${MDHTML_BYTECODE_SRCS})
 
 add_library(${MDHTML_TARGET} STATIC
     md_assembler.cpp
@@ -116,16 +114,14 @@ if(QLITEMD_FORMULA_BACKEND STREQUAL "quickjs")
     target_compile_definitions(${MDHTML_TARGET} PUBLIC
         QLITEMD_MDHTML_FORMULA_QUICKJS=1)
 endif()
-if(QLITEMD_MERMAID_BACKEND STREQUAL "merman" AND TARGET qlitemd::merman)
+if(TARGET qlitemd::merman)
     target_link_libraries(${MDHTML_TARGET} PRIVATE qlitemd::merman)
     target_compile_definitions(${MDHTML_TARGET} PUBLIC
         QLITEMD_MDHTML_MERMAID_MERMAN=1)
 endif()
-if(QLITEMD_NEEDS_QUICKJS)
-    target_link_libraries(${MDHTML_TARGET} PRIVATE qjs)
-    target_compile_definitions(${MDHTML_TARGET} PUBLIC
-        QLITEMD_MDHTML_QUICKJS=1)
-endif()
+target_link_libraries(${MDHTML_TARGET} PRIVATE qjs)
+target_compile_definitions(${MDHTML_TARGET} PUBLIC
+    QLITEMD_MDHTML_QUICKJS=1)
 if(TARGET qlitemd_runtime_dlls)
     add_dependencies(${MDHTML_TARGET} qlitemd_runtime_dlls)
 endif()

@@ -83,4 +83,107 @@ TEST(MdMermaidTest, RenderKeyIncludesThemeAndFingerprint) {
   EXPECT_NE(light.find("graph TD; A-->B;"), std::string::npos) << light;
 }
 
+TEST(MdMermaidTest, RenderKeySeparatesBackendModes) {
+  RecordingMetrics metrics;
+  const std::string auto_key = MdMermaidRenderKey(
+      "graph TD; A-->B;", MdTheme::Light, metrics, MdMermaidBackend::kAuto);
+  const std::string native_key = MdMermaidRenderKey(
+      "graph TD; A-->B;", MdTheme::Light, metrics, MdMermaidBackend::kNative);
+  const std::string quickjs_key = MdMermaidRenderKey(
+      "graph TD; A-->B;", MdTheme::Light, metrics, MdMermaidBackend::kQuickjs);
+  EXPECT_NE(auto_key, native_key);
+  EXPECT_NE(auto_key, quickjs_key);
+  EXPECT_NE(native_key, quickjs_key);
+}
+
+#if defined(QLITEMD_MDHTML_QUICKJS)
+
+// A quickjs-explicit request must render through mermaid.js regardless of
+// whether merman is compiled in, and must report the backend it used.
+TEST(MdMermaidTest, ExplicitQuickJsRendersAndReportsBackend) {
+  auto metrics = std::make_shared<RecordingMetrics>();
+  MdMermaidEngine engine(metrics);
+  ASSERT_TRUE(engine.EnsureLoaded());
+
+  MdMermaidBackend used = MdMermaidBackend::kAuto;
+  const MdMermaidResult result =
+      engine.Render("graph TD; A[Hello]-->B[World];", MdTheme::Light,
+                    MdMermaidBackend::kQuickjs, &used);
+  ASSERT_TRUE(result.ok) << result.error;
+  EXPECT_EQ(used, MdMermaidBackend::kQuickjs);
+  EXPECT_EQ(result.backend_used, MdMermaidBackend::kQuickjs);
+}
+
+#endif
+
+#if defined(QLITEMD_MDHTML_MERMAID_MERMAN)
+
+// In a build with merman, auto resolves to the native backend for a
+// supported diagram; an invalid diagram fails under every mode.
+TEST(MdMermaidTest, AutoPrefersNativeAndReportsIt) {
+  auto metrics = std::make_shared<RecordingMetrics>();
+  MdMermaidEngine engine(metrics);
+  ASSERT_TRUE(engine.EnsureLoaded());
+
+  MdMermaidBackend used = MdMermaidBackend::kQuickjs;
+  const MdMermaidResult result =
+      engine.Render("graph TD; A[Hello]-->B[World];", MdTheme::Light,
+                    MdMermaidBackend::kAuto, &used);
+  ASSERT_TRUE(result.ok) << result.error;
+  EXPECT_EQ(used, MdMermaidBackend::kNative);
+  EXPECT_EQ(result.backend_used, MdMermaidBackend::kNative);
+}
+
+TEST(MdMermaidTest, ExplicitNativeRendersAndReportsBackend) {
+  auto metrics = std::make_shared<RecordingMetrics>();
+  MdMermaidEngine engine(metrics);
+  ASSERT_TRUE(engine.EnsureLoaded());
+
+  MdMermaidBackend used = MdMermaidBackend::kAuto;
+  const MdMermaidResult result =
+      engine.Render("graph TD; A[Hello]-->B[World];", MdTheme::Light,
+                    MdMermaidBackend::kNative, &used);
+  ASSERT_TRUE(result.ok) << result.error;
+  EXPECT_EQ(used, MdMermaidBackend::kNative);
+}
+
+TEST(MdMermaidTest, InvalidSourceFailsUnderEveryMode) {
+  auto metrics = std::make_shared<RecordingMetrics>();
+  MdMermaidEngine engine(metrics);
+  ASSERT_TRUE(engine.EnsureLoaded());
+  for (const MdMermaidBackend mode :
+       {MdMermaidBackend::kAuto, MdMermaidBackend::kNative,
+        MdMermaidBackend::kQuickjs}) {
+    const MdMermaidResult result =
+        engine.Render("this is not mermaid", MdTheme::Light, mode);
+    EXPECT_FALSE(result.ok) << static_cast<int>(mode);
+  }
+}
+
+#endif
+
+#if defined(QLITEMD_MDHTML_MERMAID_MERMAN) && defined(QLITEMD_MDHTML_QUICKJS)
+
+// The whole point of auto: a diagram merman rejects must still render via
+// mermaid.js, and the explicit-native request for it must fail.
+TEST(MdMermaidTest, AutoFallsBackToQuickJsWhenNativeRejectsDiagram) {
+  auto metrics = std::make_shared<RecordingMetrics>();
+  MdMermaidEngine engine(metrics);
+  ASSERT_TRUE(engine.EnsureLoaded());
+
+  // sankey-beta is not in this merman build's feature set (VERSION.md).
+  const char* const code = "sankey-beta\n\nA,B,10\n";
+  EXPECT_FALSE(
+      engine.Render(code, MdTheme::Light, MdMermaidBackend::kNative).ok);
+
+  MdMermaidBackend used = MdMermaidBackend::kNative;
+  const MdMermaidResult result =
+      engine.Render(code, MdTheme::Light, MdMermaidBackend::kAuto, &used);
+  ASSERT_TRUE(result.ok) << result.error;
+  EXPECT_EQ(used, MdMermaidBackend::kQuickjs);
+  EXPECT_EQ(result.backend_used, MdMermaidBackend::kQuickjs);
+}
+
+#endif
+
 }  // namespace

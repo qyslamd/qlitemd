@@ -12,6 +12,14 @@ enum class MdAdmonitionMode {
   kMpe = 1,     // MPE callouts (inline text is the title)
 };
 
+// Which Mermaid backend renders a diagram. Availability depends on the
+// build: a backend not compiled in degrades to the other one.
+enum class MdMermaidBackend {
+  kAuto = 0,     // native (merman) first, per-diagram quickjs fallback
+  kNative = 1,   // merman only
+  kQuickjs = 2,  // mermaid.js in QuickJS only
+};
+
 struct MdColor {
   uint8_t r = 0;
   uint8_t g = 0;

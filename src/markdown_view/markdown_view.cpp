@@ -1088,6 +1088,14 @@ void MarkdownView::SetMermaidRenderingEnabled(bool enabled) {
   ReapplyDocument();
 }
 
+void MarkdownView::SetMermaidBackend(MarkdownMermaidBackend backend) {
+  if (mermaid_backend_ == backend) {
+    return;
+  }
+  mermaid_backend_ = backend;
+  ReapplyDocument();
+}
+
 void MarkdownView::SetAdmonitionMode(MarkdownAdmonitionMode mode) {
   if (admonition_mode_ == mode) {
     return;
@@ -1265,6 +1273,17 @@ void MarkdownView::StartRender(quint64 request_id) {
   options.admonition_mode = admonition_mode_ == MarkdownAdmonitionMode::kGithub
                                 ? MdAdmonitionMode::kGithub
                                 : MdAdmonitionMode::kMpe;
+  switch (mermaid_backend_) {
+    case MarkdownMermaidBackend::kNative:
+      options.mermaid_backend = MdMermaidBackend::kNative;
+      break;
+    case MarkdownMermaidBackend::kQuickjs:
+      options.mermaid_backend = MdMermaidBackend::kQuickjs;
+      break;
+    default:
+      options.mermaid_backend = MdMermaidBackend::kAuto;
+      break;
+  }
   options.formula_color = ToMdColor(formula_color);
 
   MarkdownRenderContextState& state =

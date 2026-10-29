@@ -51,7 +51,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
 #endif
       break;
     case MarkdownRenderKind::Mermaid:
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
       runtime = &mermaid.runtime;
 #endif
       break;

@@ -51,6 +51,7 @@ struct MdViewerSettings {
   int reading_measure_px = -1;
   bool code_line_numbers = false;
   MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
+  MarkdownMermaidBackend mermaid_backend = MarkdownMermaidBackend::kAuto;
   bool formula_rendering = true;
   bool mermaid_rendering = true;
   bool persistent_cache = true;

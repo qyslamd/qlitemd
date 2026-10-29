@@ -23,6 +23,7 @@ constexpr char kKeyReadingMeasure[] = "reading/measure_px";
 constexpr char kKeyWindowBlur[] = "appearance/window_blur";
 constexpr char kKeyCodeLineNumbers[] = "render/code_line_numbers";
 constexpr char kKeyAdmonitionMode[] = "render/admonition_mode";
+constexpr char kKeyMermaidBackend[] = "render/mermaid_backend";
 constexpr char kKeyFormula[] = "render/formula";
 constexpr char kKeyMermaid[] = "render/mermaid";
 constexpr char kKeyPersistentCache[] = "render/persistent_cache";
@@ -99,6 +100,11 @@ void MdViewerSettings::Load() {
           .value(kKeyAdmonitionMode,
                  static_cast<int>(MarkdownAdmonitionMode::kMpe))
           .toInt());
+  mermaid_backend = static_cast<MarkdownMermaidBackend>(
+      settings
+          .value(kKeyMermaidBackend,
+                 static_cast<int>(MarkdownMermaidBackend::kAuto))
+          .toInt());
   formula_rendering = settings.value(kKeyFormula, true).toBool();
   mermaid_rendering = settings.value(kKeyMermaid, true).toBool();
   persistent_cache = settings.value(kKeyPersistentCache, true).toBool();
@@ -131,6 +137,7 @@ void MdViewerSettings::Save() const {
   settings.setValue(kKeyReadingMeasure, reading_measure_px);
   settings.setValue(kKeyCodeLineNumbers, code_line_numbers);
   settings.setValue(kKeyAdmonitionMode, static_cast<int>(admonition_mode));
+  settings.setValue(kKeyMermaidBackend, static_cast<int>(mermaid_backend));
   settings.setValue(kKeyFormula, formula_rendering);
   settings.setValue(kKeyMermaid, mermaid_rendering);
   settings.setValue(kKeyPersistentCache, persistent_cache);

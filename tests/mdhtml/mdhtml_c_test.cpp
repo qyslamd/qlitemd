@@ -205,6 +205,26 @@ TEST(MdhtmlCApiTest, AdmonitionModeDefaultsToMpe) {
   mdhtml_pipeline_destroy(pipeline);
 }
 
+TEST(MdhtmlCApiTest, MermaidBackendDefaultsToAutoAndToleratesUnknown) {
+  mdhtml_render_options options;
+  mdhtml_render_options_init(&options);
+  EXPECT_EQ(options.mermaid_backend, MDHTML_MERMAID_AUTO);
+
+  mdhtml_pipeline* pipeline = mdhtml_pipeline_create();
+  ASSERT_NE(pipeline, nullptr);
+
+  // Mermaid rendering itself is covered by the core tests; here only the
+  // option plumbing matters, so keep mermaid disabled and feed a value no
+  // build knows about — it must map to auto without failing.
+  options.mermaid_enabled = 0;
+  options.mermaid_backend = 99;
+  mdhtml_result* result = mdhtml_render(pipeline, "plain text\n", &options);
+  ASSERT_NE(result, nullptr);
+  ASSERT_EQ(mdhtml_result_ok(result), 1) << mdhtml_result_error(result);
+  mdhtml_result_destroy(result);
+  mdhtml_pipeline_destroy(pipeline);
+}
+
 TEST(MdhtmlCApiTest, CustomMetricsCallbacksAreUsed) {
   MetricCounters counters;
   mdhtml_font_metrics metrics;

@@ -25,13 +25,11 @@ find_library(QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
-if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
-    find_library(QLITEMD_QJS_LIBRARY
-        NAMES qjs
-        PATHS "${_qlitemd_libdir}"
-        NO_DEFAULT_PATH
-        REQUIRED)
-endif()
+find_library(QLITEMD_QJS_LIBRARY
+    NAMES qjs
+    PATHS "${_qlitemd_libdir}"
+    NO_DEFAULT_PATH
+    REQUIRED)
 
 # Native backends are optional shared libraries. Formula/Mermaid native
 # backends are imported here; resvg may be present in bin/ as a convenience
@@ -47,7 +45,10 @@ if(WIN32)
         endif()
         list(APPEND _qlitemd_native_libraries qlitemd::ratex)
     endif()
-    if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
+    # Mermaid ships merman whenever the platform has its prebuilt library;
+    # consumers detect availability through the core's
+    # MdMermaidNativeAvailable() rather than package flags.
+    if(EXISTS "${PACKAGE_PREFIX_DIR}/bin/merman_ffi.dll")
         if(NOT TARGET qlitemd::merman)
             add_library(qlitemd::merman SHARED IMPORTED)
             set_target_properties(qlitemd::merman PROPERTIES
@@ -65,12 +66,11 @@ else()
             REQUIRED)
         list(APPEND _qlitemd_native_libraries ${QLITEMD_RATEX_LIBRARY})
     endif()
-    if("@QLITEMD_MERMAID_BACKEND@" STREQUAL "merman")
-        find_library(QLITEMD_MERMAN_LIBRARY
-            NAMES merman_ffi
-            PATHS "${_qlitemd_libdir}"
-            NO_DEFAULT_PATH
-            REQUIRED)
+    find_library(QLITEMD_MERMAN_LIBRARY
+        NAMES merman_ffi
+        PATHS "${_qlitemd_libdir}"
+        NO_DEFAULT_PATH)
+    if(QLITEMD_MERMAN_LIBRARY)
         list(APPEND _qlitemd_native_libraries ${QLITEMD_MERMAN_LIBRARY})
     endif()
 endif()
@@ -81,9 +81,7 @@ set(_qlitemd_link_libraries
     ${QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY}
     ${QLITEMD_TREE_SITTER_CORE_LIBRARY}
     ${_qlitemd_native_libraries})
-if("@QLITEMD_NEEDS_QUICKJS@" STREQUAL "TRUE")
-    list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
-endif()
+list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
 list(APPEND _qlitemd_link_libraries Threads::Threads ${CMAKE_DL_LIBS})
 if(UNIX AND NOT APPLE)
     list(APPEND _qlitemd_link_libraries m)

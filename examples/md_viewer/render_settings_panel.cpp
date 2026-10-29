@@ -186,6 +186,22 @@ void RenderSettingsPanel::initUi() {
   admonition_mode_->setCurrentIndex(admonition_index >= 0 ? admonition_index
                                                           : 0);
   content->addWidget(admonition_mode_);
+  content->addWidget(new QLabel(QStringLiteral("Mermaid 引擎"), content_card));
+  mermaid_backend_ = new QComboBox(content_card);
+  mermaid_backend_->setObjectName(QStringLiteral("mermaidBackendCombo"));
+  mermaid_backend_->setToolTip(
+      QStringLiteral("自动：merman 优先，单图失败自动用 mermaid.js 重试；"
+                     "merman 快但语法子集小，QuickJS 慢但兼容性最好"));
+  mermaid_backend_->addItem(QStringLiteral("自动（merman 优先）"),
+                            static_cast<int>(MarkdownMermaidBackend::kAuto));
+  mermaid_backend_->addItem(QStringLiteral("merman（原生）"),
+                            static_cast<int>(MarkdownMermaidBackend::kNative));
+  mermaid_backend_->addItem(QStringLiteral("QuickJS（mermaid.js）"),
+                            static_cast<int>(MarkdownMermaidBackend::kQuickjs));
+  const int mermaid_index =
+      mermaid_backend_->findData(static_cast<int>(view_->mermaid_backend()));
+  mermaid_backend_->setCurrentIndex(mermaid_index >= 0 ? mermaid_index : 0);
+  content->addWidget(mermaid_backend_);
   outer->addWidget(content_card);
 
   // 持久缓存
@@ -333,6 +349,14 @@ void RenderSettingsPanel::initSignals() {
           &MarkdownView::SetFormulaRenderingEnabled);
   connect(mermaid_rendering_, &QCheckBox::toggled, view_,
           &MarkdownView::SetMermaidRenderingEnabled);
+  connect(mermaid_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            if (index < 0) {
+              return;
+            }
+            view_->SetMermaidBackend(static_cast<MarkdownMermaidBackend>(
+                mermaid_backend_->itemData(index).toInt()));
+          });
   connect(persistent_cache_, &QCheckBox::toggled, view_,
           &MarkdownView::SetPersistentRenderCacheEnabled);
   connect(trace_, &QCheckBox::toggled, this, [this] { ApplyDiagnostics(); });

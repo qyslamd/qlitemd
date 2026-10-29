@@ -44,7 +44,6 @@ jobs:
           -DQLITEMD_QT_MAJOR=5
           -DQLITEMD_SVG_BACKEND=resvg
           -DQLITEMD_FORMULA_BACKEND=ratex
-          -DQLITEMD_MERMAID_BACKEND=quickjs
 
       - name: Build
         run: cmake --build build --parallel

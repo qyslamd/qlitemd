@@ -31,7 +31,7 @@ struct FormulaEngineState {
 };
 
 struct MermaidEngineState {
-#if !defined(QLITEMD_MERMAID_BACKEND_MERMAN)
+#if !defined(QLITEMD_MERMAID_MERMAN)
   // quickjs 后端专用：merman 构建里整个成员与依赖它的函数都不编译，
   // 让"Mermaid 不依赖 QuickJS"在编译期成立
   JsRuntime runtime;
@@ -40,7 +40,8 @@ struct MermaidEngineState {
   // then/catch 落定旗子，泵循环只读它
   bool render_settled = false;
 #endif
-  // 原生后端；QLITEMD_MERMAID_BACKEND=quickjs 时不加载
+  // 原生后端；平台带 merman 预编库时启用。QWidget 主路径由核心管线做
+  // 运行期切换，这里的旧 adapter 渲染路径只保留原生实现。
   MermanEngine merman;
 };
 

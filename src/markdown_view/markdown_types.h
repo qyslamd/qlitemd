@@ -49,9 +49,18 @@ enum class MarkdownAdmonitionMode {
   kMpe = 1,
 };
 
+// Mermaid 引擎的运行时选择。请求了本构建没有编译进的后端时，核心会退化到
+// 另一个；kAuto 由核心逐图决定（merman 优先，失败回退 mermaid.js）。
+enum class MarkdownMermaidBackend {
+  kAuto = 0,
+  kNative = 1,
+  kQuickjs = 2,
+};
+
 struct MarkdownRenderOptions {
   bool code_line_numbers = false;
   MarkdownAdmonitionMode admonition_mode = MarkdownAdmonitionMode::kMpe;
+  MarkdownMermaidBackend mermaid_backend = MarkdownMermaidBackend::kAuto;
   std::function<void(const MarkdownHeading&)> outline;
   std::function<QString(const QString& code, const QString& language)>
       highlight;

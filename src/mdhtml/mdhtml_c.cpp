@@ -117,6 +117,20 @@ MdRenderOptions ToRenderOptions(const mdhtml_render_options* options) {
                               ? MdAdmonitionMode::kGithub
                               : MdAdmonitionMode::kMpe;
   }
+  if (Covers(*options, offsetof(mdhtml_render_options, mermaid_backend),
+             sizeof(options->mermaid_backend))) {
+    switch (options->mermaid_backend) {
+      case MDHTML_MERMAID_NATIVE:
+        out.mermaid_backend = MdMermaidBackend::kNative;
+        break;
+      case MDHTML_MERMAID_QUICKJS:
+        out.mermaid_backend = MdMermaidBackend::kQuickjs;
+        break;
+      default:
+        out.mermaid_backend = MdMermaidBackend::kAuto;
+        break;
+    }
+  }
   return out;
 }
 
@@ -191,6 +205,7 @@ void mdhtml_render_options_init(mdhtml_render_options* options) {
   options->mermaid_enabled = 1;
   options->code_line_numbers = 0;
   options->admonition_mode = MDHTML_ADMONITION_MPE;
+  options->mermaid_backend = MDHTML_MERMAID_AUTO;
 }
 
 mdhtml_pipeline* mdhtml_pipeline_create(void) {
