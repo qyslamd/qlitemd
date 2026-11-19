@@ -8,27 +8,27 @@
   "configurePresets": [
     {
       "name": "qt5",
-      "displayName": "Qt 5 (library, tests, md_viewer)",
+      "displayName": "Qt 5 (library, tests, qt_md_viewer)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_PREFIX_PATH": "$env{QTDIR}",
         "QLITEMD_QT_MAJOR": "5",
-        "QLITEMD_BUILD_MD_VIEWER": "ON",
+        "QLITEMD_BUILD_QT_MD_VIEWER": "ON",
         "QLITEMD_BUILD_TESTS": "ON"
       }
     },
     {
       "name": "qt6",
-      "displayName": "Qt 6 (library, tests, md_viewer)",
+      "displayName": "Qt 6 (library, tests, qt_md_viewer)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-qt6",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_PREFIX_PATH": "$env{QTDIR}",
         "QLITEMD_QT_MAJOR": "6",
-        "QLITEMD_BUILD_MD_VIEWER": "ON",
+        "QLITEMD_BUILD_QT_MD_VIEWER": "ON",
         "QLITEMD_BUILD_TESTS": "ON"
       }
     }

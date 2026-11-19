@@ -12,8 +12,32 @@ All notable changes to qlitemd are documented here.
   regardless of their checked state
   (`patches/FluentUIStyle/0004-caption-button-label-color.patch`).
 - Stop drawing the menu chevron on icon-only tool buttons with a menu, where
-  it overlapped the icon (md_viewer's title-bar menu button)
+  it overlapped the icon (qt_md_viewer's title-bar menu button)
   (`patches/FluentUIStyle/0005-menu-indicator-icon-only.patch`).
+- Promote the viewer from `examples/md_viewer` to `apps/qt_md_viewer` and
+  rename its target and executable to `qt_md_viewer`. The configure option
+  is now `QLITEMD_BUILD_QT_MD_VIEWER` (the old name is still accepted).
+  Installer and release assets follow the new name
+  (`qlitemd-qt_md_viewer-<version>-...`).
+- Allow several `qt_md_viewer` windows at once: the single-instance guard
+  (and its local-socket argument forwarding) is gone. Settings move to
+  `qt_md_viewer.ini`; the old `md_viewer.ini` is copied over on first
+  start.
+- Give the application its own `qt_md_viewer.qrc` icon set: the
+  back/forward and bookmark buttons use SVG resources instead of
+  `QStyle::standardIcon()` or text-drawn glyphs.
+- Drop `src/logging`, `src/common/single_instance.*` and the vendored
+  spdlog they required.
+- Fix the quick-open and reading-appearance popups: under the DwmBlur
+  palette `QPalette::Base` has alpha 0, so their panels showed the
+  document through them; and the Windows native shadow on the frameless
+  popup drew a second grey layer under the panel. The panels now fill
+  opaque, the windows use `Qt::NoDropShadowWindowHint`, and only the
+  in-app drop shadow (blur 20, offset 0) remains.
+- Bundle the MiSans UI font (Regular + Demibold) next to the executable
+  instead of relying on Microsoft YaHei, with its licence text and an
+  About/NOTICE attribution; the application icons now all come from
+  `qt_md_viewer.qrc` SVG resources.
 
 ## 0.2.1 - 2026-10-29
 

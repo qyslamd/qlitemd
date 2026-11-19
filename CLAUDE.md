@@ -6,7 +6,7 @@ working in this repository.
 ## 项目概述
 
 qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
-`md_viewer` 示例。
+`qt_md_viewer` 应用。
 
 渲染链路：
 
@@ -32,7 +32,7 @@ Qt 控件层（src/markdown_view）
   的后端会退化到另一个。merman 的 SVG 是 resvg-safe 产物。Windows
   公式走 RaTeX（`3rdparty/ratex`）
 - Linux：库与测试由 CI（Ubuntu 24.04 + Qt 6.8.3）覆盖；
-  `md_viewer` 运行时尚未验证；原生后端提供 win-x64/x86 与 linux-x64，
+  `qt_md_viewer` 运行时尚未验证；原生后端提供 win-x64/x86 与 linux-x64，
   linux-arm64 回退 QuickJS/QtSvg
 - arm64 Focal（Qt 5.12.8，QEMU）很慢，CI 仅在手动
   `workflow_dispatch` 时运行，不再随 push/PR 触发
@@ -75,7 +75,7 @@ Qt 控件层（src/markdown_view）
 
   rem Explicit .\ prefix: with NoDefaultCurrentDirectoryInExePath in effect,
   rem a bare filename is not resolved from the current directory.
-  .\md_viewer.exe  %*
+  .\qt_md_viewer.exe  %*
   ```
 
 ## 常用命令
@@ -111,14 +111,14 @@ Linux/WSL（本地验证口径：Qt 5.12.8 x64；CI 为 Ubuntu 24.04 + Qt 6.8.3�
 cmake -S . -B build-linux -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DQLITEMD_QT_MAJOR=6 \
-  -DQLITEMD_BUILD_MD_VIEWER=OFF
+  -DQLITEMD_BUILD_QT_MD_VIEWER=OFF
 cmake --build build-linux
 QT_QPA_PLATFORM=offscreen ctest --test-dir build-linux --output-on-failure -L MARKDOWN
 ```
 
 构建产物：
 
-- `build/bin/md_viewer.exe`
+- `build/bin/qt_md_viewer.exe`
 - `build/bin/qlitemd_mdhtml_c.dll`（及其导入库）
 - `build/bin/tests/test_*`
 
@@ -141,7 +141,7 @@ cmake --install build
 ```
 
 安装分为 `Runtime`、`Development`、`Licenses` 三个组件。`Runtime` 只含
-`md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含核心
+`qt_md_viewer`、FluentUI/ExWidgets DLL 和 Qt 运行时；`Development` 含核心
 静态库、共享 C ABI 库（DLL/SO 与导入库）、选中的原生后端 DLL、公开核心
 头文件和 `qlitemdConfig.cmake`（目标 `qlitemd::mdhtml` 与
 `qlitemd::mdhtml_c`）；`Licenses` 含项目与第三方许可证。Qt 控件
@@ -185,7 +185,7 @@ clang-format --dry-run --Werror <file>
 - `src/markdown_view/`：Qt Widget 组件，目标名 `qlitemd_markdown_view`
   （别名 `qlitemd::markdown_view`），封装 qlitehtml、光栅化、缓存与主题
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
-- `examples/md_viewer/`：FluentUI + QWindowKit 示例（递归文档树、书签、
+- `apps/qt_md_viewer/`：FluentUI + QWindowKit 应用（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
   `text_search` / `navigation_history` / `documents_panel`）
 - `examples/qt_widget_minimal/`：`add_subdirectory` 消费示例与 CI 冒烟
@@ -193,7 +193,7 @@ clang-format --dry-run --Werror <file>
 - `examples/avalonia_mdhtml/`：C ABI 的 .NET 10/Avalonia 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
 - `tests/markdown_view/`：Qt 控件无头 GoogleTest 测试
-- `tests/md_viewer/`：示例层模块与文档面板的无头测试
+- `tests/qt_md_viewer/`：应用层模块与文档面板的无头测试
 - `scripts/package_qt_source.py`：生成 `qlitemd-<version>-qt-src.zip`
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
 - `installer/`：Inno Setup 安装包脚本
@@ -230,12 +230,12 @@ clang-format --dry-run --Werror <file>
   修改布局或调用约定要递增 `MDHTML_ABI_VERSION` 并同步测试与 README。
 - 不在 C++ 中硬编码界面样式；主题 CSS 放在 `resources/themes/`，
   示例的 FluentUI 样式由 FluentUIStyle 负责。
-- 代码中禁止 emoji；示例图标优先使用 `QStyle` 标准图标或新增 SVG。
+- 代码中禁止 emoji；应用图标统一放在应用自己的 qrc + SVG 资源里，
+  不用 `QStyle` 标准图标。
 - 不在 QObject 派生类中使用中文 `tr()`；界面文本用 `QStringLiteral`。
-- 日志优先使用 `logging/log_core.h` 的 `LOG_*` 宏。
 - QWidget 派生类把 UI 初始化和信号槽连接拆到 `initUi()` 与
   `initSignals()`。
-- `md_viewer` 中 `FindText` 与 Windows 宏冲突：包含顺序敏感处必须
+- `qt_md_viewer` 中 `FindText` 与 Windows 宏冲突：包含顺序敏感处必须
   关闭 clang-format 并 `#undef FindText`。
 
 ## 第三方依赖
@@ -248,7 +248,7 @@ clang-format --dry-run --Werror <file>
 - `3rdparty/fluentui` 有本地补丁（`patches/FluentUIStyle/`）：除 Qt5
   兼容补丁外，`0002-exwidgets-trim.patch` 增加
   `EXWIDGETS_MINIMAL` 与 `EXWIDGETS_ENABLE_SPECTRUM` 两个选项。顶层
-  默认只编 md_viewer 用到的控件，kissfft 不再参与构建；
+  默认只编 qt_md_viewer 用到的控件，kissfft 不再参与构建；
   `0004-caption-button-label-color.patch` 让 `win_caption_*` 的
   checked 状态不再套用强调色文字（否则最大化/置顶后图标反色）；
   `0005-menu-indicator-icon-only.patch` 不给纯图标菜单按钮画下拉箭头
@@ -284,12 +284,12 @@ clang-format --dry-run --Werror <file>
   先检查 `git ls-files` 是否包含必要的 CMake 模板。
 - Qt 6 移除了 `QSettings::setIniCodec`；Qt5/Qt6 共用代码要加版本保护。
 - 最低 Qt 版本已降到 5.12：WSL/Ubuntu Focal 的 Qt 5.12.8 实测可构建
-  库、测试与 `md_viewer`（两种后端都过）。Linux CI 仍使用 Qt 6.8.3。
+  库、测试与 `qt_md_viewer`（两种后端都过）。Linux CI 仍使用 Qt 6.8.3。
 - 本机 GitHub HTTPS 可能连不上，SSH 可用；CI 的 Qt 安装在 GitHub
   Runner 上，不使用本机 Qt。
 - `.bat` 必须 CRLF，`.sh` 必须 LF；JS 载荷和补丁文件按
   `.gitattributes` 保持字节稳定。
-- `md_viewer` 不分发 Segoe Fluent Icons。FluentUI3Style 与
+- `qt_md_viewer` 不分发 Segoe Fluent Icons。FluentUI3Style 与
   FluentTitleBar 必须按 `Segoe Fluent Icons` -> `Segoe MDL2 Assets`
   的顺序使用系统字体；不要改成 `QFont()` 的默认族，否则图标会变成
   方框。
@@ -301,9 +301,9 @@ clang-format --dry-run --Werror <file>
 - 推送 `v*` tag 触发 `.github/workflows/release.yml`：Qt 5.15.2 x64
   构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
   并把 exe 对应的 PDB 打成 zip。
-- 安装包脚本是 `installer/md_viewer.iss`；使用 Inno Setup 6.x。
-- 发布产物：`qlitemd-md_viewer-<version>-x64-setup.exe`、
-  `qlitemd-md_viewer-<version>-x64-pdb.zip`、
+- 安装包脚本是 `installer/qt_md_viewer.iss`；使用 Inno Setup 6.x。
+- 发布产物：`qlitemd-qt_md_viewer-<version>-x64-setup.exe`、
+  `qlitemd-qt_md_viewer-<version>-x64-pdb.zip`、
   `qlitemd-<version>-core-sdk-win-x64.zip` 和
   `qlitemd-<version>-qt-src.zip`（附 SHA256）。
 - Qt 源码包由 `scripts/package_qt_source.py` 生成，并在发布 CI 中解压后用

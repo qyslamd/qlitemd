@@ -29,7 +29,7 @@ alongside the compiled core SDK. qlitehtml, QuickJS, merman, resvg and md4c
 types stay out of the public core headers so the backend can be replaced
 without changing callers. Formulas and Mermaid compile both engines in and
 switch at render time: native RaTeX/merman first, per-item QuickJS fallback.
-`md_viewer` rasterizes with resvg by default, with the legacy QtSvg path
+`qt_md_viewer` rasterizes with resvg by default, with the legacy QtSvg path
 still selectable.
 
 `examples/avalonia_mdhtml` validates layer 2 from .NET: it P/Invokes the

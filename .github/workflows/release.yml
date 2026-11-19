@@ -146,7 +146,7 @@ jobs:
             "/DBuildVersion=$version" `
             "/DBuildArch=x64" `
             "/DOutputDir=$dist" `
-            "installer\md_viewer.iss"
+            "installer\qt_md_viewer.iss"
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
@@ -154,7 +154,7 @@ jobs:
           New-Item -ItemType Directory -Force "$dist\pdb" | Out-Null
           Copy-Item build\bin\*.pdb "$dist\pdb\" -Force
           Compress-Archive -Path "$dist\pdb\*" `
-            -DestinationPath "$dist/qlitemd-md_viewer-$version-x64-pdb.zip" `
+            -DestinationPath "$dist/qlitemd-qt_md_viewer-$version-x64-pdb.zip" `
             -Force
 
       - name: Upload artifacts

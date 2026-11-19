@@ -8,7 +8,7 @@ architecture. The installed SDK is only the zero-Qt `mdhtml` core.
 
 ```cmake
 set(QLITEMD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL "" FORCE)
+set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL "" FORCE)
 set(QLITEMD_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(path/to/qlitemd)
 
@@ -27,7 +27,7 @@ view->LoadFile(path);
 
 `MarkdownView` provides rendering, Mermaid/formula images, code copy links,
 search, zoom, outline data, HTML/PDF export, printing and theme switching.
-The document tree, bookmarks and settings window in `md_viewer` are
+The document tree, bookmarks and settings window in `qt_md_viewer` are
 application shell code and are not part of the widget.
 
 ## Options
@@ -35,7 +35,7 @@ application shell code and are not part of the widget.
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `QLITEMD_BUILD_QT_WIDGET` | `ON` | Build `qlitemd_markdown_view` |
-| `QLITEMD_BUILD_MD_VIEWER` | top-level `ON` | Build the demo application |
+| `QLITEMD_BUILD_QT_MD_VIEWER` | top-level `ON` | Build the `qt_md_viewer` application (old name `QLITEMD_BUILD_MD_VIEWER` still accepted) |
 | `QLITEMD_BUILD_TESTS` | top-level `ON` | Build the GoogleTest suites |
 | `QLITEMD_INSTALL` | top-level `ON` | Generate install rules |
 | `QLITEMD_QT_MAJOR` | inferred or `5` | Qt major version |
@@ -59,7 +59,7 @@ required.
 Release CI produces `qlitemd-<version>-qt-src.zip`. It contains the core
 and widget sources, themes/JS payloads, the 12 tree-sitter grammars, md4c,
 qlitehtml/litehtml, QuickJS, and the Windows/Linux native backend binaries
-(resvg, RaTeX and merman). It does not contain the `md_viewer` application
+(resvg, RaTeX and merman). It does not contain the `qt_md_viewer` application
 shell. `examples/qt_widget_minimal` inside the package is the reference
 consumer and CI smoke test.
 

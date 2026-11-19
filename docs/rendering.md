@@ -36,7 +36,7 @@ HTML references each asset as `<img src="qlitemd-asset:<id>" width=...
 height=...>`; `<id>` is the first 128 bits of SHA-256 over the asset kind and
 render key. The host resolves it through `MdHtmlResult::assets`.
 
-`md_viewer` rasterizes each SVG with resvg (or QtSvg), rewrites the URL to the
+`qt_md_viewer` rasterizes each SVG with resvg (or QtSvg), rewrites the URL to the
 historical `mj:f/<hash>` / `mj:m/<hash>` token, and serves the pixmap through
 the qlitehtml callback. Its persistent PNG cache stores SVGs rasterized by the
 previous build under the same keys.

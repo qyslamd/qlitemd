@@ -12,9 +12,9 @@ QuickJS 负责运行 MathJax 与 mermaid.js；公式与 Mermaid 的原生/QuickJ
 [![Qt](https://img.shields.io/badge/Qt-5.14%2B-green.svg)](#构建要求)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#构建要求)
 
-[English](README.md) · [示例程序](examples/md_viewer) · [文档](docs/)
+[English](README.md) · [应用](apps/qt_md_viewer) · [文档](docs/)
 
-![qlitemd md_viewer 截图](docs/images/screenshot.png)
+![qlitemd qt_md_viewer 截图](docs/images/screenshot.png)
 
 ## 为什么做 qlitemd
 
@@ -59,7 +59,7 @@ const MdHtmlResult result = pipeline.Render(markdown_utf8);
 
 ```cmake
 set(QLITEMD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL "" FORCE)
+set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL "" FORCE)
 set(QLITEMD_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(path/to/qlitemd)
 target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
@@ -158,14 +158,14 @@ MarkdownRenderService（worker 池）
 
 | Qt | 架构 | 状态 |
 | --- | --- | --- |
-| Qt 5.15.2 | x86 | 库、测试、`md_viewer`、安装 |
-| Qt 5.14.2 | x64 | 库、测试、`md_viewer` |
-| Qt 6.8.3 | x64 | 库、测试和 `md_viewer` 构建；运行时界面尚未验证 |
-| Qt 6.8.3 | x64（Linux） | CI 中构建库并运行测试；`md_viewer` 暂不构建 |
+| Qt 5.15.2 | x86 | 库、测试、`qt_md_viewer`、安装 |
+| Qt 5.14.2 | x64 | 库、测试、`qt_md_viewer` |
+| Qt 6.8.3 | x64 | 库、测试和 `qt_md_viewer` 构建；运行时界面尚未验证 |
+| Qt 6.8.3 | x64（Linux） | CI 中构建库并运行测试；`qt_md_viewer` 暂不构建 |
 | Qt 5.12.12 | x64 | 不支持；最低要求 Qt 5.14 |
 
 Windows + MSVC 是主平台。Linux 的库与测试已由 CI（Ubuntu 24.04 +
-Qt 6.8.3）覆盖；`md_viewer` 尚未在 Linux 上构建。Ubuntu 20.04 自带
+Qt 6.8.3）覆盖；`qt_md_viewer` 尚未在 Linux 上构建。Ubuntu 20.04 自带
 Qt 5.12.8，低于最低要求 Qt 5.14，需要安装更新的 Qt 或 Qt 6。
 
 ## 构建
@@ -173,7 +173,7 @@ Qt 5.12.8，低于最低要求 Qt 5.14，需要安装更新的 Qt 或 Qt 6。
 Windows 下请在 Visual Studio 开发者命令行中执行。
 
 Linux 下把 `CMAKE_PREFIX_PATH` 指向 Qt 5.14+ 或 Qt 6。CI 的 Linux job
-关闭 `md_viewer`，用 Qt 6.8.3 构建库并运行测试。
+关闭 `qt_md_viewer`，用 Qt 6.8.3 构建库并运行测试。
 
 ```bash
 cmake -S . -B build -G Ninja \
@@ -192,7 +192,7 @@ cmake -S . -B build-qt6 -G Ninja \
 cmake --build build-qt6
 ```
 
-Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
+Windows 构建会在 `build/bin/` 生成 `run_qt_md_viewer.bat`，脚本已设置
 `PATH` 与 `QT_PLUGIN_PATH`，可直接运行。
 
 构建开关：
@@ -200,7 +200,7 @@ Windows 构建会在 `build/bin/` 生成 `run_md_viewer.bat`，脚本已设置
 - `QLITEMD_QT_MAJOR`：`5`（默认）或 `6`
 - `QLITEMD_BUILD_QT_WIDGET`：构建 Qt 控件 `markdown_view`（默认 `ON`；
   纯核心构建设为 `OFF`）
-- `QLITEMD_BUILD_MD_VIEWER`：构建示例程序（顶层默认 `ON`）
+- `QLITEMD_BUILD_QT_MD_VIEWER`：构建 qt_md_viewer 应用（顶层默认 `ON`）
 - `QLITEMD_BUILD_TESTS`：构建测试（顶层默认 `ON`）
 - `QLITEMD_INSTALL`：生成安装规则（顶层默认 `ON`；以
   `add_subdirectory` 嵌入时默认 `OFF`）
@@ -230,7 +230,7 @@ cmake --build build
 cmake --install build
 ```
 
-默认选项下，安装内容包含 `bin/md_viewer.exe`、`bin/resvg.dll`、
+默认选项下，安装内容包含 `bin/qt_md_viewer.exe`、`bin/resvg.dll`、
 `bin/ratex_ffi.dll`、`qlitemd_mdhtml` 静态库、`qlitemd_mdhtml_c` 共享 C ABI
 库及其静态依赖、公开核心头文件、许可证文件和 CMake package config；
 选择原生 Mermaid 后端时还会加入 `bin/merman_ffi.dll`。Windows 安装阶段会调用
@@ -257,7 +257,7 @@ cmake -S . -B build-core -G Ninja \
 
 安装组件：
 
-- `Runtime`：`md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
+- `Runtime`：`qt_md_viewer`、FluentUI/ExWidgets DLL 和部署的 Qt 运行时
 - `Development`：核心静态/共享库、选中的原生后端 DLL、公开核心头文件和 `qlitemdConfig.cmake`
 - `Licenses`：项目和第三方许可证文本
 
@@ -270,12 +270,12 @@ cmake --install build --component Licenses
 ## 发布
 
 匹配 `v*` 的 tag 会通过 GitHub Actions 构建 Qt 5.15.2 x64 Windows
-安装包和 PDB 归档。安装包包含 `md_viewer`、Qt 运行时和许可证文件；
+安装包和 PDB 归档。安装包包含 `qt_md_viewer`、Qt 运行时和许可证文件；
 SDK 仍通过独立的 install 组件发布。
 
-## 示例程序
+## 应用
 
-`examples/md_viewer` 是基于本库的完整 FluentUI 风格查看器，面向多层
+`apps/qt_md_viewer` 是基于本库的完整 FluentUI 风格查看器，面向多层
 文档集阅读。它包含递归目录树、文件名过滤、文件级书签、跨文件全文搜索
 与命中跳转、会话与每篇文档的阅读位置恢复、合并菜单/导航/缩放/搜索的
 单行标题栏、右侧大纲、带行内星标的分段侧栏页签、专注模式、Mica/
@@ -292,13 +292,13 @@ SDK 仍通过独立的 install 组件发布。
 - `src/mdhtml/`：零 Qt 核心库（`qlitemd_mdhtml`）
 - `src/markdown_view/`：Qt 控件组件（`qlitemd::markdown_view`）
 - `resources/`：主题 CSS 与 QuickJS Mermaid/公式路径用的 JS 载荷
-- `examples/md_viewer/`：FluentUI 示例程序
+- `apps/qt_md_viewer/`：FluentUI Markdown 查看器应用
 - `examples/qt_widget_minimal/`：add_subdirectory 消费冒烟示例
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
 - `examples/avalonia_mdhtml/`：.NET 10/Avalonia 的 C ABI 验证程序
 - `tests/mdhtml/`：核心无头 GoogleTest 测试
 - `tests/markdown_view/`：Qt 控件无头 GoogleTest 测试
-- `tests/md_viewer/`：示例层目录树/搜索/书签模块的无头测试
+- `tests/qt_md_viewer/`：应用层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助
 - `scripts/`：发布打包辅助（Qt 源码 SDK）
 - `installer/`：Windows 安装包的 Inno Setup 脚本
@@ -312,7 +312,7 @@ SDK 仍通过独立的 install 组件发布。
 
 - 不下载远程图片；只支持本地文件和 `data:` URI。
 - PDF 导出按页面高度切分布局，超长元素可能被切在页缝上。
-- Linux 和 Qt 6 已有库/测试构建覆盖；`md_viewer` 的 Linux 运行时和
+- Linux 和 Qt 6 已有库/测试构建覆盖；`qt_md_viewer` 的 Linux 运行时和
   界面验证仍未完成。
 - Ubuntu 20.04 自带的 Qt 5.12.8 低于最低要求 Qt 5.14，需要安装更新的 Qt。
 - 仓库不重新分发微软 Segoe Fluent Icons 字体；FluentUI 使用系统
@@ -337,10 +337,10 @@ qlitemd 建立在这些开源项目之上，感谢它们的维护者和贡献者
 | [resvg](https://github.com/linebender/resvg) | 0.48.1 | SVG 光栅化 | Apache-2.0 OR MIT |
 | [Mermaid](https://mermaid.js.org/) | 11.16.0 | 旧图表后端 | MIT |
 | [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | 旧载荷抽取 / DOM shim | MIT |
-| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | 无边框窗口（`md_viewer`） | Apache-2.0 |
+| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | 无边框窗口（`qt_md_viewer`） | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0（4a3ff82） | QWindowKit 的 CMake 辅助 | MIT |
-| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI 外壳（`md_viewer`） | MIT |
-| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | 日志（`md_viewer`） | MIT |
+| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI 外壳（`qt_md_viewer`） | MIT |
+| [MiSans](https://hyperos.mi.com/font) | 4.009 | `qt_md_viewer` 界面字体（随包分发） | MiSans 字体许可 |
 | [GoogleTest](https://github.com/google/googletest) | 1.17.0 | 测试 | BSD-3-Clause |
 | [Qt](https://www.qt.io/) | 5.14+ / 6.x | 应用框架（外部依赖） | LGPLv3 / GPLv3 / 商业许可 |
 

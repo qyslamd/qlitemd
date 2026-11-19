@@ -16,9 +16,9 @@ Chromium or Node.js at runtime.
 [![Qt](https://img.shields.io/badge/Qt-5.14%2B-green.svg)](#requirements)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#requirements)
 
-[中文](README.zh-CN.md) · [Example](examples/md_viewer) · [Docs](docs/)
+[中文](README.zh-CN.md) · [Application](apps/qt_md_viewer) · [Docs](docs/)
 
-![qlitemd md_viewer screenshot](docs/images/screenshot.png)
+![qlitemd qt_md_viewer screenshot](docs/images/screenshot.png)
 
 ## Why qlitemd?
 
@@ -65,7 +65,7 @@ consumed from source, so the consumer owns the Qt version and compiler:
 
 ```cmake
 set(QLITEMD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL "" FORCE)
+set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL "" FORCE)
 set(QLITEMD_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(path/to/qlitemd)
 target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
@@ -99,7 +99,7 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
 - **Mermaid diagrams** — both engines compile in: native merman-ffi (fast)
   and mermaid.js in QuickJS (broadest syntax coverage). The render option
   picks one per render; `auto` retries a failed diagram with mermaid.js.
-- **SVG assets** — the core never rasterizes. `md_viewer` uses resvg, with
+- **SVG assets** — the core never rasterizes. `qt_md_viewer` uses resvg, with
   the legacy QtSvg backend still selectable.
 - **Themes** — built-in light and dark CSS; `SetThemeStyleSheet()` lets a host
   supply per-theme CSS, `SetPageBackground()` controls the page fill
@@ -174,14 +174,14 @@ Validated configurations:
 
 | Qt | Architecture | Status |
 | --- | --- | --- |
-| Qt 5.15.2 | x86 | Core, widget tests, `md_viewer`, install |
-| Qt 5.14.2 | x64 | Core, widget tests, `md_viewer` |
-| Qt 6.8.3 | x64 | Core, widget tests and `md_viewer` build; runtime visual check pending |
-| Qt 6.8.3 | x64 (Linux) | Core and widget tests in CI; `md_viewer` disabled |
+| Qt 5.15.2 | x86 | Core, widget tests, `qt_md_viewer`, install |
+| Qt 5.14.2 | x64 | Core, widget tests, `qt_md_viewer` |
+| Qt 6.8.3 | x64 | Core, widget tests and `qt_md_viewer` build; runtime visual check pending |
+| Qt 6.8.3 | x64 (Linux) | Core and widget tests in CI; `qt_md_viewer` disabled |
 | Qt 5.12.12 | x64 | Not supported; Qt 5.14 is the minimum |
 
 Windows with MSVC is the primary platform. Linux library/tests are covered by
-CI on Ubuntu 24.04 with Qt 6.8.3; `md_viewer` is not built there yet. Ubuntu
+CI on Ubuntu 24.04 with Qt 6.8.3; `qt_md_viewer` is not built there yet. Ubuntu
 20.04 ships Qt 5.12.8, which is below the minimum Qt 5.14; install a newer Qt
 or Qt 6 to build on Linux.
 
@@ -190,7 +190,7 @@ or Qt 6 to build on Linux.
 Run these commands from a Visual Studio developer prompt on Windows.
 
 On Linux, point `CMAKE_PREFIX_PATH` at Qt 5.14+ or Qt 6. The CI Linux job
-disables `md_viewer` and runs the library tests with Qt 6.8.3.
+disables `qt_md_viewer` and runs the library tests with Qt 6.8.3.
 
 ```bash
 cmake -S . -B build -G Ninja \
@@ -209,7 +209,7 @@ cmake -S . -B build-qt6 -G Ninja \
 cmake --build build-qt6
 ```
 
-Windows builds generate `build/bin/run_md_viewer.bat`, which sets `PATH`
+Windows builds generate `build/bin/run_qt_md_viewer.bat`, which sets `PATH`
 and `QT_PLUGIN_PATH` before launching the viewer.
 
 Build options:
@@ -217,7 +217,7 @@ Build options:
 - `QLITEMD_QT_MAJOR` — `5` (default) or `6`
 - `QLITEMD_BUILD_QT_WIDGET` — build the Qt `markdown_view` component
   (default `ON`; set `OFF` for a core-only build)
-- `QLITEMD_BUILD_MD_VIEWER` — build the example application (default `ON`
+- `QLITEMD_BUILD_QT_MD_VIEWER` — build the qt_md_viewer application (default `ON`
   at top level)
 - `QLITEMD_BUILD_TESTS` — build the test suite (default `ON` at top level)
 - `QLITEMD_INSTALL` — generate install rules (default `ON` at top level,
@@ -251,7 +251,7 @@ cmake --build build
 cmake --install build
 ```
 
-With the default options, the install contains `bin/md_viewer.exe`,
+With the default options, the install contains `bin/qt_md_viewer.exe`,
 `bin/resvg.dll`, `bin/ratex_ffi.dll`, the `qlitemd_mdhtml` static library,
 the `qlitemd_mdhtml_c` shared C ABI library, dependency archives (`md4c`,
 tree-sitter, QuickJS), public core headers, license files and a CMake package
@@ -280,7 +280,7 @@ cmake -S . -B build-core -G Ninja \
 
 Install components:
 
-- `Runtime` — `md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
+- `Runtime` — `qt_md_viewer`, FluentUI/ExWidgets DLLs and the deployed Qt runtime
 - `Development` — core static/shared libraries, selected native backend DLLs, public core headers and `qlitemdConfig.cmake`
 - `Licenses` — project and third-party license texts
 
@@ -293,12 +293,12 @@ cmake --install build --component Licenses
 ## Releases
 
 Tags matching `v*` build a Qt 5.15.2 x64 Windows installer and a PDB archive
-through GitHub Actions. The installer contains `md_viewer`, its Qt runtime and
+through GitHub Actions. The installer contains `qt_md_viewer`, its Qt runtime and
 the license files; the SDK remains a separate install component.
 
 ## Example application
 
-`examples/md_viewer` is a complete FluentUI-style viewer for reading a
+`apps/qt_md_viewer` is a complete FluentUI-style viewer for reading a
 multi-level documentation set. It provides a recursive document tree with
 filename filtering, file-level bookmarks, global full-text search with hit
 navigation, session and per-document reading-position restore, a single-row
@@ -320,13 +320,13 @@ integration for host-side policy such as link handling and settings.
 - `src/mdhtml/` — the zero-Qt core library (`qlitemd_mdhtml`)
 - `src/markdown_view/` — the Qt widget component (`qlitemd::markdown_view`)
 - `resources/` — theme CSS and JS payloads for the QuickJS Mermaid/formula paths
-- `examples/md_viewer/` — the FluentUI example application
+- `apps/qt_md_viewer/` — the FluentUI application
 - `examples/qt_widget_minimal/` — add_subdirectory consumer smoke example
 - `examples/minimal/` — zero-Qt console example for an installed SDK
 - `examples/avalonia_mdhtml/` — .NET 10/Avalonia validation harness for the shared C ABI
 - `tests/mdhtml/` — headless core GoogleTest suite
 - `tests/markdown_view/` — headless widget GoogleTest suite
-- `tests/md_viewer/` — headless tests for the example's tree/search/bookmark modules
+- `tests/qt_md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
 - `scripts/` — release packaging helpers (Qt source SDK)
 - `installer/` — Inno Setup script for the Windows installer
@@ -342,7 +342,7 @@ integration for host-side policy such as link handling and settings.
   supported.
 - PDF export paginates by slicing the layout, so a very long element can be
   split across pages.
-- Linux and Qt 6 have core/widget test coverage; `md_viewer` runtime and
+- Linux and Qt 6 have core/widget test coverage; `qt_md_viewer` runtime and
   visual sign-off are still pending. A separate CI job builds the core with
   no Qt at all.
 - Ubuntu 20.04's Qt 5.12.8 is below the minimum Qt 5.14; install a newer Qt.
@@ -370,10 +370,10 @@ maintainers and contributors.
 | [resvg](https://github.com/linebender/resvg) | 0.48.1 | SVG rasterization | Apache-2.0 OR MIT |
 | [Mermaid](https://mermaid.js.org/) | 11.16.0 | Legacy diagram backend | MIT |
 | [mermaidx](https://github.com/MohammadRaziei/mermaidx) | 0.9.5 | Legacy payload extraction / DOM shim | MIT |
-| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | Frameless windows (`md_viewer`) | Apache-2.0 |
+| [QWindowKit](https://github.com/stdware/qwindowkit) | 1.5.0 | Frameless windows (`qt_md_viewer`) | Apache-2.0 |
 | [qmsetup](https://github.com/stdware/qmsetup) | 1.0.0 (4a3ff82) | CMake helpers for QWindowKit | MIT |
-| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI shell (`md_viewer`) | MIT |
-| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | Logging (`md_viewer`) | MIT |
+| [FluentUIStyle](https://github.com/XHY-ChuJian/FluentUIStyle) | 4.0 | Fluent UI shell (`qt_md_viewer`) | MIT |
+| [MiSans](https://hyperos.mi.com/font) | 4.009 | UI font for `qt_md_viewer` (bundled) | MiSans Font License |
 | [GoogleTest](https://github.com/google/googletest) | 1.17.0 | Tests | BSD-3-Clause |
 | [Qt](https://www.qt.io/) | 5.14+ / 6.x | Application framework (external) | LGPLv3 / GPLv3 / commercial |
 

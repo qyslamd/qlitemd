@@ -14,7 +14,8 @@ components. Their licenses remain in effect for those components.
 - QWindowKit: Apache-2.0
 - qmsetup: MIT
 - FluentUIStyle: MIT
-- spdlog: MIT
+- MiSans: MiSans Font Intellectual Property License (bundled with
+  qt_md_viewer under apps/qt_md_viewer/resources/fonts)
 - GoogleTest: BSD-3-Clause
 - resvg: Apache-2.0 OR MIT (prebuilt DLL under 3rdparty/resvg)
 - merman: MIT OR Apache-2.0 (prebuilt DLL under 3rdparty/merman)

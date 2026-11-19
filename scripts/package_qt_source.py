@@ -3,7 +3,7 @@
 
 The package is consumed with add_subdirectory(), not find_package(). It
 contains the Qt widget, the zero-Qt core source, the resources and native
-backends they need, but not the md_viewer application shell.
+backends they need, but not the qt_md_viewer application.
 """
 
 import argparse
@@ -122,7 +122,7 @@ commit: {git_commit(root)}
 
 This package is for add_subdirectory() consumers. It contains the
 zero-Qt core, the Qt MarkdownView component and the pinned sources and
-native backends needed by both. The md_viewer application shell is not
+native backends needed by both. The qt_md_viewer application is not
 included.
 
 Quick start:

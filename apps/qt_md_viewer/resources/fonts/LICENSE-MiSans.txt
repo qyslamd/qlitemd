@@ -1,0 +1,23 @@
+MiSans 字体知识产权许可协议（MiSans Font Intellectual Property
+License Agreement）
+
+字体：MiSans Regular / MiSans Demibold（Version 4.009）
+著作权人：Beijing Xiaomi Mobile Software Co.,Ltd & Hanyi Fonts
+官方协议全文：https://hyperos.mi.com/font/download
+
+本应用在界面中内嵌使用 MiSans 字体，并在此注明使用了 MiSans 字体。
+以下为协议要点摘录，完整条款以官方页面为准：
+
+1. 小米授予不可转让、非独占、免版税、可撤销、全球性的版权许可，
+   允许在任何平台、任何商业项目中免费使用 MiSans 字体。
+2. 使用条件：
+   - 在软件中特别注明使用了 MiSans 字体；
+   - 不得对字体或其单独组件进行改编或二次开发（可自由调节粗细、
+     间距，但不得单独改变外观）；
+   - 不得单独将字体或其组件对外租赁、再许可、出借、进一步分发或
+     售卖；此限制不适用于用 MiSans 创作的其他作品；
+   - 在字体的任何副本中保留版权声明和本协议；
+   - 不得用于违法用途。
+
+说明：本目录中的字体文件随 qt_md_viewer 一起分发，用于界面显示；
+如需替换为官方协议全文，请从上面的官方地址下载后覆盖本文件。

@@ -9,6 +9,6 @@
 - `trace`: emit stage-level timing messages.
 - `dump_directory`: write intermediate HTML and payload artifacts.
 
-Both are off by default. The example `md_viewer` displays the counters in
+Both are off by default. The example `qt_md_viewer` displays the counters in
 its render-status dock; the dump directory must be a writable path owned
 by the caller.

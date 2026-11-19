@@ -55,7 +55,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/mdhtml/CMakeLists.txt")
 else()
     set(_qlitemd_tests_default OFF)
 endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/qt_md_viewer/CMakeLists.txt")
     set(_qlitemd_viewer_default ${QLITEMD_IS_TOP_LEVEL})
 else()
     set(_qlitemd_viewer_default OFF)
@@ -64,20 +64,24 @@ endif()
 option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ${_qlitemd_tests_default})
 option(QLITEMD_BUILD_QT_WIDGET
     "Build the Qt markdown_view component" ON)
-option(QLITEMD_BUILD_MD_VIEWER
-    "Build the md_viewer example" ${_qlitemd_viewer_default})
+option(QLITEMD_BUILD_QT_MD_VIEWER
+    "Build the qt_md_viewer application" ${_qlitemd_viewer_default})
+# 旧名兼容：早先的构建脚本与 CI 仍会传 QLITEMD_BUILD_MD_VIEWER
+if(DEFINED QLITEMD_BUILD_MD_VIEWER)
+    set(QLITEMD_BUILD_QT_MD_VIEWER ${QLITEMD_BUILD_MD_VIEWER})
+endif()
 option(QLITEMD_INSTALL
     "Install qlitemd targets" ${QLITEMD_IS_TOP_LEVEL})
 option(QLITEMD_CORE_ONLY "Build only the Qt-free mdhtml core (no Qt)" OFF)
 if(QLITEMD_CORE_ONLY)
     set(QLITEMD_BUILD_QT_WIDGET OFF CACHE BOOL
         "Build the Qt markdown_view component" FORCE)
-    set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL
-        "Build the md_viewer example" FORCE)
+    set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL
+        "Build the qt_md_viewer application" FORCE)
 endif()
 if(NOT QLITEMD_BUILD_QT_WIDGET)
-    set(QLITEMD_BUILD_MD_VIEWER OFF CACHE BOOL
-        "Build the md_viewer example" FORCE)
+    set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL
+        "Build the qt_md_viewer application" FORCE)
 endif()
 
 set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
@@ -210,7 +214,7 @@ if(_qlitemd_has_ratex)
 endif()
 
 # Tests and examples use different runtime directories; stage the selected
-# native libraries next to each so ctest and md_viewer start without a
+# native libraries next to each so ctest and qt_md_viewer start without a
 # manually adjusted PATH/LD_LIBRARY_PATH.
 if(_qlitemd_runtime_libs)
     add_custom_target(qlitemd_runtime_dlls ALL
@@ -224,7 +228,7 @@ if(_qlitemd_runtime_libs)
         VERBATIM)
 endif()
 
-if(QLITEMD_BUILD_QT_WIDGET OR QLITEMD_BUILD_MD_VIEWER)
+if(QLITEMD_BUILD_QT_WIDGET OR QLITEMD_BUILD_QT_MD_VIEWER)
     if(NOT DEFINED QLITEMD_QT_MAJOR)
         if(TARGET Qt6::Core)
             set(_qlitemd_qt_default 6)
@@ -238,9 +242,6 @@ if(QLITEMD_BUILD_QT_WIDGET OR QLITEMD_BUILD_MD_VIEWER)
     endif()
     set(QT_VERSION_MAJOR ${QLITEMD_QT_MAJOR})
     set(_qlitemd_qt_components Core Gui Widgets Svg PrintSupport)
-    if(QLITEMD_BUILD_MD_VIEWER)
-        list(APPEND _qlitemd_qt_components Network)
-    endif()
     if(QLITEMD_BUILD_TESTS)
         list(APPEND _qlitemd_qt_components Test)
     endif()
@@ -251,16 +252,6 @@ if(QLITEMD_BUILD_QT_WIDGET OR QLITEMD_BUILD_MD_VIEWER)
     endif()
 
     include(cmake/run_app.cmake)
-endif()
-
-# ---------------------------------------------------------------- spdlog
-if(QLITEMD_BUILD_MD_VIEWER)
-    set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
-    set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
-    add_subdirectory(3rdparty/spdlog)
-    qlitemd_skip_subdir_install(3rdparty/spdlog)
 endif()
 
 if(QLITEMD_BUILD_QT_WIDGET)
@@ -308,7 +299,7 @@ qlitemd_skip_subdir_install(3rdparty/tree-sitter)
 add_subdirectory(src/mdhtml)
 
 # ------------------------------------------------------ viewer UI deps
-if(QLITEMD_BUILD_MD_VIEWER)
+if(QLITEMD_BUILD_QT_MD_VIEWER)
 set(QWINDOWKIT_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_WIDGETS ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_QUICK OFF CACHE BOOL "" FORCE)
@@ -327,7 +318,7 @@ set(BUILD_LIBRARY ON CACHE BOOL "" FORCE)
 set(BUILD_FRAMELESS ON CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_QTCREATOR_PLUGIN OFF CACHE BOOL "" FORCE)
-# 只编 md_viewer 用到的 ExWidgets；频谱控件依赖 kissfft，整块裁掉
+# 只编 qt_md_viewer 用到的 ExWidgets；频谱控件依赖 kissfft，整块裁掉
 set(EXWIDGETS_MINIMAL ON CACHE BOOL "" FORCE)
 set(EXWIDGETS_ENABLE_SPECTRUM OFF CACHE BOOL "" FORCE)
 set(CMAKE_SKIP_INSTALL_RULES TRUE)
@@ -337,23 +328,6 @@ unset(CMAKE_SKIP_INSTALL_RULES)
 endif()
 
 # ------------------------------------------------------------ modules
-if(QLITEMD_BUILD_MD_VIEWER)
-    add_subdirectory(src/logging)
-    qlitemd_skip_subdir_install(src/logging)
-
-    add_library(qlitemd_single_instance STATIC
-        src/common/single_instance.cpp
-        src/common/single_instance.h)
-    set_target_properties(qlitemd_single_instance PROPERTIES AUTOMOC ON)
-    target_include_directories(qlitemd_single_instance PUBLIC
-        "${PROJECT_SOURCE_DIR}/src")
-    target_link_libraries(qlitemd_single_instance PUBLIC
-        Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network qlitemd_log)
-    if(WIN32)
-        target_link_libraries(qlitemd_single_instance PRIVATE user32)
-    endif()
-endif()
-
 if(QLITEMD_BUILD_QT_WIDGET)
     add_subdirectory(src/markdown_view)
 endif()
@@ -418,8 +392,6 @@ install(FILES 3rdparty/md4c/LICENSE.md
     DESTINATION licenses/md4c COMPONENT Licenses)
 install(FILES 3rdparty/quickjs-ng/LICENSE
     DESTINATION licenses/quickjs COMPONENT Licenses)
-install(FILES 3rdparty/spdlog/LICENSE
-    DESTINATION licenses/spdlog COMPONENT Licenses)
 install(FILES 3rdparty/qwindowkit/LICENSE
     DESTINATION licenses/qwindowkit COMPONENT Licenses)
 install(FILES 3rdparty/qmsetup/LICENSE
@@ -496,13 +468,13 @@ if(QLITEMD_BUILD_TESTS)
         qlitemd_skip_subdir_install(tests/markdown_view)
     endif()
     if(QLITEMD_BUILD_QT_WIDGET
-       AND EXISTS "${PROJECT_SOURCE_DIR}/examples/md_viewer/CMakeLists.txt")
-        add_subdirectory(tests/md_viewer)
-        qlitemd_skip_subdir_install(tests/md_viewer)
+       AND EXISTS "${PROJECT_SOURCE_DIR}/apps/qt_md_viewer/CMakeLists.txt")
+        add_subdirectory(tests/qt_md_viewer)
+        qlitemd_skip_subdir_install(tests/qt_md_viewer)
     endif()
 endif()
 
 # ------------------------------------------------------------- viewer
-if(QLITEMD_BUILD_MD_VIEWER)
-    add_subdirectory(examples/md_viewer)
+if(QLITEMD_BUILD_QT_MD_VIEWER)
+    add_subdirectory(apps/qt_md_viewer)
 endif()

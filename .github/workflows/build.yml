@@ -196,7 +196,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
           -DQLITEMD_QT_MAJOR=6
-          -DQLITEMD_BUILD_MD_VIEWER=OFF
+          -DQLITEMD_BUILD_QT_MD_VIEWER=OFF
           ${{ matrix.backend_args }}
 
       - name: Build
@@ -213,6 +213,7 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           git ls-files 'src/**/*.h' 'src/**/*.cpp' \
             'examples/**/*.h' 'examples/**/*.cpp' \
+            'apps/**/*.h' 'apps/**/*.cpp' \
             'tests/**/*.h' 'tests/**/*.cpp' |
             xargs clang-format --dry-run --Werror
 
