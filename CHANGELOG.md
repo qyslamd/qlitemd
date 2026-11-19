@@ -2,6 +2,16 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- Fix inverted caption-button icons after maximizing (or pinning) the
+  window: `FluentUI3Style` painted any checked tool button with the
+  accent text colour, so `md_viewer`'s maximize/restore and pin glyphs
+  turned white in the light scheme and black in the dark one. The
+  `win_caption_*` buttons now keep the normal caption text colour
+  regardless of their checked state
+  (`patches/FluentUIStyle/0004-caption-button-label-color.patch`).
+
 ## 0.2.1 - 2026-10-29
 
 - Include the merman prebuilt library in the Qt source package so

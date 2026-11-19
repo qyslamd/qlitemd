@@ -248,8 +248,10 @@ clang-format --dry-run --Werror <file>
 - `3rdparty/fluentui` 有本地补丁（`patches/FluentUIStyle/`）：除 Qt5
   兼容补丁外，`0002-exwidgets-trim.patch` 增加
   `EXWIDGETS_MINIMAL` 与 `EXWIDGETS_ENABLE_SPECTRUM` 两个选项。顶层
-  默认只编 md_viewer 用到的控件，kissfft 不再参与构建；升级 FluentUI
-  时需重放补丁。
+  默认只编 md_viewer 用到的控件，kissfft 不再参与构建；
+  `0004-caption-button-label-color.patch` 让 `win_caption_*` 的
+  checked 状态不再套用强调色文字（否则最大化/置顶后图标反色）。
+  升级 FluentUI 时需重放补丁。
 - `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
   不要做行尾转换，也不要直接编辑压缩后的文件。公式与 Mermaid 都同时
   编入 QuickJS 路径，因此任何构建都会编入 QuickJS。

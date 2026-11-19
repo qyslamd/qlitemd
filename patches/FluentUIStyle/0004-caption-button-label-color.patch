@@ -1,0 +1,27 @@
+diff --git a/fluentui3style/fluentui3style.cpp b/fluentui3style/fluentui3style.cpp
+index d2e2580..cbedf4e 100644
+--- a/fluentui3style/fluentui3style.cpp
++++ b/fluentui3style/fluentui3style.cpp
+@@ -933,6 +933,13 @@ QString toolButtonElideText( const QStyleOptionToolButton* option, const QRect&
+     return calculateElidedText( text, textOption, option->font, textRect, Qt::AlignTop, Qt::ElideMiddle, flags, false, nullptr );
+ }
+ 
++// FluentTitleBar 的 win_caption_* 按钮用 checked 只作状态标记（最大化/还原、
++// 置顶），并不表示"选中"，不能套用强调色文字（浅色白、暗色黑）
++static bool isCaptionButton( const QWidget* widget )
++{
++    return widget && widget->objectName().startsWith( QLatin1String( "win_caption_" ) );
++}
++
+ static void drawArrow( const QStyle* style,
+                        const QStyleOptionToolButton* toolbutton,
+                        const QRect& rect,
+@@ -5858,7 +5865,7 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
+                             checked   = button->isChecked();
+                         }
+                         bool accent = widget && widget->property( ButtonAccentStyleProperty ).toBool();
+-                        if ( accent || ( checkable && checked ) )
++                        if ( accent || ( checkable && checked && !isCaptionButton( widget ) ) )
+                         {
+                             QColor penCol = option->state.testFlag( QStyle::State_Enabled ) ? winUI3Color( textOnAccentPrimary )
+                                                                                             : winUI3Color( textOnAccentDisabled );
