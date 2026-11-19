@@ -11,6 +11,9 @@ All notable changes to qlitemd are documented here.
   `win_caption_*` buttons now keep the normal caption text colour
   regardless of their checked state
   (`patches/FluentUIStyle/0004-caption-button-label-color.patch`).
+- Stop drawing the menu chevron on icon-only tool buttons with a menu, where
+  it overlapped the icon (md_viewer's title-bar menu button)
+  (`patches/FluentUIStyle/0005-menu-indicator-icon-only.patch`).
 
 ## 0.2.1 - 2026-10-29
 

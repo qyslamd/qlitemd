@@ -1,0 +1,16 @@
+diff --git a/fluentui3style/fluentui3style.cpp b/fluentui3style/fluentui3style.cpp
+index cbedf4e..b21753d 100644
+--- a/fluentui3style/fluentui3style.cpp
++++ b/fluentui3style/fluentui3style.cpp
+@@ -2520,8 +2520,10 @@ void FluentUI3Style::drawComplexControl( ComplexControl control,
+                         painter->restore();
+                     }
+                 }
+-                else if ( toolbutton->features & QStyleOptionToolButton::HasMenu )
++                else if ( ( toolbutton->features & QStyleOptionToolButton::HasMenu )
++                          && ( toolbutton->icon.isNull() || !toolbutton->text.isEmpty() ) )
+                 {
++                    // 只有图标的菜单按钮不再画下拉箭头：箭头会和图标叠在一起
+                     QRect arrowRect = menuarea;
+ 
+                     static QFont font( assetFont );
