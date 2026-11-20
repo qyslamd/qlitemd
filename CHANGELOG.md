@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.4.0 - 2026-11-20
 
 - Switch syntax highlighting back to highlight.js running in QuickJS
   (`resources/highlight.min.js`, bundled from `highlight_entry.js`) and
