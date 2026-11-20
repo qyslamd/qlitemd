@@ -43,7 +43,7 @@ MarkdownRenderResult RenderOne(MarkdownRenderTask task,
   JsRuntime* runtime = nullptr;
   switch (task.kind) {
     case MarkdownRenderKind::Highlight:
-      // native tree-sitter：无 JS 运行时，不可中断由解析时长兜底
+      runtime = &highlight.runtime;
       break;
     case MarkdownRenderKind::Formula:
 #if !defined(QLITEMD_FORMULA_RATEX)

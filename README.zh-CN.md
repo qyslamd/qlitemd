@@ -2,8 +2,8 @@
 
 **一个不需要浏览器内核的 Qt Widgets Markdown 渲染器。**
 
-md4c 负责解析，qlitehtml 负责排版，语法高亮走原生 tree-sitter；
-QuickJS 负责运行 MathJax 与 mermaid.js；公式与 Mermaid 的原生/QuickJS
+md4c 负责解析，qlitehtml 负责排版，语法高亮由 highlight.js 在
+QuickJS 中完成；QuickJS 同时负责运行 MathJax 与 mermaid.js；公式与 Mermaid 的原生/QuickJS
 引擎都编入构建，渲染时按需切换，公式与图表的 SVG 由 resvg 光栅化。
 运行时不需要 WebEngine、Chromium 或 Node.js。
 
@@ -70,8 +70,8 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
 预编译核心 SDK。
 
 嵌入构建时 qlitemd 会定义 `md4c`、`qlitehtml`、`litehtml`、`qjs`、
-`qjsc`、`tree_sitter_core`、`tree_sitter_grammars` 这些 vendored target；
-如果宿主已有同名 target，应把源码包放在隔离的子工程中消费。
+`qjsc` 这些 vendored target；如果宿主已有同名 target，应把源码包放在
+隔离的子工程中消费。
 
 控件集成细节见 [`docs/qt-widget.md`](docs/qt-widget.md)。
 [`examples/qt_widget_minimal`](examples/qt_widget_minimal) 是
@@ -83,8 +83,9 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
 - **GFM Markdown**：通过 md4c 支持表格、任务列表、删除线、自动链接、
   告警块（callouts/admonitions）和脚注（footnotes）；默认 MPE Callout，
   可按渲染切换 GitHub Admonition；原始 HTML 原样保留。
-- **代码高亮**：highlight.js 在 QuickJS 中运行；示例按行拆分 span，
-  保证行号对齐。
+- **代码高亮**：highlight.js 在 QuickJS 中运行，带上上游全部 193 种
+  语言；语法按需注册，只有文档里真正出现的语言才编译，载荷约 1 MB。
+  示例按行拆分 span，保证行号对齐。
 - **公式**：原生 RaTeX 或 MathJax（TeX 转 SVG 再转 QPixmap），支持行内
   `$...$` 与独立 `$$...$$`，配色跟随主题；默认 auto，RaTeX 优先，失败
   自动回退 MathJax。

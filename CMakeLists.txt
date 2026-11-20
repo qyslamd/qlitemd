@@ -289,13 +289,9 @@ set(QJS_ENABLE_INSTALL OFF CACHE BOOL "Do not install QuickJS" FORCE)
 add_subdirectory(3rdparty/quickjs-ng)
 qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 
-# ------------------------------------------------- tree-sitter (native)
-add_subdirectory(3rdparty/tree-sitter)
-qlitemd_skip_subdir_install(3rdparty/tree-sitter)
-
 # ---------------------------------------------------- Qt-free mdhtml core
-# Needs the QuickJS/qjsc and tree-sitter targets above, so it comes after
-# the vendored dependencies.
+# Needs the QuickJS/qjsc targets above, so it comes after the vendored
+# dependencies.
 add_subdirectory(src/mdhtml)
 
 # ------------------------------------------------------ viewer UI deps
@@ -340,8 +336,6 @@ if(QLITEMD_INSTALL)
 install(FILES
     "$<TARGET_FILE:qlitemd_mdhtml>"
     "$<TARGET_FILE:md4c>"
-    "$<TARGET_FILE:tree_sitter_core>"
-    "$<TARGET_FILE:tree_sitter_grammars>"
     DESTINATION lib
     COMPONENT Development)
 install(FILES "$<TARGET_FILE:qjs>"

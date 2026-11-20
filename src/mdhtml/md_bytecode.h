@@ -6,6 +6,8 @@
 // qjsc bytecode arrays generated at build time from resources/*.js (see
 // src/mdhtml/CMakeLists.txt). Only referenced by the QuickJS fallback.
 extern "C" {
+extern const uint32_t md_hl_size;
+extern const uint8_t md_hl[];
 extern const uint32_t md_mj_size;
 extern const uint8_t md_mj[];
 extern const uint32_t md_mm_size;

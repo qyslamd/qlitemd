@@ -15,22 +15,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-LANGUAGES = [
-    "bash",
-    "batch",
-    "c",
-    "cpp",
-    "css",
-    "go",
-    "html",
-    "java",
-    "javascript",
-    "json",
-    "python",
-    "rust",
-]
-
-
 def project_version(root: Path) -> str:
     text = (root / "CMakeLists.txt").read_text(encoding="utf-8")
     match = re.search(r"project\(qlitemd VERSION ([0-9.]+)", text)
@@ -86,22 +70,8 @@ def stage_package(root: Path, stage: Path) -> None:
               stage / "3rdparty" / "litehtml")
     copy_tree(root / "3rdparty" / "qlitehtml",
               stage / "3rdparty" / "qlitehtml")
-    copy_tree(root / "3rdparty" / "tree-sitter",
-              stage / "3rdparty" / "tree-sitter")
     copy_tree(root / "3rdparty" / "quickjs-ng",
               stage / "3rdparty" / "quickjs-ng")
-
-    ts_lang = stage / "3rdparty" / "tree-sitter-lang"
-    ts_lang.mkdir(parents=True)
-    copy_file(root / "3rdparty" / "tree-sitter-lang" / "VERSION.md",
-              ts_lang / "VERSION.md")
-    for language in LANGUAGES:
-        src_lang = root / "3rdparty" / "tree-sitter-lang" / language
-        dst_lang = ts_lang / language
-        copy_tree(src_lang / "src", dst_lang / "src")
-        copy_file(src_lang / "queries" / "highlights.scm",
-                  dst_lang / "queries" / "highlights.scm")
-        copy_file(src_lang / "LICENSE", dst_lang / "LICENSE")
 
     for name in ("resvg", "ratex", "merman"):
         src_lib = root / "3rdparty" / name

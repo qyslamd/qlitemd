@@ -12,7 +12,7 @@ qlitemd 是一个独立的 Qt/C++ Markdown 渲染库，附带 FluentUI 风格的
 
 ```text
 Markdown -> mdhtml（零 Qt）-> HTML + SVG 资产
-              \-> tree-sitter: 语法高亮
+              \-> highlight.js: 语法高亮（QuickJS）
               \-> 公式: RaTeX（原生）/ QuickJS: MathJax，运行时切换
               \-> Mermaid: merman（原生）/ QuickJS: mermaid.js，运行时切换
 Qt 控件层（src/markdown_view）
@@ -253,9 +253,12 @@ clang-format --dry-run --Werror <file>
   checked 状态不再套用强调色文字（否则最大化/置顶后图标反色）；
   `0005-menu-indicator-icon-only.patch` 不给纯图标菜单按钮画下拉箭头
   （否则箭头压在图标上）。升级 FluentUI 时需重放补丁。
-- `resources/` 下四份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
-  不要做行尾转换，也不要直接编辑压缩后的文件。公式与 Mermaid 都同时
-  编入 QuickJS 路径，因此任何构建都会编入 QuickJS。
+- `resources/` 下五份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
+  不要做行尾转换，也不要直接编辑压缩后的文件。高亮、公式与 Mermaid 都
+  走 QuickJS 路径，因此任何构建都会编入 QuickJS。`highlight.min.js` 由
+  `scripts/gen_highlight_entry.mjs` 生成入口、再用 esbuild 打包（版本与
+  命令见入口文件头）；它带全部 193 种语言但按需注册，改类名映射或升级
+  highlight.js 时重跑这两步并更新产物。
 - `patches/**` 固定使用 LF。
 - 预编原生库（resvg / merman / ratex）按 `<平台>-<架构>` 归档：
   `3rdparty/<lib>/bin/win-x64|win-x86|linux-x64|linux-arm64/`。

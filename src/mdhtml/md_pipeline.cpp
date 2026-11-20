@@ -223,7 +223,7 @@ struct MdPipelineRuntime {
                     : std::make_shared<MdDefaultFontMetrics>()),
         highlight(options.highlight_workers, options.queue_capacity,
                   options.worker_stack_bytes,
-                  [] { return std::make_unique<MdTreeSitterParserCache>(); }),
+                  [] { return std::make_unique<MdHighlightEngine>(); }),
         formula(options.formula_workers, options.queue_capacity,
                 options.worker_stack_bytes,
                 [] { return std::make_unique<MdFormulaEngine>(); }),
@@ -233,7 +233,7 @@ struct MdPipelineRuntime {
                 }) {}
 
   std::shared_ptr<const MdFontMetrics> metrics;
-  MdTaskLane<MdTreeSitterParserCache> highlight;
+  MdTaskLane<MdHighlightEngine> highlight;
   MdTaskLane<MdFormulaEngine> formula;
   MdTaskLane<MdMermaidEngine> mermaid;
   std::atomic<int> active_jobs{0};
@@ -421,9 +421,9 @@ class MdRenderJobImpl : public MdRenderJob,
       bool submitted = false;
       switch (tasks_[i].kind) {
         case MdLaneTaskKind::Highlight:
-          submitted = runtime_->highlight.Submit(
-              [self, i](MdTreeSitterParserCache& cache) {
-                self->RunHighlight(i, cache);
+          submitted =
+              runtime_->highlight.Submit([self, i](MdHighlightEngine& engine) {
+                self->RunHighlight(i, engine);
               });
           break;
         case MdLaneTaskKind::Formula:
@@ -472,12 +472,13 @@ class MdRenderJobImpl : public MdRenderJob,
     }
   }
 
-  void RunHighlight(std::size_t index, MdTreeSitterParserCache& cache) {
+  void RunHighlight(std::size_t index, MdHighlightEngine& engine) {
     const MdLaneTask& task = tasks_[index];
+    engine.SetInterruptFlag(&cancel_);
     std::string html;
     bool failed = false;
     try {
-      html = MdHighlightCode(task.payload, task.language, &cache);
+      html = MdHighlightCode(task.payload, task.language, &engine);
     } catch (...) {
       failed = true;
     }

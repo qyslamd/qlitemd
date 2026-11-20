@@ -3,8 +3,6 @@ set(TARGET_NAME qlitemd_markdown_view)
 set(TARGET_SRCS
     code_highlighter.cpp
     code_highlighter.h
-    tree_sitter_highlighter.cpp
-    tree_sitter_highlighter.h
     formula_renderer.cpp
     formula_renderer.h
     markdown_engine_state.h
@@ -74,7 +72,8 @@ endif()
 set(QJSC_CMD "$<TARGET_FILE:qjsc>")
 set(MARKDOWN_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")
 set(MARKDOWN_BYTECODE_SRCS "")
-foreach(entry "md_mj:mathjax-svg.min.js"
+foreach(entry "md_hl:highlight.min.js"
+              "md_mj:mathjax-svg.min.js"
               "md_mm:mermaid.js"
               "md_ds:dom_shim.js"
               "md_pb:path_bbox.js")
@@ -126,8 +125,6 @@ target_link_libraries(${TARGET_NAME}
     qlitehtml
     qlitemd_mdhtml
     md4c
-    tree_sitter_core
-    tree_sitter_grammars  # 高亮：native tree-sitter（12 语言）
     Qt${QT_VERSION_MAJOR}::Svg
 )
 if(QLITEMD_SVG_BACKEND STREQUAL "qtsvg")

@@ -15,16 +15,6 @@ find_library(QLITEMD_MD4C_LIBRARY
     PATHS "${_qlitemd_libdir}"
     NO_DEFAULT_PATH
     REQUIRED)
-find_library(QLITEMD_TREE_SITTER_CORE_LIBRARY
-    NAMES tree_sitter_core
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
-find_library(QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY
-    NAMES tree_sitter_grammars
-    PATHS "${_qlitemd_libdir}"
-    NO_DEFAULT_PATH
-    REQUIRED)
 find_library(QLITEMD_QJS_LIBRARY
     NAMES qjs
     PATHS "${_qlitemd_libdir}"
@@ -78,8 +68,6 @@ endif()
 # Static archives first; their dependencies follow.
 set(_qlitemd_link_libraries
     ${QLITEMD_MD4C_LIBRARY}
-    ${QLITEMD_TREE_SITTER_GRAMMARS_LIBRARY}
-    ${QLITEMD_TREE_SITTER_CORE_LIBRARY}
     ${_qlitemd_native_libraries})
 list(APPEND _qlitemd_link_libraries ${QLITEMD_QJS_LIBRARY})
 list(APPEND _qlitemd_link_libraries Threads::Threads ${CMAKE_DL_LIBS})

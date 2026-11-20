@@ -33,7 +33,7 @@ int main() {
 | Layer | Technology |
 | --- | --- |
 | Parser | md4c |
-| Highlight | tree-sitter |
+| Highlight | highlight.js |
 | Formula | RaTeX |
 | Mermaid | mermaid.js (QuickJS) |
 

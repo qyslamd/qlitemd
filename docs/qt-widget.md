@@ -57,8 +57,8 @@ required.
 ## Source package
 
 Release CI produces `qlitemd-<version>-qt-src.zip`. It contains the core
-and widget sources, themes/JS payloads, the 12 tree-sitter grammars, md4c,
-qlitehtml/litehtml, QuickJS, and the Windows/Linux native backend binaries
+and widget sources, themes/JS payloads, md4c, qlitehtml/litehtml, QuickJS,
+and the Windows/Linux native backend binaries
 (resvg, RaTeX and merman). It does not contain the `qt_md_viewer` application
 shell. `examples/qt_widget_minimal` inside the package is the reference
 consumer and CI smoke test.
@@ -66,9 +66,8 @@ consumer and CI smoke test.
 ## Constraints
 
 - qlitemd defines the vendored targets `md4c`, `qlitehtml`, `litehtml`,
-  `qjs`, `qjsc`, `tree_sitter_core` and `tree_sitter_grammars`. A host that
-  already defines the same target names should consume the package in an
-  isolated subproject.
+  `qjs` and `qjsc`. A host that already defines the same target names
+  should consume the package in an isolated subproject.
 - The widget is a static library in this source-package model; every host
   links its own copy. A shared widget DLL is a separate packaging decision.
 - `MarkdownView` headers and the core headers are intentionally
