@@ -1,0 +1,7 @@
+// Executable icon. The installer script (installer/qt_md_viewer.iss) uses the
+// same icon.ico as SetupIconFile, so both the exe and the setup package carry
+// one source of truth.
+
+#define IDI_APP_ICON 101
+
+IDI_APP_ICON ICON "resources/icon.ico"

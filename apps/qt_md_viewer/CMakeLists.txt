@@ -35,6 +35,12 @@ set(ALL_SRCS
 
 add_executable(${TARGET_NAME} WIN32 ${ALL_SRCS})
 
+if(WIN32)
+    # 可执行文件图标与安装包共用 resources/icon.ico
+    enable_language(RC)
+    target_sources(${TARGET_NAME} PRIVATE qt_md_viewer.rc)
+endif()
+
 target_link_libraries(${TARGET_NAME} PRIVATE
     qlitemd::markdown_view
     FluentUI3Style

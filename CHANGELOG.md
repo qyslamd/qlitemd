@@ -9,6 +9,9 @@ All notable changes to qlitemd are documented here.
   entries under View are enabled (Qt disables `toggleViewAction()` when a
   dock has `NoDockWidgetFeatures`). The welcome page and quick-open no
   longer mention the removed shortcut.
+- Embed `resources/icon.ico` into `qt_md_viewer.exe` through a new
+  `qt_md_viewer.rc`; previously the icon was only used by the installer
+  and the executable carried the default Windows icon.
 
 ## 0.3.0 - 2026-11-19
 
