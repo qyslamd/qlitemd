@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.3.1 - 2026-11-20
 
 - Remove qt_md_viewer's focus mode. The document and outline docks keep
   their title bars and can be closed, floated and moved again; their
