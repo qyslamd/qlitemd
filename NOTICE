@@ -21,10 +21,8 @@ components. Their licenses remain in effect for those components.
 - merman: MIT OR Apache-2.0 (prebuilt DLL under 3rdparty/merman)
 - RaTeX: MIT (prebuilt DLL under 3rdparty/ratex; local SVG FFI patch in
   patches/ratex)
-- tree-sitter: MIT (source under 3rdparty/tree-sitter)
-- tree-sitter language grammars (bash, batch, c, cpp, css, go, html,
-  java, javascript, json, python, rust): MIT
-  (source under 3rdparty/tree-sitter-lang)
+- highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
+  (bundled as resources/highlight.min.js; license in licenses/highlightjs)
 - MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
 - Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
 - mermaidx: MIT; Copyright (c) 2023-present Mohammad Raziei

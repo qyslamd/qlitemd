@@ -5,7 +5,7 @@
 md4c parses the document, qlitehtml lays it out, and formulas render
 through a runtime-selectable engine (native RaTeX where its prebuilt library
 exists, with a per-formula MathJax fallback in quickjs-ng).
-Highlighting uses native tree-sitter, Mermaid diagrams render through a
+Highlighting runs highlight.js in quickjs-ng, Mermaid diagrams render through a
 runtime-selectable engine (native merman-ffi with a per-diagram mermaid.js
 fallback, or either engine pinned), and
 formula/diagram SVGs are rasterized with resvg. There is no WebEngine,
@@ -76,9 +76,8 @@ widget sources plus pinned dependencies, and a compiled core SDK for hosts
 that only need `qlitemd::mdhtml` or `qlitemd::mdhtml_c`.
 
 When embedding, qlitemd defines the vendored targets `md4c`, `qlitehtml`,
-`litehtml`, `qjs`, `qjsc`, `tree_sitter_core` and `tree_sitter_grammars`;
-a host that already defines the same target names should consume the source
-package in an isolated subproject.
+`litehtml`, `qjs` and `qjsc`; a host that already defines the same target
+names should consume the source package in an isolated subproject.
 
 See [`docs/qt-widget.md`](docs/qt-widget.md) for the widget integration
 details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
@@ -90,9 +89,10 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
 - **GFM Markdown** — tables, task lists, strikethrough, autolinks,
   callouts/admonitions and footnotes through md4c; MPE callouts are the
   default, GitHub admonitions remain selectable per render.
-- **Syntax highlighting** — native tree-sitter with 12 grammar languages
-  (bash, batch, c, cpp, css, go, html, java, javascript, json, python,
-  rust); the example renders per-line spans so line numbers stay aligned.
+- **Syntax highlighting** — highlight.js in QuickJS with all 193 upstream
+  languages. Grammars are registered lazily on first use, so the payload
+  stays around 1 MB and only languages actually present in a document are
+  compiled; the example renders per-line spans so line numbers stay aligned.
 - **Formulas** — native RaTeX or MathJax in QuickJS emits SVG for inline
   `$...$` and display `$$...$$`, with theme-aware colors. The render option
   picks the engine; `auto` retries a failed formula with MathJax.
@@ -131,7 +131,7 @@ md4c  ->  HTML skeleton + formula/Mermaid placeholders
       |
       v
 MarkdownRenderService (worker pools)
-      |-- tree-sitter   ->  highlighted HTML          (native)
+      |-- highlight.js  ->  highlighted HTML          (QuickJS)
       |-- RaTeX/MathJax ->  SVG                       (native / QuickJS)
       `-- mermaid.js    ->  SVG   (QuickJS; native merman selectable per render)
       |
@@ -254,7 +254,7 @@ cmake --install build
 With the default options, the install contains `bin/qt_md_viewer.exe`,
 `bin/resvg.dll`, `bin/ratex_ffi.dll`, the `qlitemd_mdhtml` static library,
 the `qlitemd_mdhtml_c` shared C ABI library, dependency archives (`md4c`,
-tree-sitter, QuickJS), public core headers, license files and a CMake package
+QuickJS), public core headers, license files and a CMake package
 config. Where the platform has the prebuilt library, `bin/merman_ffi.dll` is
 included too. On Windows, `windeployqt` is invoked during
 install, and the in-tree `FluentUI3Style` and `ExWidgets` DLLs are copied next
@@ -363,8 +363,7 @@ maintainers and contributors.
 | [quickjs-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0 | JavaScript runtime (MathJax and mermaid.js fallback) | MIT |
 | [RaTeX](https://github.com/erweixin/RaTeX) | 0.1.15 | Native TeX to SVG | MIT |
 | [gumbo-parser](https://github.com/google/gumbo-parser) | bundled with litehtml | HTML5 parser | Apache-2.0 |
-| [tree-sitter](https://github.com/tree-sitter/tree-sitter) | 0.27.1 | Incremental parsing core for syntax highlighting | MIT |
-| [tree-sitter grammars](https://github.com/tree-sitter/tree-sitter) | 0.23.x-0.25.x | Language grammars (12 languages) | MIT |
+| [highlight.js](https://highlightjs.org/) | 11.12.0 | Syntax highlighting (193 languages, lazy) | BSD-3-Clause |
 | [MathJax](https://www.mathjax.org/) | 3.2.1 (mathjax-full) | TeX to SVG | Apache-2.0 |
 | [merman](https://github.com/Latias94/merman) | 0.9.2 | Native Mermaid rendering | MIT OR Apache-2.0 |
 | [resvg](https://github.com/linebender/resvg) | 0.48.1 | SVG rasterization | Apache-2.0 OR MIT |

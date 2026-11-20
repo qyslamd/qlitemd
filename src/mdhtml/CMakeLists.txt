@@ -1,32 +1,8 @@
 set(MDHTML_TARGET qlitemd_mdhtml)
 
-# The bundled highlights queries are text resources owned by the core, so
-# they are embedded as generated C++ instead of Qt's resource system.
-set(MDHTML_TS_ROOT "${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter-lang")
-set(MDHTML_QUERY_SOURCE
-    "${CMAKE_CURRENT_BINARY_DIR}/md_queries_generated.cpp")
-set(MDHTML_LANGUAGES
-    bash batch c cpp css go html java javascript json python rust)
-set(MDHTML_QUERY_FILES "")
-foreach(language IN LISTS MDHTML_LANGUAGES)
-    list(APPEND MDHTML_QUERY_FILES
-        "${MDHTML_TS_ROOT}/${language}/queries/highlights.scm")
-endforeach()
-add_custom_command(
-    OUTPUT "${MDHTML_QUERY_SOURCE}"
-    COMMAND ${CMAKE_COMMAND}
-        "-DQL_TS_LANG_ROOT=${MDHTML_TS_ROOT}"
-        "-DQL_OUTPUT=${MDHTML_QUERY_SOURCE}"
-        -P "${PROJECT_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
-    DEPENDS ${MDHTML_QUERY_FILES}
-        "${PROJECT_SOURCE_DIR}/cmake/embed_mdhtml_queries.cmake"
-    COMMENT "Embedding tree-sitter highlight queries"
-    VERBATIM
-)
-
-# QuickJS is always part of the build: mermaid.js is the mermaid fallback
-# and the MathJax formula builds use it too. Payloads are qjsc bytecode,
-# generated per build directory just like the Qt module's copy.
+# QuickJS is always part of the build: highlight.js, mermaid.js and the
+# MathJax formula builds all use it. Payloads are qjsc bytecode, generated per
+# build directory just like the Qt module's copy.
 set(MDHTML_QUICKJS_SOURCES "")
 if(NOT TARGET qjsc)
     message(FATAL_ERROR
@@ -34,7 +10,8 @@ if(NOT TARGET qjsc)
 endif()
 set(MDHTML_BYTECODE_DIR "${CMAKE_CURRENT_BINARY_DIR}/bytecode")
 set(MDHTML_BYTECODE_SRCS "")
-foreach(entry "md_mj:mathjax-svg.min.js"
+foreach(entry "md_hl:highlight.min.js"
+              "md_mj:mathjax-svg.min.js"
               "md_mm:mermaid.js"
               "md_ds:dom_shim.js"
               "md_pb:path_bbox.js")
@@ -79,13 +56,11 @@ add_library(${MDHTML_TARGET} STATIC
     md_parser.h
     md_pipeline.cpp
     md_pipeline.h
-    md_queries.h
     md_svg.cpp
     md_svg.h
     md_text.cpp
     md_text.h
     md_types.h
-    ${MDHTML_QUERY_SOURCE}
     ${MDHTML_QUICKJS_SOURCES}
 )
 
@@ -96,8 +71,6 @@ find_package(Threads REQUIRED)
 target_link_libraries(${MDHTML_TARGET}
     PRIVATE
     md4c
-    tree_sitter_core
-    tree_sitter_grammars
     Threads::Threads
 )
 
