@@ -126,7 +126,6 @@ class MdViewerWindow : public QMainWindow {
   void ToggleBookmarkForPath(const QString& path);
   void UpdateBookmarkUi();
   void OpenBookmark(const QString& path);
-  void SetFocusMode(bool enabled);
   void UpdateMaterialActions();
   // FluentUI 局部 palette 不会随 qApp->setPalette 自动刷新，切主题后
   // 显式把新调色板压给外壳控件和正文页
@@ -178,7 +177,6 @@ class MdViewerWindow : public QMainWindow {
   QAction* zoom_reset_action_ = nullptr;
   QAction* bookmark_action_ = nullptr;
   QAction* refresh_action_ = nullptr;
-  QAction* focus_mode_action_ = nullptr;
   QAction* material_auto_action_ = nullptr;
   QAction* material_acrylic_action_ = nullptr;
   QAction* material_none_action_ = nullptr;
@@ -246,9 +244,6 @@ class MdViewerWindow : public QMainWindow {
   QDockWidget* document_dock_ = nullptr;
   QDockWidget* outline_dock_ = nullptr;
   QDockWidget* settings_dock_ = nullptr;
-  bool focus_mode_ = false;
-  bool focus_restore_document_ = true;
-  bool focus_restore_outline_ = true;
   // 欢迎页会临时收起空大纲；采样一次，避免重复 ShowWelcome 覆盖
   bool welcome_outline_was_visible_ = false;
   // 欢迎页显示期间关闭窗口时保存这份布局，别把临时隐藏写进配置

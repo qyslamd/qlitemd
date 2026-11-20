@@ -188,9 +188,7 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
 
   layout->addSpacing(26);
   auto* shortcuts =
-      new QLabel(QStringLiteral("Ctrl+K 全文搜索 · Ctrl+P 快速跳转 · "
-                                "Ctrl+Shift+F 专注模式"),
-                 content);
+      new QLabel(QStringLiteral("Ctrl+K 全文搜索 · Ctrl+P 快速跳转"), content);
   shortcuts->setObjectName(QStringLiteral("welcomeShortcuts"));
   shortcuts->setForegroundRole(QPalette::PlaceholderText);
   QFont hint_font = font();

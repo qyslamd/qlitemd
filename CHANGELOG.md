@@ -2,6 +2,14 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- Remove qt_md_viewer's focus mode. The document and outline docks keep
+  their title bars and can be closed, floated and moved again; their
+  entries under View are enabled (Qt disables `toggleViewAction()` when a
+  dock has `NoDockWidgetFeatures`). The welcome page and quick-open no
+  longer mention the removed shortcut.
+
 ## 0.3.0 - 2026-11-19
 
 - Fix inverted caption-button icons after maximizing (or pinning) the

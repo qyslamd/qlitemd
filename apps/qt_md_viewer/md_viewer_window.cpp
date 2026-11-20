@@ -293,13 +293,8 @@ void MdViewerWindow::initUi() {
   // 递归文档树 / 书签 / 搜索结果的侧栏
   document_dock_ = new QDockWidget(QStringLiteral("文档"), this);
   document_dock_->setObjectName(QStringLiteral("documentDock"));
-  document_dock_->setFeatures(QDockWidget::NoDockWidgetFeatures);
-  // 原型侧栏没有 dock 标题栏；显示/关闭走“视图”菜单
-  auto* sidebar_header = new QWidget(document_dock_);
-  sidebar_header->setFixedHeight(0);
-  document_dock_->setTitleBarWidget(sidebar_header);
   document_dock_->setMinimumWidth(278);
-  // 原型侧栏是固定窄栏；不设上限时搜索结果会把左栏撑到 400 以上
+  // 侧栏是窄栏；不设上限时搜索结果会把左栏撑到 400 以上
   document_dock_->setMaximumWidth(320);
   documents_panel_ = new DocumentsPanel(document_dock_);
   document_dock_->setWidget(documents_panel_);
@@ -308,7 +303,6 @@ void MdViewerWindow::initUi() {
   // 大纲：标题层级 + 点击回跳；原型把它放在正文右侧整列
   outline_dock_ = new QDockWidget(QStringLiteral("大纲"), this);
   outline_dock_->setObjectName(QStringLiteral("outlineDock"));
-  outline_dock_->setFeatures(QDockWidget::NoDockWidgetFeatures);
   outline_ = new MarkdownOutlineWidget(outline_dock_);
   outline_dock_->setWidget(outline_);
   addDockWidget(Qt::RightDockWidgetArea, outline_dock_);
@@ -484,13 +478,6 @@ void MdViewerWindow::initUi() {
   view_menu_->addAction(outline_dock_->toggleViewAction());
   view_menu_->addAction(status_dock->toggleViewAction());
   view_menu_->addAction(settings_dock_->toggleViewAction());
-  focus_mode_action_ = new QAction(QStringLiteral("专注模式"), this);
-  focus_mode_action_->setObjectName(QStringLiteral("focusModeAction"));
-  focus_mode_action_->setCheckable(true);
-  focus_mode_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+F")));
-  connect(focus_mode_action_, &QAction::toggled, this,
-          &MdViewerWindow::SetFocusMode);
-  view_menu_->addAction(focus_mode_action_);
   view_menu_->addSeparator();
   view_menu_->addAction(back_action_);
   view_menu_->addAction(forward_action_);
@@ -540,7 +527,6 @@ void MdViewerWindow::initUi() {
   addAction(forward_action_);
   addAction(bookmark_action_);
   addAction(refresh_action_);
-  addAction(focus_mode_action_);
 
   menu_button_ = new QToolButton(fluent_frame_->titleBar());
   menu_button_->setObjectName(QStringLiteral("mainMenuButton"));
@@ -1273,9 +1259,6 @@ void MdViewerWindow::ShowQuickOpen() {
               QStringLiteral("外观"), QStringLiteral("toggle-theme"));
   add_command(QStringLiteral("阅读外观…"), QStringLiteral("外观"),
               QStringLiteral("appearance"));
-  add_command(focus_mode_ ? QStringLiteral("退出专注模式")
-                          : QStringLiteral("进入专注模式"),
-              QStringLiteral("视图"), QStringLiteral("focus-mode"));
   const bool starred =
       !displayed_file_.isEmpty() && bookmarks_.Contains(displayed_file_);
   add_command(starred ? QStringLiteral("取消收藏当前文档")
@@ -1351,8 +1334,6 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
     if (!images.isEmpty()) {
       ShowImagePreview(images.first());
     }
-  } else if (id == QLatin1String("focus-mode")) {
-    focus_mode_action_->setChecked(!focus_mode_action_->isChecked());
   } else if (id == QLatin1String("toggle-bookmark")) {
     bookmark_action_->trigger();
   } else if (id == QLatin1String("export-html")) {
@@ -1595,8 +1576,7 @@ void MdViewerWindow::HideWelcome() {
   if (reading_progress_ != nullptr) {
     reading_progress_->show();
   }
-  if (welcome_outline_was_visible_ && outline_dock_ != nullptr &&
-      !focus_mode_) {
+  if (welcome_outline_was_visible_ && outline_dock_ != nullptr) {
     outline_dock_->show();
   }
 }
@@ -1700,7 +1680,7 @@ void MdViewerWindow::UpdateChromeVisibility() {
     search_edit_->setVisible(window_width >= 780);
   }
   fluent_frame_->titleBar()->setTitleVisible(window_width >= 660);
-  if (outline_dock_ != nullptr && !focus_mode_) {
+  if (outline_dock_ != nullptr) {
     if (window_width < 980) {
       if (!outline_dock_->isHidden()) {
         outline_dock_->hide();
@@ -1711,28 +1691,6 @@ void MdViewerWindow::UpdateChromeVisibility() {
       outline_auto_hidden_ = false;
     }
   }
-}
-
-void MdViewerWindow::SetFocusMode(bool enabled) {
-  if (document_dock_ == nullptr || outline_dock_ == nullptr ||
-      focus_mode_ == enabled) {
-    return;
-  }
-  focus_mode_ = enabled;
-  if (enabled) {
-    focus_restore_document_ = !document_dock_->isHidden();
-    focus_restore_outline_ = !outline_dock_->isHidden();
-    document_dock_->hide();
-    outline_dock_->hide();
-    return;
-  }
-  if (focus_restore_document_) {
-    document_dock_->show();
-  }
-  if (focus_restore_outline_) {
-    outline_dock_->show();
-  }
-  UpdateChromeVisibility();
 }
 
 bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
