@@ -205,6 +205,10 @@ void MdViewerWindow::createActions() {
   open_file_action_ = new QAction(QStringLiteral("打开文件…"), this);
   open_file_action_->setShortcut(QKeySequence::Open);
   open_dir_action_ = new QAction(QStringLiteral("打开目录…"), this);
+  unload_workspace_action_ = new QAction(QStringLiteral("卸载工作区"), this);
+  unload_workspace_action_->setObjectName(
+      QStringLiteral("unloadWorkspaceAction"));
+  unload_workspace_action_->setEnabled(false);
   quit_action_ = new QAction(QStringLiteral("退出"), this);
   quit_action_->setShortcut(QKeySequence::Quit);
   about_action_ = new QAction(QStringLiteral("关于"), this);
@@ -464,6 +468,7 @@ void MdViewerWindow::initUi() {
   QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
   file_menu->addAction(open_file_action_);
   file_menu->addAction(open_dir_action_);
+  file_menu->addAction(unload_workspace_action_);
   recent_menu_ = file_menu->addMenu(QStringLiteral("最近打开"));
   file_menu->addSeparator();
   file_menu->addAction(export_html_action_);
@@ -666,6 +671,8 @@ void MdViewerWindow::initSignals() {
           &MdViewerWindow::OpenFileDialog);
   connect(open_dir_action_, &QAction::triggered, this,
           &MdViewerWindow::OpenDirectoryDialog);
+  connect(unload_workspace_action_, &QAction::triggered, this,
+          &MdViewerWindow::UnloadWorkspace);
   connect(quit_action_, &QAction::triggered, this, &QWidget::close);
   connect(about_action_, &QAction::triggered, this, [this] {
     QMessageBox::about(
@@ -995,7 +1002,12 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
   if (result.root_exists) {
     root_dir_ = result.root;
     settings_->root_dir = root_dir_;
+    // 任何一次成功换根都视为"重新有了工作区"，解除卸载标志
+    settings_->workspace_closed = false;
     settings_->SaveSession();
+    if (unload_workspace_action_ != nullptr) {
+      unload_workspace_action_->setEnabled(true);
+    }
     documents_panel_->SetRoot(result);
     quick_open_files_.clear();
     quick_open_files_.reserve(result.markdown_file_count);
@@ -1127,6 +1139,14 @@ void MdViewerWindow::RememberCurrentPosition() {
 }
 
 void MdViewerWindow::RestoreSession() {
+  // 上次显式卸载了工作区：重启回欢迎页，最近列表照常显示，
+  // 但不自动恢复任何文档
+  if (settings_->workspace_closed) {
+    documents_panel_->SetRootMissing(
+        QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+    ShowWelcome();
+    return;
+  }
   if (!settings_->root_dir.isEmpty()) {
     const DocumentScanResult result = SetRootDir(settings_->root_dir);
     if (!result.root_exists) {
@@ -1191,6 +1211,58 @@ void MdViewerWindow::OpenDirectoryDialog() {
   }
 }
 
+void MdViewerWindow::UnloadWorkspace() {
+  if (root_dir_.isEmpty()) {
+    return;
+  }
+  const QString unloaded_root = root_dir_;
+  // 当前文档的阅读位置先落盘，之后从最近打开还能接着读
+  RememberCurrentPosition();
+  if (search_ != nullptr) {
+    search_->Cancel();
+  }
+  active_search_query_.reset();
+  active_search_id_.reset();
+  documents_panel_->BeginSearch(QString());
+  documents_panel_->SetCurrentFile(QString());
+  documents_panel_->SetRootMissing(
+      QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+
+  root_dir_.clear();
+  settings_->root_dir.clear();
+  settings_->last_file.clear();
+  // 意图标志：没有它，重启时 OpenLastFile 会从最近列表把工作区拉回来
+  settings_->workspace_closed = true;
+  settings_->SaveSession();
+
+  quick_open_files_.clear();
+  if (root_watcher_ != nullptr && !watched_dirs_.isEmpty()) {
+    root_watcher_->removePaths(watched_dirs_);
+  }
+  watched_dirs_.clear();
+  // 历史里的路径属于旧工作区；留着会让“后退”把它静默拉回来
+  history_.Clear();
+  UpdateHistoryActions();
+
+  pending_fragment_.clear();
+  displayed_file_.clear();
+  view_->ClearDocument();
+  setWindowTitle(QStringLiteral("qlitemd"));
+  if (breadcrumb_ != nullptr) {
+    breadcrumb_->clear();
+    breadcrumb_->hide();
+  }
+  path_label_->clear();
+  path_label_->setToolTip(QString());
+  document_count_label_->setText(QStringLiteral("0 篇"));
+  UpdateBookmarkUi();
+  unload_workspace_action_->setEnabled(false);
+  statusBar()->showMessage(QStringLiteral("已卸载工作区：%1")
+                               .arg(QFileInfo(unloaded_root).fileName()),
+                           4000);
+  ShowWelcome();
+}
+
 void MdViewerWindow::ShowQuickOpen() {
   if (quick_open_ == nullptr) {
     quick_open_ = new QuickOpenPopup(this);
@@ -1253,6 +1325,10 @@ void MdViewerWindow::ShowQuickOpen() {
               QStringLiteral("open-file"));
   add_command(QStringLiteral("打开目录…"), QStringLiteral("文件"),
               QStringLiteral("open-dir"));
+  if (!root_dir_.isEmpty()) {
+    add_command(QStringLiteral("卸载工作区"), QStringLiteral("文件"),
+                QStringLiteral("unload-workspace"));
+  }
   add_command(view_->theme() == MarkdownTheme::Dark
                   ? QStringLiteral("切换到浅色主题")
                   : QStringLiteral("切换到深色主题"),
@@ -1325,6 +1401,8 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
     open_file_action_->trigger();
   } else if (id == QLatin1String("open-dir")) {
     open_dir_action_->trigger();
+  } else if (id == QLatin1String("unload-workspace")) {
+    unload_workspace_action_->trigger();
   } else if (id == QLatin1String("toggle-theme")) {
     ToggleTheme();
   } else if (id == QLatin1String("appearance")) {

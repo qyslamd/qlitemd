@@ -38,3 +38,21 @@ TEST(NavigationHistoryTest, ConsecutiveDuplicateIsIgnored) {
   history.Push({QStringLiteral("/a"), QString()});
   EXPECT_EQ(history.size(), 1);
 }
+
+TEST(NavigationHistoryTest, ClearEmptiesBothDirections) {
+  NavigationHistory history;
+  history.Push({QStringLiteral("/a"), QString()});
+  history.Push({QStringLiteral("/b"), QString()});
+  history.Back();
+  ASSERT_TRUE(history.CanGoForward());
+  history.Clear();
+  EXPECT_EQ(history.size(), 0);
+  EXPECT_FALSE(history.CanGoBack());
+  EXPECT_FALSE(history.CanGoForward());
+  EXPECT_FALSE(history.Back().has_value());
+  EXPECT_FALSE(history.Forward().has_value());
+  // 清空后可以继续当新栈用
+  history.Push({QStringLiteral("/c"), QString()});
+  EXPECT_EQ(history.size(), 1);
+  EXPECT_FALSE(history.CanGoBack());
+}

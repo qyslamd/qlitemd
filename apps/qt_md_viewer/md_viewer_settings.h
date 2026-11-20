@@ -61,6 +61,9 @@ struct MdViewerSettings {
   QStringList recent_files;
   QString root_dir;
   QString last_file;
+  // 用户显式卸载了工作区：重启回欢迎页，不自动恢复最近文档。
+  // 打开任意文件/目录即清除
+  bool workspace_closed = false;
   QString bookmarks_json;
   QString positions_json;
 };

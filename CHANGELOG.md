@@ -2,6 +2,19 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- Add "卸载工作区" (unload workspace) to the File menu and the quick-open
+  palette. It saves the current reading position, clears the sidebar tree,
+  search results, quick-open set, file watcher, navigation history and the
+  current document, and returns to the welcome page. A new
+  `session/workspace_closed` flag persists the intent so the next start
+  lands on the welcome page instead of restoring the last workspace; any
+  successful directory/file open clears it. Recent files, bookmarks and
+  reading positions are kept.
+- `MarkdownView::ClearDocument()` is now public so hosts can unload the
+  current document; `NavigationHistory::Clear()` clears both stacks.
+
 ## 0.4.0 - 2026-11-20
 
 - Switch syntax highlighting back to highlight.js running in QuickJS

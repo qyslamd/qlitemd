@@ -32,6 +32,7 @@ constexpr char kKeyPersistentCache[] = "render/persistent_cache";
 constexpr char kKeyRecentFiles[] = "recent/files";
 constexpr char kKeyRootDir[] = "root/dir";
 constexpr char kKeyLastFile[] = "session/last_file";
+constexpr char kKeyWorkspaceClosed[] = "session/workspace_closed";
 constexpr char kKeyBookmarks[] = "bookmarks/files";
 constexpr char kKeyPositions[] = "session/positions";
 
@@ -139,6 +140,7 @@ void MdViewerSettings::Load() {
   }
   root_dir = settings.value(kKeyRootDir).toString();
   last_file = settings.value(kKeyLastFile).toString();
+  workspace_closed = settings.value(kKeyWorkspaceClosed, false).toBool();
   bookmarks_json = settings.value(kKeyBookmarks).toString();
   positions_json = settings.value(kKeyPositions).toString();
 }
@@ -170,6 +172,7 @@ void MdViewerSettings::Save() const {
   settings.setValue(kKeyRecentFiles, recent_files);
   settings.setValue(kKeyRootDir, root_dir);
   settings.setValue(kKeyLastFile, last_file);
+  settings.setValue(kKeyWorkspaceClosed, workspace_closed);
   settings.setValue(kKeyBookmarks, bookmarks_json);
   settings.setValue(kKeyPositions, positions_json);
   settings.sync();
@@ -189,6 +192,7 @@ void MdViewerSettings::SaveSession() const {
   SetIniUtf8(settings);
   settings.setValue(kKeyRootDir, root_dir);
   settings.setValue(kKeyLastFile, last_file);
+  settings.setValue(kKeyWorkspaceClosed, workspace_closed);
   settings.sync();
   WarnWriteFailed(settings);
 }

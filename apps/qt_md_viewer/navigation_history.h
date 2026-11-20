@@ -24,6 +24,8 @@ class NavigationHistory {
   bool CanGoForward() const;
   std::optional<NavigationEntry> Back();
   std::optional<NavigationEntry> Forward();
+  // 卸载工作区时清空：历史里的路径属于旧工作区，留着会让“后退”把它拉回来
+  void Clear();
   int size() const;
 
  private:

@@ -33,4 +33,9 @@ std::optional<NavigationEntry> NavigationHistory::Forward() {
   return entries_.at(index_);
 }
 
+void NavigationHistory::Clear() {
+  entries_.clear();
+  index_ = -1;
+}
+
 int NavigationHistory::size() const { return entries_.size(); }

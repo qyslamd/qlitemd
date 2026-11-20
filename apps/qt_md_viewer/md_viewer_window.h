@@ -94,6 +94,9 @@ class MdViewerWindow : public QMainWindow {
 
   void OpenFileDialog();
   void OpenDirectoryDialog();
+  // 卸载工作区：清会话（root/last_file）回欢迎页，重启不再恢复；
+  // 最近打开/书签/阅读位置保留
+  void UnloadWorkspace();
   // Ctrl+P：把当前标题/文件/最近/命令汇总到快速跳转面板
   void ShowQuickOpen();
   void ActivateQuickOpenItem(const QuickOpenItem& item);
@@ -164,6 +167,7 @@ class MdViewerWindow : public QMainWindow {
   // 菜单里挂着；菜单栏在 fluent 壳下会被搬进标题栏
   QAction* open_file_action_ = nullptr;
   QAction* open_dir_action_ = nullptr;
+  QAction* unload_workspace_action_ = nullptr;
   QAction* quit_action_ = nullptr;
   QAction* about_action_ = nullptr;
   QAction* export_html_action_ = nullptr;

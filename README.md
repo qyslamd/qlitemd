@@ -301,9 +301,13 @@ the license files; the SDK remains a separate install component.
 `apps/qt_md_viewer` is a complete FluentUI-style viewer for reading a
 multi-level documentation set. It provides a recursive document tree with
 filename filtering, file-level bookmarks, global full-text search with hit
-navigation, session and per-document reading-position restore, a single-row
+navigation, session and per-document reading-position restore, workspace
+unloading (File menu: close the current directory and return to the welcome
+page; the session is not restored on the next start, while recent files,
+bookmarks and reading positions are kept), a single-row
 title bar that merges the menu, navigation, zoom and search, a right-hand
-outline, segmented sidebar tabs with inline bookmark stars, focus mode,
+outline, segmented sidebar tabs with inline bookmark stars, closable and
+floating docks,
 Mica/acrylic window materials, a status bar with document count and build
 backend labels, an opt-in prototype reading style (left-aligned page with
 a 760px text measure, cards, transparent surface) with a breadcrumb, a

@@ -125,6 +125,9 @@ class MarkdownView : public QWidget {
                 bool incremental = false);
   // 清掉查找/鼠标选区；搜索框清空时由宿主调用
   void ClearSelection();
+  // 卸载当前文档：取消进行中的渲染、停掉 watchdog、current_file 清空，
+  // has_document 变 false。已提交的 HTML 留在屏幕上直到宿主切换显示
+  void ClearDocument();
   bool has_selection() const;
   // 导出 HTML + 同名资源目录。图片复制/嵌入规则见实现与设计文档；
   // 渲染中或没有已提交文档时返回 false
@@ -282,7 +285,6 @@ class MarkdownView : public QWidget {
   QString CssForTheme(MarkdownTheme theme) const;
   void ApplyPageBackground();
   void ShowMessage(const QString& text);
-  void ClearDocument();
   void WatchCurrentFile();
   void OnFileChanged();
   void OnReloadTick();

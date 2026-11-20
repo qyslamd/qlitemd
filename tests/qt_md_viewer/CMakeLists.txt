@@ -10,6 +10,18 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_md_viewer_settings
+    SOURCES md_viewer_settings_test.cpp
+            ${VIEWER_DIR}/md_viewer_settings.cpp
+            ${VIEWER_DIR}/md_viewer_settings.h
+    INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
+    QT_MODULES Core Gui
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_document_index
     SOURCES document_index_test.cpp
             ${VIEWER_DIR}/document_index.cpp
