@@ -842,6 +842,13 @@ void RenderStatusPanel::initSignals() {
     RefreshStatus();
     emit statusMessage(QStringLiteral("渲染计数已清零"));
   });
+  ConnectViewSignals();
+}
+
+void RenderStatusPanel::ConnectViewSignals() {
+  if (view_ == nullptr) {
+    return;
+  }
   // 文档重建（含主题/开关切换）都会更新计数，顺手刷新
   connect(view_, &MarkdownView::outlineChanged, this,
           &RenderStatusPanel::RefreshStatus);
@@ -865,6 +872,16 @@ void RenderStatusPanel::initSignals() {
           &RenderStatusPanel::RefreshStatus);
   connect(view_, &MarkdownView::viewportScrolled, this,
           &RenderStatusPanel::RefreshStatus);
+}
+
+void RenderStatusPanel::SetView(MarkdownView* view) {
+  if (view == nullptr || view == view_) {
+    return;
+  }
+  disconnect(view_, nullptr, this, nullptr);
+  view_ = view;
+  ConnectViewSignals();
+  RefreshStatus();
 }
 
 void RenderStatusPanel::RefreshStatus() {

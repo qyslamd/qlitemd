@@ -148,6 +148,19 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_reader_page
+    SOURCES reader_page_test.cpp
+            ${VIEWER_DIR}/reader_page.cpp
+            ${VIEWER_DIR}/reader_page.h
+            ${VIEWER_DIR}/reading_progress.cpp
+            ${VIEWER_DIR}/reading_progress.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_image_lightbox
     SOURCES image_lightbox_test.cpp
             ${VIEWER_DIR}/image_lightbox.cpp

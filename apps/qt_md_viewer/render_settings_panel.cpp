@@ -271,6 +271,12 @@ void RenderSettingsPanel::initUi() {
   UpdateReadingControls();
 }
 
+void RenderSettingsPanel::SetView(MarkdownView* view) {
+  if (view != nullptr) {
+    view_ = view;
+  }
+}
+
 void RenderSettingsPanel::SetTheme(MarkdownTheme theme) {
   const int index = theme_->findData(static_cast<int>(theme));
   if (index < 0) {

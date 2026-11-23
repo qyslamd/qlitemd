@@ -21,6 +21,8 @@ set(ALL_SRCS
     quick_open.h
     reader_appearance.cpp
     reader_appearance.h
+    reader_page.cpp
+    reader_page.h
     reading_progress.cpp
     reading_progress.h
     render_settings_panel.cpp

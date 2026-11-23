@@ -23,6 +23,8 @@ class RenderSettingsPanel : public QWidget {
  public:
   explicit RenderSettingsPanel(MarkdownView* view, QWidget* parent = nullptr);
 
+  // 切标签时改绑到新的活动视图；全局设置各标签一致，控件无需重读
+  void SetView(MarkdownView* view);
   // 外部（标题栏主题按钮）改了文档主题时同步下拉框，不再反向触发
   void SetTheme(MarkdownTheme theme);
   // 启动时按持久化设置同步材质下拉框，不触发重新应用

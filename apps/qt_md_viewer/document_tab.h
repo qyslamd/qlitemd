@@ -8,12 +8,13 @@
 #include "navigation_history.h"
 
 class MarkdownView;
+class ReaderPage;
 
-// 一个标签的全部文档级状态。P0 只有一份实例（当前文档），
-// P1 起每个标签一份；主题、后端、Dock 等窗口级状态不进来。
+// 一个标签的全部文档级状态。主题、后端、Dock 等窗口级状态不进来。
 struct DocumentTab {
   QString path;                  // 空 = 欢迎页
-  MarkdownView* view = nullptr;  // P0 恒非空；P1 起欢迎标签为空
+  MarkdownView* view = nullptr;  // 欢迎标签为空
+  ReaderPage* page = nullptr;    // 欢迎标签为空
   NavigationHistory history;
   int scroll_position = 0;
   QVector<MarkdownHeading> outline;

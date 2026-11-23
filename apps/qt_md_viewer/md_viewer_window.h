@@ -12,6 +12,7 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
+#include <QVariant>
 #include <QVector>
 
 #include "bookmarks.h"
@@ -33,11 +34,12 @@ class QLineEdit;
 class QMenu;
 class QProgressBar;
 class QResizeEvent;
+class QStackedWidget;
 class QTimer;
 class QToolButton;
 class QVariantAnimation;
 class DocumentsPanel;
-class ReadingProgressBar;
+class ReaderPage;
 class WelcomeView;
 class FluentWindowFrame;
 class MarkdownOutlineWidget;
@@ -68,6 +70,12 @@ class MdViewerWindow : public QMainWindow {
   // 启动时恢复上次根目录/文档；没有会话时退回最近文件
   void RestoreSession();
 
+  // 测试钩子：注入式 GUI 探针（funq）只能给单参 QVariant，这两个入口
+  // 只做转发，不改变正常路径
+  Q_INVOKABLE QVariant OpenPathForTest(const QVariant& path);
+  Q_INVOKABLE QVariant ActivateTabForTest(const QVariant& index);
+  Q_INVOKABLE QVariant TabStateForTest(const QVariant& unused) const;
+
  protected:
   void closeEvent(QCloseEvent* event) override;
   void dragEnterEvent(QDragEnterEvent* event) override;
@@ -83,11 +91,11 @@ class MdViewerWindow : public QMainWindow {
 
   // 统一的导航入口：同文件只滚锚点，不重加载；跨文件才走加载
   void NavigateTo(const QString& path, const QString& fragment,
-                  bool record_history);
+                  bool record_history, bool new_tab = true);
   // 真正打开路径（文件或目录），返回实际打开的文件；失败返回空
-  QString OpenPathCore(const QString& path);
+  QString OpenPathCore(const QString& path, bool new_tab);
   enum class OpenReason { kUser, kRestore };
-  bool ShowFile(const QString& path, OpenReason reason);
+  bool ShowFile(const QString& path, OpenReason reason, bool new_tab);
   void PushHistory(const QString& path, const QString& fragment);
   void ScrollToFragment(const QString& fragment);
   void GoBack();
@@ -156,7 +164,6 @@ class MdViewerWindow : public QMainWindow {
   // 等 qlitehtml 完成重排后再按新高度重算进度
   void ScheduleReadingProgressRefresh();
   void UpdateReadingTime();
-  void PositionBackToTop();
   void ScrollToTop();
   // 当前主题的页面底色（与 resources/themes/*.css 的 body 对齐）
   QColor ReadingPageColor() const;
@@ -169,9 +176,18 @@ class MdViewerWindow : public QMainWindow {
   void UpdateZoomLabel(qreal factor);
   // 文档渲染后对比上一次状态，把引擎加载与本次失败报到状态栏
   void ReportRenderStatus();
-  // P0 只有一份；P1 起由 TabModel 的激活下标决定
+  // 当前标签由 active_tab_ 决定；tabs_[0] 恒为欢迎标签
   DocumentTab* CurrentTab() const;
   MarkdownView* CurrentView() const;
+  ReaderPage* CurrentPage() const;
+  int FindTabIndex(const QString& path) const;
+  DocumentTab* CreateDocumentTab();
+  void ClearDocumentTabs();
+  void ActivateTab(int index);
+  void ApplyGlobalSettings(DocumentTab* tab);
+  void CaptureGlobalSettings(DocumentTab* tab);
+  void ConnectTabSignals(DocumentTab* tab);
+  void UpdateShellForActiveTab();
 
   // 菜单里挂着；菜单栏在 fluent 壳下会被搬进标题栏
   QAction* open_file_action_ = nullptr;
@@ -203,8 +219,11 @@ class MdViewerWindow : public QMainWindow {
   // 同一查询重开扫描时，查询文本兜不住旧一轮的排队信号，再加请求 id
   std::optional<quint64> active_search_id_;
 
-  // 当前标签的全部文档级状态；窗口壳与全局设置不在里面
-  std::unique_ptr<DocumentTab> current_tab_;
+  // 标签集合：tabs_[0] 恒为欢迎标签（path 为空、page 为空）
+  std::vector<std::unique_ptr<DocumentTab>> tabs_;
+  int active_tab_ = 0;
+  // 中心区：第 0 页是欢迎页，之后每页对应一个 ReaderPage
+  QStackedWidget* pages_ = nullptr;
   MarkdownOutlineWidget* outline_ = nullptr;
   RenderSettingsPanel* render_settings_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;
@@ -212,14 +231,10 @@ class MdViewerWindow : public QMainWindow {
   QuickOpenPopup* quick_open_ = nullptr;
   ReaderAppearancePopup* appearance_popup_ = nullptr;
   WelcomeView* welcome_ = nullptr;
-  ReadingProgressBar* reading_progress_ = nullptr;
-  QWidget* reader_container_ = nullptr;
-  QToolButton* back_to_top_ = nullptr;
   QVariantAnimation* scroll_animation_ = nullptr;
   // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
   QStringList quick_open_files_;
   QLabel* path_label_ = nullptr;
-  QLabel* breadcrumb_ = nullptr;
   QLabel* zoom_label_ = nullptr;
   QLabel* status_ready_label_ = nullptr;
   QLabel* document_count_label_ = nullptr;

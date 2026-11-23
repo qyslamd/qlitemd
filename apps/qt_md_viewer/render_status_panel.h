@@ -24,6 +24,9 @@ class RenderStatusPanel : public QWidget {
  public:
   explicit RenderStatusPanel(MarkdownView* view, QWidget* parent = nullptr);
 
+  // 切标签时改绑到新的活动视图并刷新
+  void SetView(MarkdownView* view);
+
  signals:
   void statusMessage(const QString& message);
 
@@ -42,6 +45,7 @@ class RenderStatusPanel : public QWidget {
 
   void initUi();
   void initSignals();
+  void ConnectViewSignals();
   void RefreshStatus();
   // 抽屉展开/收起后把内容高度同步给滚动区
   void UpdateScrollContentHeight();
