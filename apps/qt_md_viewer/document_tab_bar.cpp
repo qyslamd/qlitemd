@@ -47,7 +47,8 @@ class DocumentTabBarStyle : public QProxyStyle {
 DocumentTabBar::DocumentTabBar(QWidget* parent) : QTabBar(parent) {
   setObjectName(QStringLiteral("documentTabBar"));
   setDrawBase(false);
-  setExpanding(true);
+  // Qt5 没有 maximumTabSizeHint；关掉 expanding，标签固定等宽
+  setExpanding(false);
   setMovable(true);
   setTabsClosable(true);
   setElideMode(Qt::ElideRight);

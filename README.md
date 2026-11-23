@@ -123,7 +123,11 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
   bookmark state; plain clicks replace the current tab, Ctrl+click or the
   middle button opens a new one, tabs can be dragged to reorder, and the
   session restores `open_tabs + active`. Files outside the workspace open
-  without rebuilding it; multiple workspaces use multiple windows.
+  without rebuilding it; multiple workspaces use multiple windows. The
+  title bar keeps only the menu, tabs, "+" and window buttons; a 32 px
+  document bar below it carries navigation, path and copy, search, reader
+  appearance, zoom and settings, while the status bar keeps read-only
+  status and counts.
 - **Diagnostics** — the `qt.markdown.render` logging category, per-stage
   timings and optional artifact dumps (`MD_MARKDOWN_DUMP`).
 

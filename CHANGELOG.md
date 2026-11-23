@@ -4,6 +4,16 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- The viewer shell now follows the prototype's three-tier layout. The title
+  bar keeps only the menu, tabs, "+" and window buttons; a 32 px document
+  bar hosts back/forward/bookmark, the current path with a copy button, the
+  global search box, reader appearance, zoom and settings; the status bar
+  shrank to 26 px and keeps status plus tab count, document count, reading
+  time and backend. The per-tab breadcrumb and the status-bar path are gone,
+  so the path appears once. Search semantics are unchanged (sidebar filter
+  and full-text search remain separate). Document-bar groups hide in order
+  as the bar narrows: zoom, search, appearance, copy; the path always stays.
+
 - `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
   bar and a `QStackedWidget` whose first page is the permanent welcome page;
   every document tab owns a `ReaderPage` (reading progress, breadcrumb,

@@ -7,6 +7,8 @@ set(ALL_SRCS
     document_index.cpp
     document_index.h
     document_tab.h
+    document_bar.cpp
+    document_bar.h
     document_tab_bar.cpp
     document_tab_bar.h
     documents_panel.cpp

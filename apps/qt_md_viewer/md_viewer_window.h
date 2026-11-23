@@ -40,6 +40,7 @@ class QTimer;
 class QToolButton;
 class QVariantAnimation;
 class DocumentsPanel;
+class DocumentBar;
 class DocumentTabBar;
 class ReaderPage;
 class SettingsDialog;
@@ -264,9 +265,8 @@ class MdViewerWindow : public QMainWindow {
   QVariantAnimation* scroll_animation_ = nullptr;
   // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
   QStringList quick_open_files_;
-  QLabel* path_label_ = nullptr;
-  QLabel* zoom_label_ = nullptr;
   QLabel* status_ready_label_ = nullptr;
+  QLabel* tab_count_label_ = nullptr;
   QLabel* document_count_label_ = nullptr;
   QLabel* reading_time_label_ = nullptr;
   QLabel* backend_label_ = nullptr;
@@ -299,17 +299,11 @@ class MdViewerWindow : public QMainWindow {
   QByteArray welcome_dock_state_;
   // 窄宽度自动收起大纲；用户手动关掉的不算，恢复宽度时也不自动弹开
   bool outline_auto_hidden_ = false;
-  QWidget* nav_widget_ = nullptr;
   QWidget* title_leading_widget_ = nullptr;
+  DocumentBar* document_bar_ = nullptr;
   DocumentTabBar* tab_bar_ = nullptr;
   QToolButton* add_tab_button_ = nullptr;
   QToolButton* menu_button_ = nullptr;
-  QToolButton* appearance_button_ = nullptr;
-  QToolButton* settings_button_ = nullptr;
-  QToolButton* zoom_out_button_ = nullptr;
-  QToolButton* zoom_reset_button_ = nullptr;
-  QToolButton* zoom_in_button_ = nullptr;
-  QToolButton* star_button_ = nullptr;
   QMenu* app_menu_ = nullptr;
   QMenu* view_menu_ = nullptr;
   WindowMaterial window_material_ = WindowMaterial::kAuto;

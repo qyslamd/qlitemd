@@ -1,0 +1,85 @@
+#include "document_bar.h"
+
+#include <QApplication>
+#include <QLabel>
+#include <QLineEdit>
+#include <QToolButton>
+
+#include <gtest/gtest.h>
+
+int main(int argc, char** argv) {
+  qputenv("QT_QPA_PLATFORM", "offscreen");
+  QApplication app(argc, argv);
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+
+namespace {
+
+DocumentBar* MakeShownBar(int width) {
+  auto* bar = new DocumentBar;
+  bar->resize(width, 32);
+  bar->show();
+  QApplication::processEvents();
+  return bar;
+}
+
+}  // namespace
+
+TEST(DocumentBarTest, ExposesAllControls) {
+  DocumentBar bar;
+  EXPECT_NE(bar.back_button(), nullptr);
+  EXPECT_NE(bar.forward_button(), nullptr);
+  EXPECT_NE(bar.star_button(), nullptr);
+  EXPECT_NE(bar.appearance_button(), nullptr);
+  EXPECT_NE(bar.zoom_out_button(), nullptr);
+  EXPECT_NE(bar.zoom_reset_button(), nullptr);
+  EXPECT_NE(bar.zoom_in_button(), nullptr);
+  EXPECT_NE(bar.settings_button(), nullptr);
+  EXPECT_NE(bar.copy_button(), nullptr);
+  EXPECT_NE(bar.search_edit(), nullptr);
+  EXPECT_NE(bar.path_label(), nullptr);
+  EXPECT_TRUE(bar.star_button()->isCheckable());
+}
+
+TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {
+  DocumentBar* bar = MakeShownBar(700);
+  const QString full = QStringLiteral(
+      "docs/guide/二层/三层/四层/一个非常非常长的文档标题用来撑满路径栏.md");
+  bar->SetPath(full,
+               QStringLiteral("D:/trae_workspace/qlitemd/docs/guide/x.md"));
+  QApplication::processEvents();
+  EXPECT_NE(bar->path_label()->text(), full);
+  EXPECT_TRUE(bar->path_label()->text().contains(QChar(0x2026)));
+  EXPECT_EQ(bar->path_label()->toolTip(),
+            QStringLiteral("D:/trae_workspace/qlitemd/docs/guide/x.md"));
+  delete bar;
+}
+
+TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
+  struct Case {
+    int width;
+    bool zoom;
+    bool search;
+    bool appearance;
+    bool copy;
+  };
+  const Case cases[] = {
+      {1000, true, true, true, true},    {850, false, true, true, true},
+      {760, false, false, true, true},   {660, false, false, false, true},
+      {580, false, false, false, false},
+  };
+  for (const Case& item : cases) {
+    DocumentBar* bar = MakeShownBar(item.width);
+    EXPECT_EQ(bar->zoom_out_button()->isVisible(), item.zoom)
+        << "width=" << item.width;
+    EXPECT_EQ(bar->search_edit()->isVisible(), item.search)
+        << "width=" << item.width;
+    EXPECT_EQ(bar->appearance_button()->isVisible(), item.appearance)
+        << "width=" << item.width;
+    EXPECT_EQ(bar->copy_button()->isVisible(), item.copy)
+        << "width=" << item.width;
+    EXPECT_TRUE(bar->path_label()->isVisible()) << "width=" << item.width;
+    delete bar;
+  }
+}

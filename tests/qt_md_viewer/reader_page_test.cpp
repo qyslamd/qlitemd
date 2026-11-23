@@ -16,14 +16,12 @@ int main(int argc, char** argv) {
   return RUN_ALL_TESTS();
 }
 
-TEST(ReaderPageTest, BuildsProgressBreadcrumbAndContent) {
+TEST(ReaderPageTest, BuildsProgressAndContent) {
   auto* content = new QWidget;
   ReaderPage page(content);
   ASSERT_NE(page.progress(), nullptr);
-  ASSERT_NE(page.breadcrumb(), nullptr);
   ASSERT_NE(page.back_to_top(), nullptr);
   EXPECT_EQ(content->parentWidget(), &page);
-  EXPECT_TRUE(page.breadcrumb()->isHidden());
   EXPECT_TRUE(page.back_to_top()->isHidden());
   EXPECT_FALSE(page.progress()->isHidden());
 }

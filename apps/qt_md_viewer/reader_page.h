@@ -3,7 +3,6 @@
 
 #include <QWidget>
 
-class QLabel;
 class QResizeEvent;
 class QToolButton;
 class ReadingProgressBar;
@@ -17,7 +16,6 @@ class ReaderPage : public QWidget {
   explicit ReaderPage(QWidget* content, QWidget* parent = nullptr);
 
   ReadingProgressBar* progress() const { return progress_; }
-  QLabel* breadcrumb() const { return breadcrumb_; }
   QToolButton* back_to_top() const { return back_to_top_; }
 
  protected:
@@ -27,7 +25,6 @@ class ReaderPage : public QWidget {
   void PositionBackToTop();
 
   ReadingProgressBar* progress_ = nullptr;
-  QLabel* breadcrumb_ = nullptr;
   QToolButton* back_to_top_ = nullptr;
 };
 

@@ -74,6 +74,7 @@
 #endif
 // clang-format on
 
+#include "document_bar.h"
 #include "document_index.h"
 #include "document_tab_bar.h"
 #include "documents_panel.h"
@@ -806,9 +807,8 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     if (welcome_ != nullptr) {
       welcome_->SetRecentFiles(settings_->recent_files, root_dir_);
     }
-    if (path_label_ != nullptr) {
-      path_label_->clear();
-      path_label_->setToolTip(QString());
+    if (document_bar_ != nullptr) {
+      document_bar_->SetPath(QString(), QString());
     }
     if (documents_panel_ != nullptr) {
       documents_panel_->SetCurrentFile(QString());
@@ -818,16 +818,9 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     }
   } else {
     setWindowTitle(DocumentDisplayTitle(root_dir_, tab->path));
-    ReaderPage* page = tab->page;
-    if (page != nullptr) {
-      page->breadcrumb()->setText(DocumentDisplayTitle(root_dir_, tab->path));
-      page->breadcrumb()->show();
-    }
-    const QString status_path = QDir::toNativeSeparators(tab->path);
-    if (path_label_ != nullptr) {
-      path_label_->setText(QFontMetrics(path_label_->font())
-                               .elidedText(status_path, Qt::ElideMiddle, 520));
-      path_label_->setToolTip(status_path);
+    if (document_bar_ != nullptr) {
+      document_bar_->SetPath(DocumentDisplayTitle(root_dir_, tab->path),
+                             QDir::toNativeSeparators(tab->path));
     }
     if (documents_panel_ != nullptr) {
       documents_panel_->SetCurrentFile(tab->path);
@@ -835,6 +828,10 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     if (welcome_outline_was_visible_ && outline_dock_ != nullptr) {
       outline_dock_->show();
     }
+  }
+  if (tab_count_label_ != nullptr) {
+    tab_count_label_->setText(
+        QStringLiteral("%1 个标签页").arg(static_cast<int>(tabs_.size())));
   }
   UpdateBookmarkUi();
   UpdateHistoryActions();
@@ -888,7 +885,17 @@ void MdViewerWindow::initUi() {
   welcome_ = new WelcomeView(pages_);
   welcome_->setObjectName(QStringLiteral("welcomeView"));
   pages_->addWidget(welcome_);
-  setCentralWidget(pages_);
+
+  // 文档条是窗口级控件：放在页栈上方，作用于当前标签
+  document_bar_ = new DocumentBar(this);
+  auto* center = new QWidget(this);
+  center->setObjectName(QStringLiteral("centralColumn"));
+  auto* center_layout = new QVBoxLayout(center);
+  center_layout->setContentsMargins(0, 0, 0, 0);
+  center_layout->setSpacing(0);
+  center_layout->addWidget(document_bar_);
+  center_layout->addWidget(pages_, 1);
+  setCentralWidget(center);
 
   // 欢迎标签：不是文档，但保留一个空视图给设置/状态面板做初始绑定
   auto welcome_tab = std::make_unique<DocumentTab>();
@@ -942,7 +949,7 @@ void MdViewerWindow::initUi() {
 
   statusBar()->setObjectName(QStringLiteral("mainStatusBar"));
   statusBar()->setSizeGripEnabled(false);
-  statusBar()->setFixedHeight(30);
+  statusBar()->setFixedHeight(26);
 
   // 原型：绿点 + 就绪 | 当前文档完整路径 | 右侧 篇数 · 后端 · 缩放
   auto* left_widget = new QWidget(this);
@@ -966,10 +973,6 @@ void MdViewerWindow::initUi() {
   ready_layout->addWidget(status_ready_label_);
   left_layout->addWidget(ready_widget);
 
-  path_label_ = new QLabel(left_widget);
-  path_label_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-  path_label_->setMinimumWidth(0);
-  left_layout->addWidget(path_label_, 1);
   statusBar()->addWidget(left_widget, 1);
 
   render_progress_ = new QProgressBar(this);
@@ -979,6 +982,9 @@ void MdViewerWindow::initUi() {
   render_progress_->setFixedWidth(160);
   render_progress_->setToolTip(QStringLiteral("当前文档的渲染任务进度"));
   render_progress_->hide();
+  tab_count_label_ = new QLabel(QStringLiteral("1 个标签页"), this);
+  tab_count_label_->setObjectName(QStringLiteral("tabCountLabel"));
+  tab_count_label_->setToolTip(QStringLiteral("打开的标签页数量"));
   document_count_label_ = new QLabel(QStringLiteral("0 篇"), this);
   document_count_label_->setObjectName(QStringLiteral("documentCountLabel"));
   document_count_label_->setToolTip(
@@ -993,20 +999,15 @@ void MdViewerWindow::initUi() {
                  this);
   backend_label_->setObjectName(QStringLiteral("backendLabel"));
   backend_label_->setToolTip(QStringLiteral("当前构建的渲染后端"));
-  zoom_label_ = new QLabel(this);
-  zoom_label_->setObjectName(QStringLiteral("zoomLabel"));
-  zoom_label_->setToolTip(
-      QStringLiteral("Ctrl+滚轮 / Ctrl+= / Ctrl+- / Ctrl+0"));
-
   auto* stats_widget = new QWidget(this);
   stats_widget->setObjectName(QStringLiteral("statusStatsWidget"));
   auto* stats_layout = new QHBoxLayout(stats_widget);
   stats_layout->setContentsMargins(0, 0, 0, 0);
   stats_layout->setSpacing(14);
+  stats_layout->addWidget(tab_count_label_);
   stats_layout->addWidget(document_count_label_);
   stats_layout->addWidget(reading_time_label_);
   stats_layout->addWidget(backend_label_);
-  stats_layout->addWidget(zoom_label_);
   statusBar()->addPermanentWidget(render_progress_);
   statusBar()->addPermanentWidget(stats_widget);
   UpdateZoomLabel(CurrentView()->zoom());
@@ -1195,79 +1196,32 @@ void MdViewerWindow::initUi() {
   tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
   tab_bar_->RemoveCloseButton(0);
 
-  nav_widget_ = new QWidget(fluent_frame_->titleBar());
-  nav_widget_->setObjectName(QStringLiteral("navWidget"));
-  auto* nav_layout = new QHBoxLayout(nav_widget_);
-  nav_layout->setContentsMargins(0, 0, 0, 0);
-  nav_layout->setSpacing(2);
-
-  auto add_nav_button = [&](QAction* action, const QString& object_name,
-                            Qt::ToolButtonStyle button_style) {
-    auto* button = new QToolButton(nav_widget_);
-    button->setObjectName(object_name);
-    button->setAutoRaise(true);
-    button->setDefaultAction(action);
-    button->setToolButtonStyle(button_style);
-    nav_layout->addWidget(button);
-    return button;
-  };
-  add_nav_button(back_action_, QStringLiteral("navBack"),
-                 Qt::ToolButtonIconOnly);
-  add_nav_button(forward_action_, QStringLiteral("navForward"),
-                 Qt::ToolButtonIconOnly);
-  star_button_ = new QToolButton(nav_widget_);
-  star_button_->setObjectName(QStringLiteral("starButton"));
-  star_button_->setAutoRaise(true);
-  star_button_->setCheckable(true);
-  star_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  star_button_->setIcon(
-      ThemeIcon(QStringLiteral("star-outline"), settings_->dark_theme));
-  star_button_->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
-  nav_layout->addWidget(star_button_);
-
-  // 阅读外观：不做成 dock，避免打断阅读；弹出面板直接改当前文档
-  appearance_popup_ = new ReaderAppearancePopup(this);
-  connect(appearance_popup_, &ReaderAppearancePopup::preferencesChanged, this,
-          [this](const ReaderPreferences& preferences) {
-            settings_->reading_font_size = preferences.font_size;
-            settings_->reading_line_height_percent =
-                preferences.line_height_percent;
-            settings_->reading_measure_px = preferences.measure_px;
-            settings_->Save();
-            ApplyReaderAppearance();
-          });
-  appearance_button_ = new QToolButton(nav_widget_);
-  appearance_button_->setObjectName(QStringLiteral("appearanceButton"));
-  appearance_button_->setAutoRaise(true);
-  appearance_button_->setIcon(
-      ThemeIcon(QStringLiteral("appearance"), settings_->dark_theme));
-  appearance_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  appearance_button_->setToolTip(
-      QStringLiteral("阅读外观（字号、行距、栏宽）"));
-  nav_layout->addWidget(appearance_button_);
-  connect(appearance_button_, &QToolButton::clicked, this,
-          &MdViewerWindow::ShowReaderAppearance);
-
-  zoom_out_button_ = add_nav_button(zoom_out_action_, QStringLiteral("zoomOut"),
-                                    Qt::ToolButtonIconOnly);
-  zoom_reset_button_ = add_nav_button(
-      zoom_reset_action_, QStringLiteral("zoomReset"), Qt::ToolButtonIconOnly);
-  zoom_in_button_ = add_nav_button(zoom_in_action_, QStringLiteral("zoomIn"),
-                                   Qt::ToolButtonIconOnly);
-  settings_button_ = new QToolButton(nav_widget_);
-  settings_button_->setObjectName(QStringLiteral("settingsButton"));
-  settings_button_->setAutoRaise(true);
-  settings_button_->setIcon(
-      ThemeIcon(QStringLiteral("settings"), settings_->dark_theme));
-  settings_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  settings_button_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
-  nav_layout->addWidget(settings_button_);
-  fluent_frame_->titleBar()->setTrailingWidget(nav_widget_);
-
   // 标题栏搜索框现在是全局搜索的唯一入口
-  search_edit_ = fluent_frame_->titleBar()->searchLineEdit();
-  search_edit_->setObjectName(QStringLiteral("titleSearchEdit"));
+  // 全局搜索统一放文档条；标题栏自带的搜索框隐藏
+  fluent_frame_->titleBar()->searchLineEdit()->setVisible(false);
+  search_edit_ = document_bar_->search_edit();
   search_edit_->setPlaceholderText(QStringLiteral("搜索文档与正文（Ctrl+K）"));
+  document_bar_->back_button()->setDefaultAction(back_action_);
+  document_bar_->forward_button()->setDefaultAction(forward_action_);
+  document_bar_->zoom_out_button()->setDefaultAction(zoom_out_action_);
+  document_bar_->zoom_in_button()->setDefaultAction(zoom_in_action_);
+  connect(document_bar_->zoom_reset_button(), &QToolButton::clicked, this,
+          [this] { zoom_reset_action_->trigger(); });
+  connect(document_bar_->star_button(), &QToolButton::clicked, this,
+          &MdViewerWindow::SetBookmarkChecked);
+  connect(document_bar_->appearance_button(), &QToolButton::clicked, this,
+          &MdViewerWindow::ShowReaderAppearance);
+  connect(document_bar_->settings_button(), &QToolButton::clicked, this,
+          &MdViewerWindow::ShowSettings);
+  connect(document_bar_->copy_button(), &QToolButton::clicked, this, [this] {
+    const QString path =
+        CurrentTab() != nullptr ? CurrentTab()->path : QString();
+    if (path.isEmpty()) {
+      return;
+    }
+    QGuiApplication::clipboard()->setText(QDir::toNativeSeparators(path));
+    statusBar()->showMessage(QStringLiteral("已复制路径"), 2000);
+  });
   search_timer_ = new QTimer(this);
   search_timer_->setSingleShot(true);
   search_timer_->setInterval(300);
@@ -1380,8 +1334,6 @@ void MdViewerWindow::initSignals() {
             settings_->SaveBookmarks();
             UpdateBookmarkUi();
           });
-  connect(star_button_, &QToolButton::clicked, this,
-          &MdViewerWindow::SetBookmarkChecked);
   connect(bookmark_action_, &QAction::triggered, this, [this] {
     const QString path = CurrentTab()->path;
     SetBookmarkChecked(!path.isEmpty() && !bookmarks_.Contains(path));
@@ -1417,8 +1369,6 @@ void MdViewerWindow::initSignals() {
         SaveTabSession();
       });
   connect(settings_action_, &QAction::triggered, this,
-          &MdViewerWindow::ShowSettings);
-  connect(settings_button_, &QToolButton::clicked, this,
           &MdViewerWindow::ShowSettings);
   connect(render_status_, &RenderStatusPanel::statusMessage, this,
           [this](const QString& message) {
@@ -1908,8 +1858,9 @@ void MdViewerWindow::UnloadWorkspace() {
   tabs_[0]->path.clear();
   tabs_[0]->view->ClearDocument();
   setWindowTitle(QStringLiteral("qlitemd"));
-  path_label_->clear();
-  path_label_->setToolTip(QString());
+  if (document_bar_ != nullptr) {
+    document_bar_->SetPath(QString(), QString());
+  }
   document_count_label_->setText(QStringLiteral("0 篇"));
   UpdateBookmarkUi();
   unload_workspace_action_->setEnabled(false);
@@ -2136,11 +2087,8 @@ void MdViewerWindow::RefreshThemeIcons() {
   if (menu_button_ != nullptr) {
     menu_button_->setIcon(ThemeIcon(QStringLiteral("menu"), dark));
   }
-  if (appearance_button_ != nullptr) {
-    appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark));
-  }
-  if (settings_button_ != nullptr) {
-    settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark));
+  if (document_bar_ != nullptr) {
+    document_bar_->SetThemeDark(dark);
   }
   UpdateBookmarkUi();
   if (documents_panel_ != nullptr) {
@@ -2235,12 +2183,6 @@ void MdViewerWindow::RefreshChromePalette() {
   apply_palette(statusBar(), app_palette);
   apply_palette(document_dock_, app_palette);
   apply_palette(outline_dock_, app_palette);
-  for (const auto& tab : tabs_) {
-    if (tab->page != nullptr) {
-      tab->page->breadcrumb()->setPalette(app_palette);
-      tab->page->breadcrumb()->setForegroundRole(QPalette::PlaceholderText);
-    }
-  }
 }
 
 void MdViewerWindow::ApplyReadingChromeTo(MarkdownView* view) {
@@ -2339,7 +2281,7 @@ void MdViewerWindow::ShowReaderAppearance() {
     return;
   }
   appearance_popup_->SetPreferences(CurrentReaderPreferences());
-  appearance_popup_->OpenNear(appearance_button_);
+  appearance_popup_->OpenNear(document_bar_->appearance_button());
 }
 
 void MdViewerWindow::ShowWelcome() {
@@ -2449,16 +2391,6 @@ void MdViewerWindow::UpdateChromeVisibility() {
     return;
   }
   const int window_width = width();
-  const bool show_zoom = window_width >= 900;
-  for (QToolButton* button :
-       {zoom_out_button_, zoom_reset_button_, zoom_in_button_}) {
-    if (button != nullptr) {
-      button->setVisible(show_zoom);
-    }
-  }
-  if (search_edit_ != nullptr) {
-    search_edit_->setVisible(window_width >= 780);
-  }
   if (outline_dock_ != nullptr) {
     if (window_width < 980) {
       if (!outline_dock_->isHidden()) {
@@ -2550,16 +2482,17 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
 void MdViewerWindow::UpdateBookmarkUi() {
   const bool starred =
       !CurrentTab()->path.isEmpty() && bookmarks_.Contains(CurrentTab()->path);
-  if (star_button_ != nullptr) {
-    const QSignalBlocker blocker(star_button_);
-    star_button_->setChecked(starred);
+  QToolButton* star =
+      document_bar_ != nullptr ? document_bar_->star_button() : nullptr;
+  if (star != nullptr) {
+    const QSignalBlocker blocker(star);
+    star->setChecked(starred);
     // 实心星是语义图标（金色）；空心星走主题套
-    star_button_->setIcon(
-        starred ? QIcon(QStringLiteral(":/resources/svg/star-filled.svg"))
-                : ThemeIcon(QStringLiteral("star-outline"), ThemeDark()));
-    star_button_->setToolTip(starred
-                                 ? QStringLiteral("取消收藏（Ctrl+D）")
-                                 : QStringLiteral("收藏当前文档（Ctrl+D）"));
+    star->setIcon(starred
+                      ? QIcon(QStringLiteral(":/resources/svg/star-filled.svg"))
+                      : ThemeIcon(QStringLiteral("star-outline"), ThemeDark()));
+    star->setToolTip(starred ? QStringLiteral("取消收藏（Ctrl+D）")
+                             : QStringLiteral("收藏当前文档（Ctrl+D）"));
   }
   if (documents_panel_ != nullptr) {
     documents_panel_->SetBookmarks(bookmarks_.items(), root_dir_);
@@ -2700,7 +2633,10 @@ void MdViewerWindow::SaveSettings() {
 }
 
 void MdViewerWindow::UpdateZoomLabel(qreal factor) {
-  zoom_label_->setText(QStringLiteral("%1%").arg(qRound(factor * 100.0)));
+  if (document_bar_ != nullptr) {
+    document_bar_->zoom_reset_button()->setText(
+        QStringLiteral("%1%").arg(qRound(factor * 100.0)));
+  }
 }
 
 void MdViewerWindow::ReportRenderStatus() {
