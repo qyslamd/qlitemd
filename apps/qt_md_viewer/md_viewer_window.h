@@ -41,6 +41,7 @@ class QVariantAnimation;
 class DocumentsPanel;
 class DocumentTabBar;
 class ReaderPage;
+class SettingsDialog;
 class WelcomeView;
 class FluentWindowFrame;
 class MarkdownOutlineWidget;
@@ -77,6 +78,7 @@ class MdViewerWindow : public QMainWindow {
   Q_INVOKABLE QVariant OpenPathForTest(const QVariant& path);
   Q_INVOKABLE QVariant OpenPathReplaceForTest(const QVariant& path);
   Q_INVOKABLE QVariant RootDirForTest(const QVariant& unused) const;
+  Q_INVOKABLE QVariant TabSettingsForTest(const QVariant& index) const;
   Q_INVOKABLE QVariant ActivateTabForTest(const QVariant& index);
   Q_INVOKABLE QVariant TabStateForTest(const QVariant& unused) const;
   // 参数为 [from, to]，走标签条真实的 moveTab → tabMoved 链路
@@ -163,6 +165,7 @@ class MdViewerWindow : public QMainWindow {
   ReaderPreferences CurrentReaderPreferences() const;
   void ApplyReaderAppearance();
   void ShowReaderAppearance();
+  void ShowSettings();
   // 无文档时的欢迎页，与正文互斥显示
   void ShowWelcome();
   void HideWelcome();
@@ -226,6 +229,7 @@ class MdViewerWindow : public QMainWindow {
   QAction* zoom_in_action_ = nullptr;
   QAction* zoom_out_action_ = nullptr;
   QAction* zoom_reset_action_ = nullptr;
+  QAction* settings_action_ = nullptr;
   QAction* bookmark_action_ = nullptr;
   QAction* refresh_action_ = nullptr;
   QAction* material_auto_action_ = nullptr;
@@ -284,7 +288,7 @@ class MdViewerWindow : public QMainWindow {
   FluentWindowFrame* fluent_frame_ = nullptr;
   QDockWidget* document_dock_ = nullptr;
   QDockWidget* outline_dock_ = nullptr;
-  QDockWidget* settings_dock_ = nullptr;
+  SettingsDialog* settings_dialog_ = nullptr;
   // 欢迎页会临时收起空大纲；采样一次，避免重复 ShowWelcome 覆盖
   bool welcome_outline_was_visible_ = false;
   // 欢迎页显示期间关闭窗口时保存这份布局，别把临时隐藏写进配置
@@ -297,6 +301,7 @@ class MdViewerWindow : public QMainWindow {
   QToolButton* add_tab_button_ = nullptr;
   QToolButton* menu_button_ = nullptr;
   QToolButton* appearance_button_ = nullptr;
+  QToolButton* settings_button_ = nullptr;
   QToolButton* zoom_out_button_ = nullptr;
   QToolButton* zoom_reset_button_ = nullptr;
   QToolButton* zoom_in_button_ = nullptr;

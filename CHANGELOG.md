@@ -2,6 +2,35 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
+  bar and a `QStackedWidget` whose first page is the permanent welcome page;
+  every document tab owns a `ReaderPage` (reading progress, breadcrumb,
+  `MarkdownView`, back-to-top) plus its own history, scroll position,
+  outline cache, zoom and bookmark state. Tabs are equal-width up to
+  220 px, shrink to 120 px before scroll buttons appear, close with the
+  per-tab button, middle click or `Ctrl+W`, reorder by dragging, and the
+  welcome tab is fixed at index 0 and cannot be closed. `Ctrl+Tab` /
+  `Ctrl+Shift+Tab` cycle tabs.
+- Opening conventions: a plain click replaces the current tab and switches
+  to it when the file is already open; `Ctrl+click` or the middle button
+  opens a new tab; back/forward stay inside the tab. Files outside the
+  workspace no longer re-root it — only "打开目录" changes the root.
+- Session persistence stores `open_tabs + active` and skips missing files.
+  The File menu gains recent workspaces and "新建窗口"; only the primary
+  window reads or writes the session.
+- The render-settings dock is retired: the gear button, the View menu entry
+  and `Ctrl+,` open a modeless settings dialog whose changes apply
+  immediately and broadcast to every tab.
+- New pure-data `TabModel` with 13 headless tests (welcome tab semantics,
+  dedupe, close fallback, reorder keeping the active document, serialization
+  round-trip). `DocumentTabBar` and `ReaderPage` have their own widget
+  tests; `MdViewerWindow` exposes single-argument `Q_INVOKABLE` probes so an
+  injected GUI test can drive tabs without mouse input.
+- `docs/qt-widget.md` now documents multiple `MarkdownView` instances and
+  the per-view persistent cache directory requirement.
+
 ## 0.5.0 - 2026-11-23
 
 - Split qt_md_viewer's theme-dependent SVG icons into two sets,

@@ -14,6 +14,7 @@
         <file>resources/svg/light/zoom-in.svg</file>
         <file>resources/svg/light/zoom-out.svg</file>
         <file>resources/svg/light/zoom-reset.svg</file>
+        <file>resources/svg/light/settings.svg</file>
         <file>resources/svg/dark/appearance.svg</file>
         <file>resources/svg/dark/back.svg</file>
         <file>resources/svg/dark/file.svg</file>
@@ -25,6 +26,7 @@
         <file>resources/svg/dark/zoom-in.svg</file>
         <file>resources/svg/dark/zoom-out.svg</file>
         <file>resources/svg/dark/zoom-reset.svg</file>
+        <file>resources/svg/dark/settings.svg</file>
         <file>resources/themes/viewer-light.css</file>
         <file>resources/themes/viewer-dark.css</file>
     </qresource>

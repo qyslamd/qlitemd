@@ -1,6 +1,6 @@
 # qt_md_viewer 多标签页改造方案
 
-日期：2026-11-23。状态：**设计定稿，待实施**。
+日期：2026-11-23。状态：**已实施（P0–P4 已提交到 feat/multi-tabs）**。
 历史材料：早期语义稿在 `temp/qt-md-viewer-多标签页方案.md`（已被本文取代），
 界面原型在 `temp/tabbed_doc_demo/`（Qt demo 与 HTML 原型）。
 

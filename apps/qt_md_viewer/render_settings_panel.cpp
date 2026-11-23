@@ -364,11 +364,16 @@ void RenderSettingsPanel::initSignals() {
             }
             view_->SetAdmonitionMode(static_cast<MarkdownAdmonitionMode>(
                 admonition_mode_->itemData(index).toInt()));
+            emit settingsChanged();
           });
-  connect(code_line_numbers_, &QCheckBox::toggled, view_,
-          &MarkdownView::SetCodeLineNumbers);
-  connect(formula_rendering_, &QCheckBox::toggled, view_,
-          &MarkdownView::SetFormulaRenderingEnabled);
+  connect(code_line_numbers_, &QCheckBox::toggled, this, [this](bool on) {
+    view_->SetCodeLineNumbers(on);
+    emit settingsChanged();
+  });
+  connect(formula_rendering_, &QCheckBox::toggled, this, [this](bool on) {
+    view_->SetFormulaRenderingEnabled(on);
+    emit settingsChanged();
+  });
   connect(formula_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
             if (index < 0) {
@@ -376,9 +381,12 @@ void RenderSettingsPanel::initSignals() {
             }
             view_->SetFormulaBackend(static_cast<MarkdownFormulaBackend>(
                 formula_backend_->itemData(index).toInt()));
+            emit settingsChanged();
           });
-  connect(mermaid_rendering_, &QCheckBox::toggled, view_,
-          &MarkdownView::SetMermaidRenderingEnabled);
+  connect(mermaid_rendering_, &QCheckBox::toggled, this, [this](bool on) {
+    view_->SetMermaidRenderingEnabled(on);
+    emit settingsChanged();
+  });
   connect(mermaid_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
             if (index < 0) {
@@ -386,15 +394,19 @@ void RenderSettingsPanel::initSignals() {
             }
             view_->SetMermaidBackend(static_cast<MarkdownMermaidBackend>(
                 mermaid_backend_->itemData(index).toInt()));
+            emit settingsChanged();
           });
-  connect(persistent_cache_, &QCheckBox::toggled, view_,
-          &MarkdownView::SetPersistentRenderCacheEnabled);
+  connect(persistent_cache_, &QCheckBox::toggled, this, [this](bool on) {
+    view_->SetPersistentRenderCacheEnabled(on);
+    emit settingsChanged();
+  });
   connect(trace_, &QCheckBox::toggled, this, [this] { ApplyDiagnostics(); });
   connect(choose_cache_, &QPushButton::clicked, this,
           &RenderSettingsPanel::BrowseCacheDirectory);
   connect(reset_cache_, &QPushButton::clicked, this, [this] {
     cache_directory_->clear();
     view_->SetRenderCacheDirectory(QString());
+    emit settingsChanged();
     emit statusMessage(QStringLiteral("持久缓存目录恢复默认"));
   });
   connect(clear_memory_cache_, &QPushButton::clicked, this, [this] {
@@ -418,6 +430,7 @@ void RenderSettingsPanel::ApplyDiagnostics() {
   diagnostics.trace = trace_->isChecked();
   diagnostics.dump_directory = dump_directory_->text().trimmed();
   view_->SetDiagnostics(diagnostics);
+  emit settingsChanged();
 }
 
 void RenderSettingsPanel::BrowseCacheDirectory() {
@@ -430,6 +443,7 @@ void RenderSettingsPanel::BrowseCacheDirectory() {
   }
   cache_directory_->setText(dir);
   view_->SetRenderCacheDirectory(dir);
+  emit settingsChanged();
 }
 
 void RenderSettingsPanel::BrowseDumpDirectory() {

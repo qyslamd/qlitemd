@@ -109,6 +109,10 @@ target_link_libraries(myapp PRIVATE qlitemd::markdown_view)
   `QPrinter`。
 - **诊断**：`qt.markdown.render` 日志类别、分阶段耗时统计，以及可选的
   产物落盘（`MD_MARKDOWN_DUMP`）。
+- **查看器多标签页**：`qt_md_viewer` 在标题栏里开文档标签，每个标签
+  独立保存滚动、大纲、历史、缩放与收藏；普通点击替换当前标签，
+  Ctrl+点击/中键新开，标签可拖动重排，会话按 `open_tabs + active`
+  恢复。打开根外文件不会重建工作区；多工作区用多窗口实现。
 
 ## 架构
 

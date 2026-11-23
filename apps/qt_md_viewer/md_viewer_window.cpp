@@ -86,6 +86,7 @@
 #include "reading_progress.h"
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
+#include "settings_dialog.h"
 #include "tab_model.h"
 #include "text_search.h"
 #include "theme_icons.h"
@@ -226,6 +227,33 @@ QVariant MdViewerWindow::OpenPathReplaceForTest(const QVariant& path) {
 QVariant MdViewerWindow::RootDirForTest(const QVariant& unused) const {
   Q_UNUSED(unused);
   return root_dir_;
+}
+
+QVariant MdViewerWindow::TabSettingsForTest(const QVariant& index) const {
+  const int i = index.toInt();
+  if (i < 0 || i >= static_cast<int>(tabs_.size()) ||
+      tabs_[i]->view == nullptr) {
+    return QVariant();
+  }
+  MarkdownView* view = tabs_[i]->view;
+  QVariantMap state;
+  state.insert(QStringLiteral("code_line_numbers"), view->code_line_numbers());
+  state.insert(QStringLiteral("formula_rendering"),
+               view->formula_rendering_enabled());
+  state.insert(QStringLiteral("mermaid_rendering"),
+               view->mermaid_rendering_enabled());
+  state.insert(QStringLiteral("persistent_cache"),
+               view->persistent_render_cache_enabled());
+  state.insert(QStringLiteral("admonition"),
+               static_cast<int>(view->admonition_mode()));
+  state.insert(QStringLiteral("formula_backend"),
+               static_cast<int>(view->formula_backend()));
+  state.insert(QStringLiteral("mermaid_backend"),
+               static_cast<int>(view->mermaid_backend()));
+  state.insert(QStringLiteral("cache_directory"),
+               view->render_context().options().cache_directory);
+  state.insert(QStringLiteral("theme"), static_cast<int>(view->theme()));
+  return state;
 }
 
 QVariant MdViewerWindow::ActivateTabForTest(const QVariant& index) {
@@ -869,18 +897,12 @@ void MdViewerWindow::initUi() {
   // 默认收起；需要时从“视图”菜单打开。已保存的 dock 布局会覆盖这个默认值
   status_dock->hide();
 
-  // 渲染设置：主题、行号、渲染开关、持久缓存、诊断
-  settings_dock_ = new QDockWidget(QStringLiteral("渲染设置"), this);
-  settings_dock_->setObjectName(QStringLiteral("renderSettingsDock"));
-  settings_dock_->setMinimumWidth(280);
-  render_settings_ = new RenderSettingsPanel(CurrentView(), settings_dock_);
+  // 渲染设置：模型对话框，改动即时生效；关闭只是隐藏
+  render_settings_ = new RenderSettingsPanel(CurrentView(), this);
   render_settings_->SetWindowMaterial(settings_->window_material);
   render_settings_->SetReadingStyle(settings_->reading_style);
   render_settings_->SetTransparentReading(settings_->transparent_reading);
-  settings_dock_->setWidget(render_settings_);
-  addDockWidget(Qt::RightDockWidgetArea, settings_dock_);
-  // 同上：渲染设置默认收起
-  settings_dock_->hide();
+  settings_dialog_ = new SettingsDialog(render_settings_, this);
 
   statusBar()->setObjectName(QStringLiteral("mainStatusBar"));
   statusBar()->setSizeGripEnabled(false);
@@ -1000,6 +1022,11 @@ void MdViewerWindow::initUi() {
       ThemeIcon(QStringLiteral("zoom-reset"), initial_dark));
   zoom_reset_action_->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
 
+  settings_action_ = new QAction(QStringLiteral("设置…"), this);
+  settings_action_->setObjectName(QStringLiteral("settingsAction"));
+  settings_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
+  settings_action_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
+
   zoom_in_action_ = new QAction(QStringLiteral("+"), this);
   zoom_in_action_->setObjectName(QStringLiteral("zoomInAction"));
   zoom_in_action_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), initial_dark));
@@ -1035,7 +1062,6 @@ void MdViewerWindow::initUi() {
   view_menu_->addAction(document_dock_->toggleViewAction());
   view_menu_->addAction(outline_dock_->toggleViewAction());
   view_menu_->addAction(status_dock->toggleViewAction());
-  view_menu_->addAction(settings_dock_->toggleViewAction());
   view_menu_->addSeparator();
   view_menu_->addAction(back_action_);
   view_menu_->addAction(forward_action_);
@@ -1047,6 +1073,8 @@ void MdViewerWindow::initUi() {
   view_menu_->addAction(zoom_out_action_);
   view_menu_->addAction(zoom_reset_action_);
   view_menu_->addAction(zoom_in_action_);
+  view_menu_->addSeparator();
+  view_menu_->addAction(settings_action_);
 #ifdef Q_OS_WIN
   QMenu* material_menu = view_menu_->addMenu(QStringLiteral("窗口材质"));
   auto* material_group = new QActionGroup(this);
@@ -1190,6 +1218,14 @@ void MdViewerWindow::initUi() {
       zoom_reset_action_, QStringLiteral("zoomReset"), Qt::ToolButtonIconOnly);
   zoom_in_button_ = add_nav_button(zoom_in_action_, QStringLiteral("zoomIn"),
                                    Qt::ToolButtonIconOnly);
+  settings_button_ = new QToolButton(nav_widget_);
+  settings_button_->setObjectName(QStringLiteral("settingsButton"));
+  settings_button_->setAutoRaise(true);
+  settings_button_->setIcon(
+      ThemeIcon(QStringLiteral("settings"), settings_->dark_theme));
+  settings_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  settings_button_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
+  nav_layout->addWidget(settings_button_);
   fluent_frame_->titleBar()->setTrailingWidget(nav_widget_);
 
   // 标题栏搜索框现在是全局搜索的唯一入口
@@ -1323,6 +1359,31 @@ void MdViewerWindow::initSignals() {
           [this](const QString& message) {
             statusBar()->showMessage(message, 5000);
           });
+  connect(
+      render_settings_, &RenderSettingsPanel::settingsChanged, this, [this] {
+        CaptureGlobalSettings(CurrentTab());
+        if (CurrentView() == nullptr) {
+          return;
+        }
+        // 面板只写了活动视图；把设置播到其它标签，缓存目录与诊断
+        // 不在 settings_ 里，按活动视图复制
+        const QString cache_dir =
+            CurrentView()->render_context().options().cache_directory;
+        const MarkdownDiagnostics diagnostics = CurrentView()->diagnostics();
+        for (const auto& tab : tabs_) {
+          if (tab->view == nullptr || tab->view == CurrentView()) {
+            continue;
+          }
+          tab->view->SetRenderCacheDirectory(cache_dir);
+          tab->view->SetDiagnostics(diagnostics);
+          ApplyGlobalSettings(tab.get());
+        }
+        SaveTabSession();
+      });
+  connect(settings_action_, &QAction::triggered, this,
+          &MdViewerWindow::ShowSettings);
+  connect(settings_button_, &QToolButton::clicked, this,
+          &MdViewerWindow::ShowSettings);
   connect(render_status_, &RenderStatusPanel::statusMessage, this,
           [this](const QString& message) {
             statusBar()->showMessage(message, 5000);
@@ -1961,10 +2022,8 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
     zoom_reset_action_->trigger();
   } else if (id == QLatin1String("zoom-in")) {
     zoom_in_action_->trigger();
-  } else if (id == QLatin1String("show-settings") &&
-             settings_dock_ != nullptr) {
-    settings_dock_->show();
-    settings_dock_->raise();
+  } else if (id == QLatin1String("show-settings")) {
+    ShowSettings();
   }
 }
 
@@ -2019,6 +2078,9 @@ void MdViewerWindow::RefreshThemeIcons() {
   }
   if (appearance_button_ != nullptr) {
     appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark));
+  }
+  if (settings_button_ != nullptr) {
+    settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark));
   }
   UpdateBookmarkUi();
   if (documents_panel_ != nullptr) {
@@ -2189,6 +2251,18 @@ void MdViewerWindow::ApplyReaderAppearance() {
     tab->view->AppendThemeStyleSheet(MarkdownTheme::Light, css);
     tab->view->AppendThemeStyleSheet(MarkdownTheme::Dark, css);
   }
+}
+
+void MdViewerWindow::ShowSettings() {
+  if (settings_dialog_ == nullptr) {
+    return;
+  }
+  if (render_settings_ != nullptr) {
+    render_settings_->SetView(CurrentView());
+  }
+  settings_dialog_->show();
+  settings_dialog_->raise();
+  settings_dialog_->activateWindow();
 }
 
 void MdViewerWindow::ShowReaderAppearance() {

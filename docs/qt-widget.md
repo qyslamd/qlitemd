@@ -63,6 +63,16 @@ and the Windows/Linux native backend binaries
 shell. `examples/qt_widget_minimal` inside the package is the reference
 consumer and CI smoke test.
 
+## Multiple instances
+
+A process may create any number of `MarkdownView` instances. Each view owns
+its DOM, outline, find state, navigation history, image cache and zoom; the
+core pipeline and its worker lanes stay process-wide, so extra views do not
+add worker threads. The persistent render cache directory is per view: a
+host that opens several views should set the same cache directory on each
+one (`SetRenderCacheDirectory`), otherwise formula and Mermaid hits are
+split between them.
+
 ## Constraints
 
 - qlitemd defines the vendored targets `md4c`, `qlitehtml`, `litehtml`,

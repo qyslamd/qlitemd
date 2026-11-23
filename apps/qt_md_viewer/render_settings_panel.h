@@ -42,6 +42,8 @@ class RenderSettingsPanel : public QWidget {
   // 阅读区样式 opt-in 与透明页面
   void readingStyleChanged(ReadingStyle style);
   void transparentReadingChanged(bool enabled);
+  // 面板直接写进活动视图的设置变了；宿主据此广播到其它标签
+  void settingsChanged();
 
  private:
   void initUi();
