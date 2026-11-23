@@ -72,6 +72,8 @@ struct MdViewerSettings {
   bool workspace_closed = false;
   QString bookmarks_json;
   QString positions_json;
+  // 次窗口用的是主窗口设置的只读副本：所有写入口直接返回
+  bool read_only = false;
 };
 
 #endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_SETTINGS_H_

@@ -154,6 +154,9 @@ void MdViewerSettings::Load() {
 }
 
 void MdViewerSettings::Save() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   if (!window_geometry.isEmpty()) {
@@ -190,6 +193,9 @@ void MdViewerSettings::Save() const {
 }
 
 void MdViewerSettings::SaveRecent() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyRecentFiles, recent_files);
@@ -198,6 +204,9 @@ void MdViewerSettings::SaveRecent() const {
 }
 
 void MdViewerSettings::SaveSession() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyRootDir, root_dir);
@@ -210,6 +219,9 @@ void MdViewerSettings::SaveSession() const {
 }
 
 void MdViewerSettings::SaveRecentRoots() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyRecentRoots, recent_roots);
@@ -218,6 +230,9 @@ void MdViewerSettings::SaveRecentRoots() const {
 }
 
 void MdViewerSettings::SaveBookmarks() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyBookmarks, bookmarks_json);
@@ -226,6 +241,9 @@ void MdViewerSettings::SaveBookmarks() const {
 }
 
 void MdViewerSettings::SavePositions() const {
+  if (read_only) {
+    return;
+  }
   QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   settings.setValue(kKeyPositions, positions_json);
@@ -234,6 +252,9 @@ void MdViewerSettings::SavePositions() const {
 }
 
 void MdViewerSettings::AddRecentFile(const QString& path) {
+  if (read_only) {
+    return;
+  }
   const QString absolute_path = QFileInfo(path).absoluteFilePath();
   recent_files.removeAll(absolute_path);
   recent_files.prepend(absolute_path);
@@ -244,6 +265,9 @@ void MdViewerSettings::AddRecentFile(const QString& path) {
 }
 
 void MdViewerSettings::AddRecentRoot(const QString& root) {
+  if (read_only) {
+    return;
+  }
   const QString absolute = QFileInfo(root).absoluteFilePath();
   recent_roots.removeAll(absolute);
   recent_roots.prepend(absolute);

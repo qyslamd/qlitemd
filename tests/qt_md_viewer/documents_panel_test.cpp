@@ -167,6 +167,22 @@ TEST(DocumentsPanelTest, MiddleClickRequestsNewTab) {
                     item_rect.center());
   EXPECT_EQ(activated, QStringLiteral("/docs/a.md"));
   EXPECT_TRUE(new_tab);
+
+  // 中键之后的下一次普通左键不能被吞掉
+  QTreeWidgetItem* guide = tree->topLevelItem(0)->child(0);
+  tree->expandItem(guide);
+  QApplication::processEvents();
+  QTreeWidgetItem* b = guide->child(1);
+  tree->scrollToItem(b);
+  QApplication::processEvents();
+  const QRect b_rect = tree->visualItemRect(b);
+  ASSERT_TRUE(b_rect.isValid());
+  activated.clear();
+  new_tab = true;
+  QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier,
+                    b_rect.center());
+  EXPECT_EQ(activated, QStringLiteral("/docs/guide/b.md"));
+  EXPECT_FALSE(new_tab);
 }
 
 TEST(DocumentsPanelTest, FilterHidesNonMatchingNodes) {

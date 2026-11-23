@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <QByteArray>
 #include <QColor>
@@ -160,6 +161,7 @@ class MdViewerWindow : public QMainWindow {
   bool ThemeDark() const;
   // 阅读区样式 opt-in：原型 CSS 或库默认；同时刷新页面背景
   void ApplyReadingStyle();
+  void ApplyReadingChromeTo(MarkdownView* view);
   void UpdateReadingSurface();
   // 阅读外观（字号/行距/栏宽）：偏好 CSS 以追加层注入，不改基准主题
   ReaderPreferences CurrentReaderPreferences() const;
@@ -195,6 +197,8 @@ class MdViewerWindow : public QMainWindow {
   int FindTabIndex(const QString& path) const;
   DocumentTab* CreateDocumentTab();
   void ClearDocumentTabs();
+  // 删除活动标签前先把面板绑回欢迎视图，避免持有悬空 view_ 指针
+  void DetachPanelsFromTab(DocumentTab* tab);
   void ActivateTab(int index);
   // 激活下标已改好后刷新页面与外壳；关闭标签后也走这里
   void ShowActiveTab();
@@ -312,11 +316,14 @@ class MdViewerWindow : public QMainWindow {
 
   // 标准配置目录下的 md_viewer.ini，归 main 持有，生命周期长于本窗口
   MdViewerSettings* settings_ = nullptr;
+  // 次窗口的设置副本（只读）；settings_ 指向它
+  std::unique_ptr<MdViewerSettings> owned_settings_;
   QMenu* recent_menu_ = nullptr;
   QMenu* recent_roots_menu_ = nullptr;
   // 只有主窗口写会话；恢复期间不把半成品写回
   bool session_owner_ = true;
   bool restoring_session_ = false;
+  bool tab_switch_queued_ = false;
 };
 
 #endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_

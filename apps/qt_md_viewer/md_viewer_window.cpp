@@ -184,6 +184,12 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
                                QWidget* parent)
     : QMainWindow(parent), settings_(settings), session_owner_(session_owner) {
   Q_ASSERT(settings_ != nullptr);
+  // 次窗口拿主窗口设置的只读副本，改动只影响自己、不落盘
+  if (!session_owner_) {
+    owned_settings_ = std::make_unique<MdViewerSettings>(*settings_);
+    owned_settings_->read_only = true;
+    settings_ = owned_settings_.get();
+  }
   bookmarks_ = BookmarkStore::FromJson(settings_->bookmarks_json);
   positions_ = ReadingPositionStore::FromJson(settings_->positions_json);
   setAcceptDrops(true);
@@ -350,7 +356,22 @@ DocumentTab* MdViewerWindow::CreateDocumentTab() {
   return created;
 }
 
+void MdViewerWindow::DetachPanelsFromTab(DocumentTab* tab) {
+  if (tab == nullptr || tab != CurrentTab() || tabs_.empty()) {
+    return;
+  }
+  MarkdownView* fallback = tabs_[0]->view;
+  if (render_settings_ != nullptr && fallback != nullptr) {
+    render_settings_->SetView(fallback);
+  }
+  if (render_status_ != nullptr && fallback != nullptr) {
+    render_status_->SetView(fallback);
+  }
+}
+
 void MdViewerWindow::ClearDocumentTabs() {
+  // 活动标签的视图可能正被设置/状态面板引用
+  DetachPanelsFromTab(CurrentTab());
   if (tab_bar_ != nullptr) {
     const QSignalBlocker blocker(tab_bar_);
     while (tab_bar_->count() > 1) {
@@ -361,7 +382,9 @@ void MdViewerWindow::ClearDocumentTabs() {
     ReaderPage* page = tabs_[i]->page;
     if (page != nullptr) {
       pages_->removeWidget(page);
-      page->deleteLater();
+      // 立即删：deleteLater 期间视图还在，排队中的渲染信号会带着
+      // 已析构的 DocumentTab 指针进来
+      delete page;
     }
     tabs_.erase(tabs_.begin() + i);
   }
@@ -389,6 +412,8 @@ void MdViewerWindow::ApplyGlobalSettings(DocumentTab* tab) {
                               ReaderAppearanceCss(preferences, prototype));
   view->AppendThemeStyleSheet(MarkdownTheme::Dark,
                               ReaderAppearanceCss(preferences, prototype));
+  // 样式表与页面底色也要跟着新标签走，否则第二个标签用库默认外观
+  ApplyReadingChromeTo(view);
 }
 
 void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
@@ -683,9 +708,15 @@ void MdViewerWindow::CloseTab(int index) {
   }
   const bool was_active = index == active_tab_;
   DocumentTab* tab = tabs_[index].get();
+  if (tab == CurrentTab()) {
+    DetachPanelsFromTab(tab);
+  }
   if (tab->page != nullptr) {
     pages_->removeWidget(tab->page);
-    tab->page->deleteLater();
+    // 先销毁页面（连带视图与信号），再销毁 DocumentTab
+    delete tab->page;
+    tab->page = nullptr;
+    tab->view = nullptr;
   }
   tabs_.erase(tabs_.begin() + index);
   if (tab_bar_ != nullptr) {
@@ -727,6 +758,11 @@ void MdViewerWindow::OnTabMoved(int from, int to) {
       active_tab_ = i;
       break;
     }
+  }
+  // 拖拽期间 QTabBar 的选中项可能落到了别的下标，按模型拉回来
+  if (tab_bar_ != nullptr) {
+    const QSignalBlocker blocker(tab_bar_);
+    tab_bar_->setCurrentIndex(active_tab_);
   }
 }
 
@@ -1478,10 +1514,19 @@ void MdViewerWindow::initSignals() {
   connect(close_tab_action_, &QAction::triggered, this,
           [this] { CloseTab(active_tab_); });
   if (tab_bar_ != nullptr) {
-    connect(tab_bar_, &QTabBar::currentChanged, this, [this](int index) {
-      if (index >= 0) {
-        ActivateTab(index);
+    connect(tab_bar_, &QTabBar::currentChanged, this, [this](int) {
+      // QTabBar::moveTab 可能先改 currentIndex 再发 tabMoved；延后一拍，
+      // 等模型顺序稳定后再按最终下标激活
+      if (tab_switch_queued_) {
+        return;
       }
+      tab_switch_queued_ = true;
+      QTimer::singleShot(0, this, [this] {
+        tab_switch_queued_ = false;
+        if (tab_bar_ != nullptr && tab_bar_->currentIndex() >= 0) {
+          ActivateTab(tab_bar_->currentIndex());
+        }
+      });
     });
     connect(tab_bar_, &QTabBar::tabCloseRequested, this,
             &MdViewerWindow::CloseTab);
@@ -1546,7 +1591,12 @@ void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
     return;
   }
   // 新文档的锚点要等提交后再滚；旧文档的 heading_ids_ 里没有它
-  CurrentTab()->pending_fragment = fragment;
+  DocumentTab* source_tab = CurrentTab();
+  const int existing_before = FindTabIndex(path);
+  const bool switches_to_open_tab = intent != OpenIntent::kHistory &&
+                                    existing_before > 0 &&
+                                    existing_before != active_tab_;
+  source_tab->pending_fragment = fragment;
   const QString opened = OpenPathCore(path, intent);
   if (opened.isEmpty()) {
     CurrentTab()->pending_fragment.clear();
@@ -1555,7 +1605,17 @@ void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
   if (record_history) {
     PushHistory(opened, fragment);
   }
-  if (fragment.isEmpty()) {
+  if (switches_to_open_tab && CurrentTab() != source_tab) {
+    // 待滚锚点原本记在旧标签上；换到已打开标签后归位，且不重置滚动
+    source_tab->pending_fragment.clear();
+    if (!fragment.isEmpty()) {
+      CurrentTab()->pending_fragment = fragment;
+      if (!CurrentView()->is_rendering()) {
+        CurrentTab()->pending_fragment.clear();
+        ScrollToFragment(fragment);
+      }
+    }
+  } else if (fragment.isEmpty()) {
     CurrentTab()->pending_fragment.clear();
     ScrollToFragment(QString());
   }
@@ -2183,23 +2243,32 @@ void MdViewerWindow::RefreshChromePalette() {
   }
 }
 
+void MdViewerWindow::ApplyReadingChromeTo(MarkdownView* view) {
+  if (view == nullptr || settings_ == nullptr) {
+    return;
+  }
+  const bool prototype = settings_->reading_style == ReadingStyle::kPrototype;
+  view->SetThemeStyleSheet(
+      MarkdownTheme::Light,
+      prototype ? LoadTextResource(
+                      QStringLiteral(":/resources/themes/viewer-light.css"))
+                : QString());
+  view->SetThemeStyleSheet(
+      MarkdownTheme::Dark,
+      prototype ? LoadTextResource(
+                      QStringLiteral(":/resources/themes/viewer-dark.css"))
+                : QString());
+  const bool transparent = prototype && settings_->transparent_reading;
+  view->SetPageBackground(transparent ? QColor(Qt::transparent)
+                                      : ReadingPageColor());
+}
+
 void MdViewerWindow::ApplyReadingStyle() {
   if (settings_ == nullptr) {
     return;
   }
-  const bool prototype = settings_->reading_style == ReadingStyle::kPrototype;
-  const QString light = prototype ? LoadTextResource(QStringLiteral(
-                                        ":/resources/themes/viewer-light.css"))
-                                  : QString();
-  const QString dark = prototype ? LoadTextResource(QStringLiteral(
-                                       ":/resources/themes/viewer-dark.css"))
-                                 : QString();
   for (const auto& tab : tabs_) {
-    if (tab->view == nullptr) {
-      continue;
-    }
-    tab->view->SetThemeStyleSheet(MarkdownTheme::Light, light);
-    tab->view->SetThemeStyleSheet(MarkdownTheme::Dark, dark);
+    ApplyReadingChromeTo(tab->view);
   }
   ApplyReaderAppearance();
   UpdateReadingSurface();
@@ -2462,6 +2531,8 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   target->path = absolute_path;
   // 标题栏、面包屑、状态栏路径统一由当前标签刷新
   UpdateShellForActiveTab();
+  // 打开任意文件都算重新有了工作区
+  settings_->workspace_closed = false;
   settings_->last_file = absolute_path;
   SaveTabSession();
   // 最近记录立即落盘：即使随后异常退出，也不会丢这次打开
@@ -2770,6 +2841,21 @@ void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {
   }
   const QString query = active_search_query_.has_value() ? *active_search_query_
                                                          : search_edit_->text();
+  // 文件已在别的标签里：切过去再跳，别走 NavigateTo 的去重分支（它会把
+  // 目标标签滚回顶部，还会让 pending_search_hit_ 悬着）
+  const int open_index =
+      FindTabIndex(QFileInfo(hit.file_path).absoluteFilePath());
+  if (open_index > 0 && open_index != active_tab_) {
+    ActivateTab(open_index);
+    if (CurrentView()->is_rendering() &&
+        CurrentView()->pending_file() == hit.file_path) {
+      pending_search_hit_ = PendingJump{hit.file_path, hit.file_ordinal, query};
+      return;
+    }
+    pending_search_hit_.reset();
+    JumpToSearchHit(hit.file_ordinal, query);
+    return;
+  }
   if (hit.file_path == CurrentView()->current_file()) {
     // 当前文档正在重渲染：等 renderFinished 再跳，别取消这次渲染
     if (CurrentView()->is_rendering() &&

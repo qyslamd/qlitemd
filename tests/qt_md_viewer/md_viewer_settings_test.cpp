@@ -149,6 +149,28 @@ TEST(MdViewerSettingsTest, RecentRootsDedupeAndCap) {
   EXPECT_EQ(reloaded.recent_roots, settings.recent_roots);
 }
 
+TEST(MdViewerSettingsTest, ReadOnlyCopyDoesNotWrite) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings settings;
+  settings.Load();
+  // 次窗口拿到的是只读副本：任何写入口都不能落盘
+  settings.read_only = true;
+  settings.AddRecentFile(QStringLiteral("D:/x.md"));
+  settings.AddRecentRoot(QStringLiteral("D:/r"));
+  settings.root_dir = QStringLiteral("D:/r");
+  settings.open_tabs_json = QByteArrayLiteral("{\"tabs\":[\"/x\"]}");
+  settings.SaveSession();
+  settings.Save();
+
+  MdViewerSettings reloaded;
+  reloaded.Load();
+  EXPECT_TRUE(reloaded.recent_files.isEmpty());
+  EXPECT_TRUE(reloaded.recent_roots.isEmpty());
+  EXPECT_TRUE(reloaded.root_dir.isEmpty());
+  EXPECT_TRUE(reloaded.open_tabs_json.isEmpty());
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

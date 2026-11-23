@@ -521,6 +521,11 @@ bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
   if (document_tree_ != nullptr && watched == document_tree_->viewport()) {
     if (event->type() == QEvent::MouseButtonPress) {
       auto* mouse = static_cast<QMouseEvent*>(event);
+      // 中键吞掉自己的 itemClicked 后，标志要留到下一次左键按下再清；
+      // 否则会连下一条左键点击一起吞掉
+      if (mouse->button() == Qt::LeftButton) {
+        suppress_item_click_ = false;
+      }
       ctrl_click_ = (mouse->modifiers() & Qt::ControlModifier) != 0;
       if (mouse->button() == Qt::MiddleButton) {
         QTreeWidgetItem* item = document_tree_->itemAt(mouse->pos());
