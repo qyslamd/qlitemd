@@ -7,6 +7,7 @@
 class QContextMenuEvent;
 class QMouseEvent;
 class QPaintEvent;
+class QResizeEvent;
 
 // Chrome 标签条配色；选中标签用页面色，标签条本身用框架色
 struct TabStripColors {
@@ -41,14 +42,23 @@ class DocumentTabBar : public QTabBar {
 
  protected:
   void paintEvent(QPaintEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
+  void tabInserted(int index) override;
+  void tabRemoved(int index) override;
   void mousePressEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void contextMenuEvent(QContextMenuEvent* event) override;
 
  private:
+  void ShowHideTabButtons();
+
+  // 与 YiGuai 同口径：偏好 240x34，大量标签时等宽压到 36 再出滚动按钮
   static constexpr int kTabHeight = 34;
-  static constexpr int kMinTabWidth = 120;
-  static constexpr int kMaxTabWidth = 220;
+  static constexpr int kMinTabWidth = 36;
+  static constexpr int kMinTabHeight = 32;
+  static constexpr int kMaxTabWidth = 240;
+  // 标签宽度低于该值时藏掉关闭按钮，避免文字与按钮互挤
+  static constexpr int kCloseButtonHideWidth = 40;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_DOCUMENT_TAB_BAR_H_

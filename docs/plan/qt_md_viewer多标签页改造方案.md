@@ -196,17 +196,14 @@ QTabWidget。
 
 要点（按能直接照搬的顺序）：
 
-1. **等宽与拥挤处理**：`QTabBar` 默认 `expanding = true`，标签少时平分
-   剩余宽度；`tabSizeHint()` 给偏好尺寸（YiGuai：240×34，按 DPI 放大），
-   `minimumTabSizeHint()` 给下限（YiGuai：36×32）。实际超出可用宽度后
-   Qt 自动压到下限并出滚动按钮。我们取 YiGuai 的思路，但下限要提高：
-   查看器的标签要能认出文件名，建议偏好 220×34、最小 120×32；再窄就
-   滚动，不做“只剩图标”。
-2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`，可选状态
-   图标（如收藏/音频位）放 `LeftSide`；`showHideTabButton()` 在
-   `resizeEvent` / `tabInserted` / `tabRemoved` 时统一刷新，标签宽度低于
-   阈值就把按钮藏掉，避免文字和关闭按钮互相挤。YiGuai 的阈值是
-   80/40 px，我们按最小标签 120 px 重新定（例如关闭按钮 90 px 以下隐藏）。
+1. **等宽与拥挤处理**：采用 YiGuai 的同一口径——`tabSizeHint()` 240×34，
+   `minimumTabSizeHint()` 36×32，`expanding = true`。标签少时等宽铺满，
+   多了按等宽压缩到 36 再出滚动按钮。实测 11 个标签、窗口 1200px 时
+   每个约 74px，与 YiGuai 行为一致。
+2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`；
+   `ShowHideTabButtons()` 在 `resizeEvent` / `tabInserted` / `tabRemoved`
+   时统一刷新，标签宽度低于 40px 就把关闭按钮藏掉（YiGuai 的 RHideW）。
+   左侧不放状态图标，所以不设 80px 的左按钮阈值。
 3. **自绘外观**：`QProxyStyle` 覆盖 `CE_TabBarTabShape` /
    `CE_TabBarTabLabel`，必要时覆盖 `SE_TabBarTabLeftButton` /
    `SE_TabBarTabText` 的矩形。FluentUI3Style 目前不给 QTabBar 画样式，
@@ -222,11 +219,11 @@ QTabWidget。
    ```
    （YiGuai `MainWindow::onTabBarTabMoved` 的做法，已在其项目验证。）
    注意顺序：先拿 widget 再 remove；`to` 用 `tabMoved` 给出的目标下标。
-5. **标题栏宿主**：标签条放进 FluentTitleBar 的 leading widget，旁边依次
-   是菜单、侧栏开关、`+`；空白区留给 QWK 拖动。YiGuai 的
-   `TabPageToolBar` 继承 `CaptionFrame` 自绘窗口按钮并预留 180 px，
-   我们用 QWK 的内置按钮，不需要这一步，但“右侧预留固定宽度给窗口按钮”
-   的思路要保留。
+5. **标题栏宿主**：标签条放进 FluentTitleBar 的 leading widget，顺序是
+   菜单、标签条、`+`、空白拖动区。`+` 紧跟最后一个标签，不贴到窗口右侧
+   （YiGuai `TabPageToolBar` 的排布）；空白区用 `WindowDragArea` 拖窗、
+   双击最大化。YiGuai 自绘窗口按钮并预留 180px，我们用 QWK 内置按钮，
+   不需要这一步。
 6. **右键菜单**：YiGuai 有新建/重载/静音/关闭当前/关闭右侧/关闭其他/
    重开已关闭/垂直标签/全部收藏。我们一期只做：新建标签、关闭标签、
    关闭其他、关闭右侧；关闭其他/右侧沿用 YiGuai 的

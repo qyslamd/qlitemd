@@ -140,10 +140,29 @@ class DocumentTabBarStyle : public QProxyStyle {
     painter->setPen(tab->palette.color(
         (tab->state & QStyle::State_Selected) != 0 ? QPalette::HighlightedText
                                                    : QPalette::Text));
-    const QRect text_rect = subElementRect(SE_TabBarTabText, tab, widget);
+    QRect text_rect = subElementRect(SE_TabBarTabText, tab, widget);
+    int left = tab->rect.x() + 10;
+    // QStyleOptionTab 不一定带 icon；直接从所属标签条取
+    QIcon icon = tab->icon;
+    if (const auto* bar = qobject_cast<const QTabBar*>(widget)) {
+      const int index = bar->tabAt(tab->rect.center());
+      if (index >= 0) {
+        icon = bar->tabIcon(index);
+      }
+    }
+    const bool show_icon = !icon.isNull() && tab->rect.width() > 80;
+    if (show_icon) {
+      const QPixmap pixmap = icon.pixmap(QSize(16, 16));
+      painter->drawPixmap(left, tab->rect.center().y() - pixmap.height() / 2,
+                          pixmap);
+      left += pixmap.width() + 6;
+    }
+    text_rect.setLeft(qMin(left, text_rect.right()));
     const QString text = painter->fontMetrics().elidedText(
         tab->text, Qt::ElideRight, text_rect.width());
-    painter->drawText(text_rect, Qt::AlignCenter | Qt::TextShowMnemonic, text);
+    painter->drawText(text_rect,
+                      Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic,
+                      text);
     painter->restore();
   }
 
@@ -201,8 +220,8 @@ TabStripColors TabStripColorsFor(bool dark) {
 DocumentTabBar::DocumentTabBar(QWidget* parent) : QTabBar(parent) {
   setObjectName(QStringLiteral("documentTabBar"));
   setDrawBase(false);
-  // Qt5 没有 maximumTabSizeHint；关掉 expanding，标签固定等宽
-  setExpanding(false);
+  // 标签少时等宽铺到偏好宽度；多了压到最小宽度再出滚动按钮
+  setExpanding(true);
   setMovable(true);
   setTabsClosable(true);
   setElideMode(Qt::ElideRight);
@@ -237,15 +256,35 @@ void DocumentTabBar::RemoveCloseButton(int index) {
   setTabButton(index, QTabBar::RightSide, nullptr);
 }
 
-QSize DocumentTabBar::tabSizeHint(int index) const {
-  QSize size = QTabBar::tabSizeHint(index);
-  size.setHeight(kTabHeight);
-  size.setWidth(qBound(kMinTabWidth, size.width(), kMaxTabWidth));
-  return size;
+QSize DocumentTabBar::tabSizeHint(int) const {
+  return QSize(kMaxTabWidth, kTabHeight);
 }
 
 QSize DocumentTabBar::minimumTabSizeHint(int) const {
-  return QSize(kMinTabWidth, kTabHeight);
+  return QSize(kMinTabWidth, kMinTabHeight);
+}
+
+void DocumentTabBar::resizeEvent(QResizeEvent* event) {
+  QTabBar::resizeEvent(event);
+  ShowHideTabButtons();
+}
+
+void DocumentTabBar::tabInserted(int index) {
+  QTabBar::tabInserted(index);
+  ShowHideTabButtons();
+}
+
+void DocumentTabBar::tabRemoved(int index) {
+  QTabBar::tabRemoved(index);
+  ShowHideTabButtons();
+}
+
+void DocumentTabBar::ShowHideTabButtons() {
+  for (int i = 0; i < count(); ++i) {
+    if (QWidget* button = tabButton(i, QTabBar::RightSide)) {
+      button->setVisible(tabRect(i).width() > kCloseButtonHideWidth);
+    }
+  }
 }
 
 void DocumentTabBar::mousePressEvent(QMouseEvent* event) {

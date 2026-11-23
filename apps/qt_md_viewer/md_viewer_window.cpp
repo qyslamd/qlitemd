@@ -66,6 +66,7 @@
 #include <QVBoxLayout>
 #include <QVariantAnimation>
 #include <QWheelEvent>
+#include <QWindow>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -94,6 +95,37 @@
 #include "welcome_view.h"
 
 namespace {
+
+// 标题栏标签后的空白：拖动窗口，双击最大化/还原
+class WindowDragArea final : public QWidget {
+ public:
+  using QWidget::QWidget;
+
+ protected:
+  void mousePressEvent(QMouseEvent* event) override {
+    if (event->button() == Qt::LeftButton && window() != nullptr) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+      if (window()->windowHandle() != nullptr) {
+        window()->windowHandle()->startSystemMove();
+        return;
+      }
+#endif
+    }
+    QWidget::mousePressEvent(event);
+  }
+
+  void mouseDoubleClickEvent(QMouseEvent* event) override {
+    if (event->button() == Qt::LeftButton && window() != nullptr) {
+      if (window()->isMaximized()) {
+        window()->showNormal();
+      } else {
+        window()->showMaximized();
+      }
+      return;
+    }
+    QWidget::mouseDoubleClickEvent(event);
+  }
+};
 
 // 超过这个大小才提示；严格大于
 constexpr qint64 kLargeDocumentBytes = 20 * 1024 * 1024;
@@ -345,6 +377,7 @@ DocumentTab* MdViewerWindow::CreateDocumentTab() {
   tabs_.push_back(std::move(tab));
   DocumentTab* created = tabs_.back().get();
   if (tab_bar_ != nullptr) {
+    // path 在 ShowFile 里才赋值；图标由 UpdateTabTitle 拿到路径后补
     tab_bar_->addTab(created->path.isEmpty()
                          ? QStringLiteral("新标签页")
                          : QFileInfo(created->path).fileName());
@@ -787,6 +820,9 @@ void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
   tab_bar_->setTabToolTip(index,
                           welcome ? QStringLiteral("欢迎页")
                                   : DocumentDisplayTitle(root_dir_, tab->path));
+  if (!welcome) {
+    tab_bar_->setTabIcon(index, ThemeIcon(QStringLiteral("file"), ThemeDark()));
+  }
 }
 
 void MdViewerWindow::UpdateShellForActiveTab() {
@@ -1177,14 +1213,15 @@ void MdViewerWindow::initUi() {
   leading_layout->setSpacing(2);
   leading_layout->addWidget(menu_button_);
   tab_bar_ = new DocumentTabBar(title_leading_widget_);
-  tab_bar_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  leading_layout->addWidget(tab_bar_, 1);
+  tab_bar_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+  leading_layout->addWidget(tab_bar_);
   add_tab_button_ = new QToolButton(title_leading_widget_);
   add_tab_button_->setObjectName(QStringLiteral("addTabButton"));
   add_tab_button_->setAutoRaise(true);
   add_tab_button_->setText(QStringLiteral("+"));
   add_tab_button_->setToolTip(QStringLiteral("新建标签页（Ctrl+T）"));
   leading_layout->addWidget(add_tab_button_);
+  leading_layout->addWidget(new WindowDragArea(title_leading_widget_), 1);
   fluent_frame_->titleBar()->setLeadingWidget(title_leading_widget_);
   // 标题由标签显示，标题栏不再单独占一行文字；把剩余宽度让给标签条
   fluent_frame_->titleBar()->setTitleVisible(false);
@@ -2093,6 +2130,12 @@ void MdViewerWindow::RefreshThemeIcons() {
   }
   if (tab_bar_ != nullptr) {
     tab_bar_->SetThemeDark(dark);
+    for (int i = 1; i < tab_bar_->count() && i < static_cast<int>(tabs_.size());
+         ++i) {
+      if (!tabs_[i]->path.isEmpty()) {
+        tab_bar_->setTabIcon(i, ThemeIcon(QStringLiteral("file"), dark));
+      }
+    }
   }
   if (title_leading_widget_ != nullptr) {
     QPalette strip = title_leading_widget_->palette();
