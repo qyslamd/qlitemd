@@ -517,6 +517,12 @@ void MarkdownView::initUi() {
 
   html_ = new QLiteHtmlWidget(this);
   html_->setObjectName(QStringLiteral("markdownHtml"));
+  // 只换族、保留 QLiteHtmlWidget 默认的 16pt 字号：litehtml 拿默认字号的
+  // 点数当像素基准，整份替换成应用字体的 9pt 会把没有显式字号的元素
+  // （表格等）压小一档
+  QFont document_font = html_->defaultFont();
+  document_font.setFamily(font().family());
+  html_->setDefaultFont(document_font);
   html_->setResourceHandler([this](const QUrl& url) {
     // provider 未接住的 token 不当作资源加载失败，避免误报
     if (url.scheme() == QLatin1String("mj")) {

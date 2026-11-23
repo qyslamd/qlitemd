@@ -5,7 +5,8 @@ html, body { background-color: transparent; }
 
 body {
   margin: 0;
-  font-family: "Segoe UI Variable Text", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-family: "MiSans", "Segoe UI Variable Text", "Microsoft YaHei",
+               "Segoe UI", sans-serif;
   font-size: 15px;
   line-height: 1.78;
   color: #e6edf3;
@@ -22,7 +23,8 @@ h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote {
 }
 
 h1 {
-  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-family: "MiSans", "Segoe UI Variable Display", "Microsoft YaHei",
+               "Segoe UI", sans-serif;
   font-size: 2em;
   line-height: 1.25;
   margin: 0 0 10px;
@@ -31,7 +33,8 @@ h1 {
 }
 
 h2 {
-  font-family: "Segoe UI Variable Display", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-family: "MiSans", "Segoe UI Variable Display", "Microsoft YaHei",
+               "Segoe UI", sans-serif;
   font-size: 1.333em;
   margin: 34px 0 10px;
   padding-top: 6px;
