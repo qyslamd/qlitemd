@@ -1171,6 +1171,7 @@ void MdViewerWindow::initUi() {
   // 标题栏左侧：菜单 + 标签条 + 新建；标签条吃掉剩余宽度
   title_leading_widget_ = new QWidget(fluent_frame_->titleBar());
   title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
+  title_leading_widget_->setAutoFillBackground(true);
   auto* leading_layout = new QHBoxLayout(title_leading_widget_);
   leading_layout->setContentsMargins(0, 0, 0, 0);
   leading_layout->setSpacing(2);
@@ -2089,6 +2090,22 @@ void MdViewerWindow::RefreshThemeIcons() {
   }
   if (document_bar_ != nullptr) {
     document_bar_->SetThemeDark(dark);
+  }
+  if (tab_bar_ != nullptr) {
+    tab_bar_->SetThemeDark(dark);
+  }
+  if (title_leading_widget_ != nullptr) {
+    QPalette strip = title_leading_widget_->palette();
+    strip.setColor(QPalette::Window, TabStripColorsFor(dark).background);
+    title_leading_widget_->setPalette(strip);
+  }
+  // Chrome 的标签条与标题栏同一条框架色；整条标题栏一起铺
+  if (fluent_frame_ != nullptr && fluent_frame_->titleBar() != nullptr) {
+    QWidget* title_bar = fluent_frame_->titleBar();
+    title_bar->setAutoFillBackground(true);
+    QPalette chrome = title_bar->palette();
+    chrome.setColor(QPalette::Window, TabStripColorsFor(dark).background);
+    title_bar->setPalette(chrome);
   }
   UpdateBookmarkUi();
   if (documents_panel_ != nullptr) {

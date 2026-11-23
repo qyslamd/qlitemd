@@ -25,6 +25,16 @@ TEST(DocumentTabBarTest, ClampsTabWidthAndHeight) {
   }
 }
 
+TEST(DocumentTabBarTest, ChromeColorsSeparateSelectedFromFrame) {
+  const TabStripColors light = TabStripColorsFor(false);
+  const TabStripColors dark = TabStripColorsFor(true);
+  // 选中标签必须与标题栏/标签条底色不同
+  EXPECT_NE(light.selected, light.background);
+  EXPECT_NE(dark.selected, dark.background);
+  EXPECT_NE(light.selected_text, light.normal_text);
+  EXPECT_NE(dark.selected_text, dark.normal_text);
+}
+
 TEST(DocumentTabBarTest, WelcomeTabHasNoCloseButton) {
   DocumentTabBar bar;
   bar.addTab(QStringLiteral("欢迎"));

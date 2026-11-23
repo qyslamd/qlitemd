@@ -13,6 +13,12 @@ All notable changes to qlitemd are documented here.
   so the path appears once. Search semantics are unchanged (sidebar filter
   and full-text search remain separate). Document-bar groups hide in order
   as the bar narrows: zoom, search, appearance, copy; the path always stays.
+- Tabs use Chrome's slanted tab shape. The title bar and tab strip share the
+  frame color (#dee1e6 light / #202124 dark), the selected tab uses the page
+  color (#ffffff / #35363a), unselected tabs stay transparent with 1 px
+  separators, and hover uses a translucent overlay. Labels are painted by
+  the tab style so selected/normal text colors follow the same theme. The
+  shape code follows `qt-libui`'s `ChromeTabAppearance`.
 
 - `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
   bar and a `QStackedWidget` whose first page is the permanent welcome page;
