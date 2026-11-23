@@ -21,6 +21,8 @@
 #include <QStyledItemDelegate>
 #include <QVBoxLayout>
 
+#include "theme_icons.h"
+
 namespace {
 
 constexpr int kItemHeight = 54;
@@ -300,8 +302,9 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   auto* icon = new QLabel(panel);
   icon->setObjectName(QStringLiteral("quickOpenIcon"));
   icon->setPixmap(
-      QIcon(QStringLiteral(":/resources/svg/search.svg")).pixmap(16, 16));
+      ThemeIcon(QStringLiteral("search"), theme_dark_).pixmap(16, 16));
   icon->setFixedSize(16, 16);
+  search_icon_ = icon;
   search_row->addWidget(icon);
   query_edit_ = new QLineEdit(panel);
   query_edit_->setObjectName(QStringLiteral("quickOpenQuery"));
@@ -378,6 +381,14 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   layout->addLayout(footer);
 
   outer->addWidget(panel);
+}
+
+void QuickOpenPopup::SetThemeDark(bool dark) {
+  theme_dark_ = dark;
+  if (search_icon_ != nullptr) {
+    search_icon_->setPixmap(
+        ThemeIcon(QStringLiteral("search"), dark).pixmap(16, 16));
+  }
 }
 
 void QuickOpenPopup::Open(const QVector<QuickOpenItem>& items,

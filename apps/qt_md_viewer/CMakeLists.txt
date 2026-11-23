@@ -28,6 +28,7 @@ set(ALL_SRCS
     render_settings_panel.h
     render_status_panel.cpp
     render_status_panel.h
+    theme_icons.h
     welcome_view.cpp
     welcome_view.h
     qt_md_viewer.qrc

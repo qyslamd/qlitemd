@@ -133,6 +133,10 @@ class MdViewerWindow : public QMainWindow {
   // FluentUI 局部 palette 不会随 qApp->setPalette 自动刷新，切主题后
   // 显式把新调色板压给外壳控件和正文页
   void RefreshChromePalette();
+  // 主题图标两套（svg/light、svg/dark）：换肤后整体换一套并同步到
+  // 侧栏/欢迎页/快速跳转
+  void RefreshThemeIcons();
+  bool ThemeDark() const;
   // 阅读区样式 opt-in：原型 CSS 或库默认；同时刷新页面背景
   void ApplyReadingStyle();
   void UpdateReadingSurface();

@@ -1,19 +1,30 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/svg/icon.svg</file>
-        <file>resources/svg/folder.svg</file>
-        <file>resources/svg/file.svg</file>
-        <file>resources/svg/search.svg</file>
-        <file>resources/svg/star-outline.svg</file>
         <file>resources/svg/star-filled.svg</file>
-        <file>resources/svg/menu.svg</file>
         <file>resources/svg/status-dot.svg</file>
-        <file>resources/svg/back.svg</file>
-        <file>resources/svg/forward.svg</file>
-        <file>resources/svg/zoom-in.svg</file>
-        <file>resources/svg/zoom-out.svg</file>
-        <file>resources/svg/zoom-reset.svg</file>
-        <file>resources/svg/appearance.svg</file>
+        <file>resources/svg/light/appearance.svg</file>
+        <file>resources/svg/light/back.svg</file>
+        <file>resources/svg/light/file.svg</file>
+        <file>resources/svg/light/folder.svg</file>
+        <file>resources/svg/light/forward.svg</file>
+        <file>resources/svg/light/menu.svg</file>
+        <file>resources/svg/light/search.svg</file>
+        <file>resources/svg/light/star-outline.svg</file>
+        <file>resources/svg/light/zoom-in.svg</file>
+        <file>resources/svg/light/zoom-out.svg</file>
+        <file>resources/svg/light/zoom-reset.svg</file>
+        <file>resources/svg/dark/appearance.svg</file>
+        <file>resources/svg/dark/back.svg</file>
+        <file>resources/svg/dark/file.svg</file>
+        <file>resources/svg/dark/folder.svg</file>
+        <file>resources/svg/dark/forward.svg</file>
+        <file>resources/svg/dark/menu.svg</file>
+        <file>resources/svg/dark/search.svg</file>
+        <file>resources/svg/dark/star-outline.svg</file>
+        <file>resources/svg/dark/zoom-in.svg</file>
+        <file>resources/svg/dark/zoom-out.svg</file>
+        <file>resources/svg/dark/zoom-reset.svg</file>
         <file>resources/themes/viewer-light.css</file>
         <file>resources/themes/viewer-dark.css</file>
     </qresource>

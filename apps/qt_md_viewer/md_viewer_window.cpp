@@ -82,6 +82,7 @@
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
 #include "text_search.h"
+#include "theme_icons.h"
 #include "welcome_view.h"
 
 namespace {
@@ -196,6 +197,8 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, QWidget* parent)
   resizeDocks({document_dock_, outline_dock_}, {300, 212}, Qt::Horizontal);
   CaptureWelcomeState();
   ShowWelcome();
+  // 侧栏/欢迎页/快速跳转的图标初始为亮色套；暗色启动在这里同步
+  RefreshThemeIcons();
 }
 
 // qApp->quit() 不会走 closeEvent，析构时补一次落盘
@@ -416,10 +419,11 @@ void MdViewerWindow::initUi() {
                                           MarkdownTheme::Light);
 
   // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
+  const bool initial_dark = settings_->dark_theme;
   quick_open_action_ = new QAction(QStringLiteral("快速跳转…"), this);
   quick_open_action_->setObjectName(QStringLiteral("quickOpenAction"));
   quick_open_action_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/search.svg")));
+      ThemeIcon(QStringLiteral("search"), initial_dark));
   quick_open_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+P")));
   quick_open_action_->setToolTip(
       QStringLiteral("跳转到文件、标题或命令（Ctrl+P）"));
@@ -427,14 +431,13 @@ void MdViewerWindow::initUi() {
   // 导航与缩放从工具条搬进标题栏；文件跳转和锚点跳转共用一个历史栈
   back_action_ = new QAction(QStringLiteral("后退"), this);
   back_action_->setObjectName(QStringLiteral("navBackAction"));
-  back_action_->setIcon(QIcon(QStringLiteral(":/resources/svg/back.svg")));
+  back_action_->setIcon(ThemeIcon(QStringLiteral("back"), initial_dark));
   back_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Left")));
   back_action_->setToolTip(QStringLiteral("后退（Ctrl+Alt+←）"));
 
   forward_action_ = new QAction(QStringLiteral("前进"), this);
   forward_action_->setObjectName(QStringLiteral("navForwardAction"));
-  forward_action_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/forward.svg")));
+  forward_action_->setIcon(ThemeIcon(QStringLiteral("forward"), initial_dark));
   forward_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Right")));
   forward_action_->setToolTip(QStringLiteral("前进（Ctrl+Alt+→）"));
 
@@ -442,19 +445,18 @@ void MdViewerWindow::initUi() {
   zoom_out_action_ = new QAction(QStringLiteral("−"), this);
   zoom_out_action_->setObjectName(QStringLiteral("zoomOutAction"));
   zoom_out_action_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/zoom-out.svg")));
+      ThemeIcon(QStringLiteral("zoom-out"), initial_dark));
   zoom_out_action_->setToolTip(QStringLiteral("缩小（Ctrl+-）"));
 
   zoom_reset_action_ = new QAction(QStringLiteral("100%"), this);
   zoom_reset_action_->setObjectName(QStringLiteral("zoomResetAction"));
   zoom_reset_action_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/zoom-reset.svg")));
+      ThemeIcon(QStringLiteral("zoom-reset"), initial_dark));
   zoom_reset_action_->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
 
   zoom_in_action_ = new QAction(QStringLiteral("+"), this);
   zoom_in_action_->setObjectName(QStringLiteral("zoomInAction"));
-  zoom_in_action_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/zoom-in.svg")));
+  zoom_in_action_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), initial_dark));
   zoom_in_action_->setToolTip(QStringLiteral("放大（Ctrl+=）"));
 
   bookmark_action_ = new QAction(QStringLiteral("收藏当前文档"), this);
@@ -536,7 +538,8 @@ void MdViewerWindow::initUi() {
   menu_button_ = new QToolButton(fluent_frame_->titleBar());
   menu_button_->setObjectName(QStringLiteral("mainMenuButton"));
   menu_button_->setAutoRaise(true);
-  const QIcon menu_icon(QStringLiteral(":/resources/svg/menu.svg"));
+  const QIcon menu_icon =
+      ThemeIcon(QStringLiteral("menu"), settings_->dark_theme);
   if (menu_icon.isNull()) {
     menu_button_->setText(QStringLiteral("≡"));
   } else {
@@ -573,7 +576,7 @@ void MdViewerWindow::initUi() {
   star_button_->setCheckable(true);
   star_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   star_button_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/star-outline.svg")));
+      ThemeIcon(QStringLiteral("star-outline"), settings_->dark_theme));
   star_button_->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
   nav_layout->addWidget(star_button_);
 
@@ -592,7 +595,7 @@ void MdViewerWindow::initUi() {
   appearance_button_->setObjectName(QStringLiteral("appearanceButton"));
   appearance_button_->setAutoRaise(true);
   appearance_button_->setIcon(
-      QIcon(QStringLiteral(":/resources/svg/appearance.svg")));
+      ThemeIcon(QStringLiteral("appearance"), settings_->dark_theme));
   appearance_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   appearance_button_->setToolTip(
       QStringLiteral("阅读外观（字号、行距、栏宽）"));
@@ -1453,11 +1456,44 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   RefreshChromePalette();
   UpdateReadingSurface();
   // 星标图标按调色板绘制，换肤后要重画
-  UpdateBookmarkUi();
+  RefreshThemeIcons();
   statusBar()->showMessage(theme == MarkdownTheme::Dark
                                ? QStringLiteral("已切换主题：暗色")
                                : QStringLiteral("已切换主题：浅色"),
                            3000);
+}
+
+void MdViewerWindow::RefreshThemeIcons() {
+  // 主题相关图标分 svg/light 与 svg/dark 两套，换肤时整体换一套；
+  // 星标里实心星是语义图标，UpdateBookmarkUi 内部处理
+  const bool dark = ThemeDark();
+  quick_open_action_->setIcon(ThemeIcon(QStringLiteral("search"), dark));
+  back_action_->setIcon(ThemeIcon(QStringLiteral("back"), dark));
+  forward_action_->setIcon(ThemeIcon(QStringLiteral("forward"), dark));
+  zoom_out_action_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark));
+  zoom_reset_action_->setIcon(ThemeIcon(QStringLiteral("zoom-reset"), dark));
+  zoom_in_action_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark));
+  if (menu_button_ != nullptr) {
+    menu_button_->setIcon(ThemeIcon(QStringLiteral("menu"), dark));
+  }
+  if (appearance_button_ != nullptr) {
+    appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark));
+  }
+  UpdateBookmarkUi();
+  if (documents_panel_ != nullptr) {
+    documents_panel_->SetThemeDark(dark);
+  }
+  if (welcome_ != nullptr) {
+    welcome_->SetThemeDark(dark);
+  }
+  // 弹层默认隐藏，也一并换掉，下次打开即正确
+  if (quick_open_ != nullptr) {
+    quick_open_->SetThemeDark(dark);
+  }
+}
+
+bool MdViewerWindow::ThemeDark() const {
+  return view_ != nullptr && view_->theme() == MarkdownTheme::Dark;
 }
 
 void MdViewerWindow::ToggleTheme() {
@@ -1841,9 +1877,10 @@ void MdViewerWindow::UpdateBookmarkUi() {
   if (star_button_ != nullptr) {
     const QSignalBlocker blocker(star_button_);
     star_button_->setChecked(starred);
+    // 实心星是语义图标（金色）；空心星走主题套
     star_button_->setIcon(
-        QIcon(starred ? QStringLiteral(":/resources/svg/star-filled.svg")
-                      : QStringLiteral(":/resources/svg/star-outline.svg")));
+        starred ? QIcon(QStringLiteral(":/resources/svg/star-filled.svg"))
+                : ThemeIcon(QStringLiteral("star-outline"), ThemeDark()));
     star_button_->setToolTip(starred
                                  ? QStringLiteral("取消收藏（Ctrl+D）")
                                  : QStringLiteral("收藏当前文档（Ctrl+D）"));

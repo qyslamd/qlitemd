@@ -4,6 +4,15 @@ All notable changes to qlitemd are documented here.
 
 ## Unreleased
 
+- Split qt_md_viewer's theme-dependent SVG icons into two sets,
+  `resources/svg/light/` (stroke #57606a) and `resources/svg/dark/`
+  (stroke #c9d1d9); the single mid-grey set read poorly on light chrome.
+  A `ThemeIcon(name, dark)` helper loads the right set, and the window,
+  sidebar, welcome page and quick-open refresh their icons on theme
+  switches. Semantic icons (gold star-filled, green status-dot, app icon)
+  stay single-set at `svg/`. New `test_theme_icons` pins the qrc wiring
+  (a missing entry renders as a silently blank button).
+
 - Add "卸载工作区" (unload workspace) to the File menu and the quick-open
   palette. It saves the current reading position, clears the sidebar tree,
   search results, quick-open set, file watcher, navigation history and the

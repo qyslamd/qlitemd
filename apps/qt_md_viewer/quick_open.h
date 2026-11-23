@@ -50,6 +50,8 @@ class QuickOpenPopup : public QWidget {
 
   void Open(const QVector<QuickOpenItem>& items,
             const QString& query = QString());
+  // 两套主题图标（svg/light、svg/dark）：切主题后由窗口调用
+  void SetThemeDark(bool dark);
   // 当前展示的条目数；测试与空态提示用
   int shown_count() const { return shown_items_.size(); }
 
@@ -72,6 +74,8 @@ class QuickOpenPopup : public QWidget {
   QListWidget* list_ = nullptr;
   QLabel* empty_label_ = nullptr;
   QLabel* count_label_ = nullptr;
+  QLabel* search_icon_ = nullptr;
+  bool theme_dark_ = false;
 };
 
 #endif  // FILE_EXAMPLES_MD_VIEWER_QUICK_OPEN_H_

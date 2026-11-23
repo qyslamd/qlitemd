@@ -34,6 +34,7 @@
 #include <QVariant>
 
 #include "fluentui3styleproperties.h"
+#include "theme_icons.h"
 
 namespace {
 
@@ -70,6 +71,10 @@ void PaintRowBackground(QPainter* painter, const QStyleOptionViewItem& opt,
   painter->drawRoundedRect(opt.rect.adjusted(2, 1, -2, -1), 6, 6);
 }
 
+}  // namespace
+
+// 三个 delegate 不进匿名命名空间：DocumentsPanel 存前两个的指针，
+// 主题切换时调 set_dark。图标在 paint 时按 dark 标志现取
 // 文档树单列自绘：目录计数、文件大小、行内星标都在同一行里
 class DocumentTreeDelegate : public QStyledItemDelegate {
  public:
@@ -77,6 +82,9 @@ class DocumentTreeDelegate : public QStyledItemDelegate {
 
   DocumentTreeDelegate(QWidget* parent, ToggleCallback toggle)
       : QStyledItemDelegate(parent), toggle_(std::move(toggle)) {}
+
+  // 主题切换后由 DocumentsPanel 调；图标在 paint 时按 flag 现取
+  void set_dark(bool dark) { dark_ = dark; }
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
              const QModelIndex& index) const override {
@@ -94,7 +102,7 @@ class DocumentTreeDelegate : public QStyledItemDelegate {
     const QRect icon_rect(opt.rect.left() + 4,
                           opt.rect.top() + (opt.rect.height() - kIconSize) / 2,
                           kIconSize, kIconSize);
-    const QIcon& icon = is_directory ? folder_icon_ : file_icon_;
+    const QIcon icon = ThemeIcon(is_directory ? "folder" : "file", dark_);
     icon.paint(painter, icon_rect, Qt::AlignCenter);
 
     const bool show_star = !is_directory && (bookmarked || hovered || selected);
@@ -119,7 +127,10 @@ class DocumentTreeDelegate : public QStyledItemDelegate {
         opt.rect.height());
 
     if (show_star) {
-      const QIcon& star = bookmarked ? star_filled_ : star_outline_;
+      // star-filled 是语义图标（金色），不随主题换色；outline 走主题套
+      const QIcon star =
+          bookmarked ? QIcon(QStringLiteral(":/resources/svg/star-filled.svg"))
+                     : ThemeIcon(QStringLiteral("star-outline"), dark_);
       star.paint(painter, star_rect, Qt::AlignCenter);
     }
 
@@ -176,16 +187,15 @@ class DocumentTreeDelegate : public QStyledItemDelegate {
 
  private:
   ToggleCallback toggle_;
-  const QIcon folder_icon_{QStringLiteral(":/resources/svg/folder.svg")};
-  const QIcon file_icon_{QStringLiteral(":/resources/svg/file.svg")};
-  const QIcon star_outline_{QStringLiteral(":/resources/svg/star-outline.svg")};
-  const QIcon star_filled_{QStringLiteral(":/resources/svg/star-filled.svg")};
+  bool dark_ = false;
 };
 
 // 书签双行卡片：实心星 + 文件名 + 相对路径
 class BookmarkDelegate : public QStyledItemDelegate {
  public:
   using QStyledItemDelegate::QStyledItemDelegate;
+
+  void set_dark(bool dark) { dark_ = dark; }
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
              const QModelIndex& index) const override {
@@ -202,7 +212,10 @@ class BookmarkDelegate : public QStyledItemDelegate {
     const QRect star_rect(opt.rect.left() + 4,
                           opt.rect.top() + (opt.rect.height() - kIconSize) / 2,
                           kIconSize, kIconSize);
-    const QIcon& star = missing ? star_missing_ : star_filled_;
+    // 实心星是语义图标（金色）；缺失项的空星走主题套
+    const QIcon star =
+        missing ? ThemeIcon(QStringLiteral("star-outline"), dark_)
+                : QIcon(QStringLiteral(":/resources/svg/star-filled.svg"));
     star.paint(painter, star_rect, Qt::AlignCenter);
 
     const QRect text_rect = opt.rect.adjusted(28, 4, -8, -4);
@@ -247,8 +260,7 @@ class BookmarkDelegate : public QStyledItemDelegate {
   }
 
  private:
-  const QIcon star_filled_{QStringLiteral(":/resources/svg/star-filled.svg")};
-  const QIcon star_missing_{QStringLiteral(":/resources/svg/star-outline.svg")};
+  bool dark_ = false;
 };
 
 // 命中项自绘：行号 + 片段，关键词用淡化的高亮底色标出
@@ -349,8 +361,6 @@ void SetEntryRoles(QTreeWidgetItem* item, const DocumentEntry& entry) {
   item->setToolTip(0, entry.absolute_path);
 }
 
-}  // namespace
-
 DocumentsPanel::DocumentsPanel(QWidget* parent) : QWidget(parent) {
   initUi();
   initSignals();
@@ -401,11 +411,12 @@ void DocumentsPanel::initUi() {
   document_tree_->setUniformRowHeights(true);
   document_tree_->setMouseTracking(true);
   document_tree_->viewport()->setMouseTracking(true);
-  document_tree_->setItemDelegate(
+  document_tree_delegate_ =
       new DocumentTreeDelegate(document_tree_, [this](const QString& path) {
         star_click_pending_ = true;
         emit bookmarkToggleRequested(path);
-      }));
+      });
+  document_tree_->setItemDelegate(document_tree_delegate_);
   document_stack_->addWidget(document_tree_);
 
   empty_page_ = new QWidget(document_stack_);
@@ -428,7 +439,7 @@ void DocumentsPanel::initUi() {
   documents_layout->addWidget(document_stack_, 1);
 
   tabs_->addTab(documents_page,
-                QIcon(QStringLiteral(":/resources/svg/folder.svg")),
+                ThemeIcon(QStringLiteral("folder"), theme_dark_),
                 QStringLiteral("文档"));
 
   auto* bookmarks_page = new QWidget(tabs_);
@@ -448,10 +459,11 @@ void DocumentsPanel::initUi() {
   bookmark_tree_->setUniformRowHeights(false);
   bookmark_tree_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
   bookmark_tree_->setContextMenuPolicy(Qt::CustomContextMenu);
-  bookmark_tree_->setItemDelegate(new BookmarkDelegate(bookmark_tree_));
+  bookmark_tree_delegate_ = new BookmarkDelegate(bookmark_tree_);
+  bookmark_tree_->setItemDelegate(bookmark_tree_delegate_);
   bookmarks_layout->addWidget(bookmark_tree_, 1);
   tabs_->addTab(bookmarks_page,
-                QIcon(QStringLiteral(":/resources/svg/star-outline.svg")),
+                ThemeIcon(QStringLiteral("star-outline"), theme_dark_),
                 QStringLiteral("书签"));
 
   auto* search_page = new QWidget(tabs_);
@@ -482,8 +494,7 @@ void DocumentsPanel::initUi() {
   search_empty_->setAlignment(Qt::AlignCenter);
   search_empty_->hide();
   search_layout->addWidget(search_empty_);
-  tabs_->addTab(search_page,
-                QIcon(QStringLiteral(":/resources/svg/search.svg")),
+  tabs_->addTab(search_page, ThemeIcon(QStringLiteral("search"), theme_dark_),
                 QStringLiteral("搜索"));
 
   outer->addWidget(tabs_, 1);
@@ -840,4 +851,23 @@ DocumentsPanel::Tab DocumentsPanel::currentTab() const {
 void DocumentsPanel::ShowEmptyPage(const QString& message) {
   empty_label_->setText(message);
   document_stack_->setCurrentWidget(empty_page_);
+}
+
+void DocumentsPanel::SetThemeDark(bool dark) {
+  if (theme_dark_ == dark) {
+    return;
+  }
+  theme_dark_ = dark;
+  if (document_tree_delegate_ != nullptr) {
+    document_tree_delegate_->set_dark(dark);
+  }
+  if (bookmark_tree_delegate_ != nullptr) {
+    bookmark_tree_delegate_->set_dark(dark);
+  }
+  tabs_->setTabIcon(0, ThemeIcon(QStringLiteral("folder"), dark));
+  tabs_->setTabIcon(1, ThemeIcon(QStringLiteral("star-outline"), dark));
+  tabs_->setTabIcon(2, ThemeIcon(QStringLiteral("search"), dark));
+  // delegate 成员图标是 paint 时现取的，重绘即可
+  document_tree_->viewport()->update();
+  bookmark_tree_->viewport()->update();
 }

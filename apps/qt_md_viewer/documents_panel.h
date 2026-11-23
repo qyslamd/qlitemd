@@ -17,6 +17,8 @@ class QStackedWidget;
 class QTabWidget;
 class QTreeWidget;
 class QTreeWidgetItem;
+class BookmarkDelegate;
+class DocumentTreeDelegate;
 
 constexpr int kPathRole = Qt::UserRole;
 constexpr int kRelativePathRole = Qt::UserRole + 1;
@@ -52,6 +54,9 @@ class DocumentsPanel : public QWidget {
   void SetSearchError(const QString& message);
   void ShowTab(Tab tab);
   Tab currentTab() const;
+  // 暗色/亮色两套 SVG 图标：切主题后由窗口调用，delegate 与页签图标
+  // 一起刷新
+  void SetThemeDark(bool dark);
 
  signals:
   void fileActivated(const QString& absolute_path);
@@ -97,6 +102,9 @@ class DocumentsPanel : public QWidget {
   // delegate 在 mouseRelease 里先切换收藏，随后视图还会发 itemClicked；
   // 这里记一笔，避免同一次点击又把文档打开
   bool star_click_pending_ = false;
+  bool theme_dark_ = false;
+  DocumentTreeDelegate* document_tree_delegate_ = nullptr;
+  BookmarkDelegate* bookmark_tree_delegate_ = nullptr;
   DocumentScanResult last_result_;
 };
 

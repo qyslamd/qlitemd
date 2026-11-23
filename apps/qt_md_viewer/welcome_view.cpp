@@ -17,15 +17,21 @@
 #include <QVBoxLayout>
 
 #include "document_index.h"
+#include "theme_icons.h"
 
 namespace {
 
 constexpr int kRecentItemHeight = 46;
 
+}  // namespace
+
+// 不进匿名命名空间：WelcomeView 存它的指针，主题切换时调 set_dark
 class RecentItemDelegate final : public QStyledItemDelegate {
  public:
   explicit RecentItemDelegate(QObject* parent = nullptr)
       : QStyledItemDelegate(parent) {}
+
+  void set_dark(bool dark) { dark_ = dark; }
 
   QSize sizeHint(const QStyleOptionViewItem& option,
                  const QModelIndex& index) const override {
@@ -49,7 +55,7 @@ class RecentItemDelegate final : public QStyledItemDelegate {
     }
 
     const QPixmap icon =
-        QIcon(QStringLiteral(":/resources/svg/file.svg")).pixmap(16, 16);
+        ThemeIcon(QStringLiteral("file"), dark_).pixmap(16, 16);
     if (!icon.isNull()) {
       painter->drawPixmap(row.left() + 10, row.center().y() - icon.height() / 2,
                           icon);
@@ -82,9 +88,10 @@ class RecentItemDelegate final : public QStyledItemDelegate {
                                     Qt::ElideMiddle, text_width));
     painter->restore();
   }
-};
 
-}  // namespace
+ private:
+  bool dark_ = false;
+};
 
 WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("welcomeView"));
@@ -171,7 +178,8 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   recent_list_->setSelectionMode(QAbstractItemView::SingleSelection);
   recent_list_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
   recent_list_->setUniformItemSizes(true);
-  recent_list_->setItemDelegate(new RecentItemDelegate(recent_list_));
+  recent_delegate_ = new RecentItemDelegate(recent_list_);
+  recent_list_->setItemDelegate(recent_delegate_);
   recent_list_->setMaximumHeight(5 * kRecentItemHeight + 10);
   recent_list_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   recent_list_->setAttribute(Qt::WA_TranslucentBackground);
@@ -238,6 +246,19 @@ void WelcomeView::SetRecentFiles(const QStringList& paths,
     }
   }
   RebuildRecentItems();
+}
+
+void WelcomeView::SetThemeDark(bool dark) {
+  if (theme_dark_ == dark) {
+    return;
+  }
+  theme_dark_ = dark;
+  if (recent_delegate_ != nullptr) {
+    recent_delegate_->set_dark(dark);
+  }
+  if (recent_list_ != nullptr) {
+    recent_list_->viewport()->update();
+  }
 }
 
 void WelcomeView::RebuildRecentItems() {

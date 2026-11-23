@@ -22,6 +22,18 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_theme_icons
+    SOURCES theme_icons_test.cpp
+            ${VIEWER_DIR}/qt_md_viewer.qrc
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+# 图标测试的真实对象是 qrc 路径本身；打开 AUTORCC 才会把两套 svg 编进测试
+set_target_properties(test_theme_icons PROPERTIES AUTORCC ON)
+
+add_unit_test(
     NAME test_document_index
     SOURCES document_index_test.cpp
             ${VIEWER_DIR}/document_index.cpp
