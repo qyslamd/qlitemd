@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.5.0 - 2026-11-23
 
 - Split qt_md_viewer's theme-dependent SVG icons into two sets,
   `resources/svg/light/` (stroke #57606a) and `resources/svg/dark/`
