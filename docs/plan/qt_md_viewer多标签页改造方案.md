@@ -1,0 +1,474 @@
+# qt_md_viewer 多标签页改造方案
+
+日期：2026-11-23。状态：**设计定稿，待实施**。
+历史材料：早期语义稿在 `temp/qt-md-viewer-多标签页方案.md`（已被本文取代），
+界面原型在 `temp/tabbed_doc_demo/`（Qt demo 与 HTML 原型）。
+
+## 1. 目标
+
+把 `apps/qt_md_viewer` 从“一个窗口一篇文档”改成“一个窗口多个标签页”，
+并且做到切换标签时**所有界面状态都跟着走**。
+
+非目标：
+
+- 不做分屏对照。
+- 不做链接中键新开标签。
+- 不改 `qlitemd_mdhtml`（零 Qt 核心）与 C ABI。
+
+## 2. 分层决策：tab 不进 `MarkdownView`
+
+结论：**标签页属于应用层，库层只保证“多实例安全”和“单文档能力完整”。**
+
+判断依据：
+
+| 问题 | 归属 |
+| --- | --- |
+| 渲染一篇文档、滚动、大纲、查找、导出 | 库（`MarkdownView`） |
+| 开哪些文档、激活谁、顺序、关闭规则 | 应用 |
+| 标签条长什么样、放标题栏还是内容区 | 应用 |
+| 会话持久化（开着的标签、激活下标） | 应用 |
+| 主题/缩放/外观等全局设置分发给所有标签 | 应用 |
+
+反对把 tab 下沉的理由：
+
+1. 库有多个宿主（源码包消费者、`examples/qt_widget_minimal`、未来的 QML
+   前端），强制一套标签交互会把界面策略写进库。
+2. 难点都在宿主侧：窗口外壳的 107 处 `view_->` 调用、窗口级
+   `pending_*` 状态、Dock 绑定、设置广播、会话字段。搬进库意味着把
+   Dock/设置/`dock_state` 这些应用概念也搬进去。
+3. 库现在缺的不是“标签功能”，而是“多实例安全”的明确承诺。
+
+如果将来第二个 Qt 宿主确实需要标签，按“可选模块”做：
+`src/markdown_view_tabs/`（独立 target，默认不编），而不是给
+`MarkdownView` 加职责。
+
+## 3. 现状盘点（事实）
+
+| 指标 | 数量 | 说明 |
+| --- | --- | --- |
+| `md_viewer_window.cpp` 中 `view_->` | 107 | 外壳、进度、导出、星标、图片、滚动等 |
+| `pending_*` 引用 | 44 | 待恢复路径/锚点/进度请求，窗口级单槽 |
+| `displayed_file_` 引用 | 8 | 星标、书签、窗口标题 |
+| 写给唯一 view 的全局设置 | 16+ | 主题、样式表、行号、admonition、两个后端、两个开关、持久缓存、页面底色、缩放、阅读外观 |
+
+结论：多标签的主要成本不是“加一个 QTabBar”，而是**把窗口层的单文档
+假设拆成“当前文档”与“全局设置”两类**。
+
+## 4. 目标模型
+
+```text
+MdViewerWindow                （窗口：标题栏、Dock、菜单、状态栏、全局设置）
+├─ TabModel                   （纯数据：标签顺序 / 激活下标 / 序列化）
+├─ QTabBar                    （标题栏里，只负责显示与交互）
+├─ QStackedWidget
+│   ├─ 欢迎页（常驻）
+│   ├─ ReaderPage[0]          （进度线 + 面包屑 + MarkdownView + 回顶按钮）
+│   └─ ...
+└─ 全局设置                   （主题、外观、后端、缓存目录……缩放除外）
+```
+
+### 4.1 DocumentTab（每标签一份）
+
+```cpp
+struct DocumentTab {
+  QString path;                    // 空 = 欢迎标签
+  MarkdownView* view;              // 本标签独占
+  NavigationHistory history;       // 纯数据，一标签一份
+  int scroll_position;             // 切走时 RememberCurrentPosition
+  QVector<MarkdownHeading> outline;// 切回时立即填大纲（避免等信号）
+  QString pending_fragment;        // 待滚动锚点
+  quint64 render_request;          // 本标签正在渲染的请求 id
+  bool pending_restore;            // 待恢复滚动
+  QString pending_restore_path;
+  int zoom_percent;                // 每标签缩放（见 5.1）
+};
+```
+
+要点：
+
+- **`MarkdownView` 一标签一个实例**。渲染线程是进程级共享
+  `CorePipeline`，不会乘以标签数；每个实例持有自己的 DOM、图片、
+  内存缓存。
+- 历史一标签一份（浏览器模型）。这样“在 A 标签按后退”不会把 B
+  标签的文档换出来。
+- `outline` 缓存一份，切回标签时先填旧大纲再等新信号，避免闪空。
+
+### 4.2 ReaderPage（每标签一份的阅读区外壳）
+
+现在的阅读区是：进度线 + 面包屑 + `MarkdownView` + 回顶按钮，四件套
+互斥显示欢迎页。多标签后把前三件 + 回顶打包成 `ReaderPage`，每个标签
+一份，`QStackedWidget` 承载。好处：进度条/面包屑天然跟标签走，不需要
+“切标签时刷新”。
+
+### 4.3 欢迎页常驻
+
+欢迎页是**常驻标签**，固定在标签条第一位：
+
+- 不可关闭、不可拖动、不可重复创建；
+- 应用启动时只有它一个标签；
+- 关闭最后一个文档标签后回到它；
+- “卸载工作区”= 关闭所有文档标签、清会话、停在欢迎标签；
+- 欢迎标签里的最近文档、打开文件/目录入口保持不变。
+
+这样“零标签”状态不存在，避免中心区在“无页面”时的空态分支。
+
+### 4.4 TabModel（纯数据 + 无头测试）
+
+```cpp
+class TabModel {
+ public:
+  int Add(const QString& path);       // 已存在则返回现有下标
+  void Remove(int index);             // 欢迎标签不可删
+  void SetActive(int index);
+  void Move(int from, int to);        // 拖拽重排时与 QTabBar 同步
+  int active() const;
+  int count() const;
+  QString path_at(int index) const;
+  QByteArray Serialize() const;       // open_tabs + active
+  bool Restore(const QByteArray&);
+};
+```
+
+不碰 UI，配 GoogleTest：打开/关闭/激活/去重/序列化往返/关闭激活标签
+后的落点/欢迎标签不可删。
+
+### 4.5 设置界面形态：不做成标签
+
+设置不进标签条。标签条只放文档与常驻欢迎页；把设置塞成标签会让
+`TabModel` 多出“设置标签”一类特例（不可关闭、不进会话、无缩放/大纲/
+面包屑/进度），而且调外观时看不到正文，实时预览的回路断了。
+
+设置按“是否需要连续预览”拆成三种表面：
+
+| 设置 | 表面 | 原因 |
+| --- | --- | --- |
+| 正文字号、行距、栏宽、透明阅读、阅读样式 | 文档条上的 `Aa` 弹层 | 需要边调边看 |
+| 浅色 / 暗色主题 | 标题栏主题按钮 | 一键切换，立即可见 |
+| 渲染后端、持久缓存、诊断、代码行号、Admonition、窗口材质 | 「设置…」对话框（齿轮 / 菜单 / `Ctrl+,`） | 不需要连续预览，能放下分组与说明文字 |
+
+**渲染设置 Dock 退役**：它和侧栏抢宽度、默认隐藏、280 px 宽度放不下
+说明文字。文档条上的齿轮保留，改为打开设置对话框；设置即时生效，
+不设“应用/取消”（否则切回文档才发现没生效）。
+
+### 4.6 工作区与窗口：单工作区 + 多窗口
+
+“工作区”指 `root_dir` 这一套**导航上下文**：文档树、全树搜索、快速跳转
+的文件集、相对路径与面包屑、目录监视。标签是“正在读的文档”，两者不是
+一回事。
+
+决定：**保持单工作区，不做“一个窗口多个根目录”；多工作区用多窗口实现。**
+
+不做多根工作区的理由：
+
+| 成本项 | 说明 |
+| --- | --- |
+| 树的根管理 | 多根节点、添加/移除入口、排序与持久化 |
+| 搜索 | 跨根并行扫描、合并结果、每根进度与取消、去重 |
+| 快速跳转 | 同一文件可能属于两个根，列表要标根并去重 |
+| 会话 | roots 列表 + 每根状态；卸载工作区语义变模糊 |
+| 面包屑 | 根内相对、根外绝对的规则要重写 |
+
+收益（同窗口跨仓浏览）用多窗口已经能满足，属于低频场景。
+
+配套三件事：
+
+1. **标签与工作区解耦**：只有“打开目录”才改根。打开根外的文件直接在
+   标签里打开，不重建根、不清树、不重扫。面包屑：根内显示相对路径，
+   根外显示绝对路径。树里不展示根外文件，但标签、收藏、搜索跳转照常。
+2. **多窗口的会话归属**：会话（根、打开的标签、激活项、上次文档）只由
+   **主窗口**读写；应用启动的第一个窗口是主窗口，之后新开的窗口默认停在
+   欢迎页，关闭时不回写会话。窗口几何/停靠位置只保存主窗口（一期）。
+3. **最近工作区**：文件菜单加“最近打开的工作区”，切换根不用每次走
+   目录对话框。
+
+多根工作区列为本阶段不做。触发条件：用户明确需要同屏跨仓检索。届时
+增量路径是清楚的——标签本来就只存路径，不存“属于哪个根”；扫描层按根
+并列出多份；搜索做 fan-out；树改多根节点。
+
+### 4.7 标签条实现：自绘 QTabBar（借鉴 YiGuai）
+
+参考实现：用户自有项目 `YiGuai` 的 `TabPageToolBar` / `TabBar` /
+`TabbarStyle`（不在本仓，不引入依赖，只借鉴结构）。它已经有“自绘标签
+外观 + 等宽 + 标签很多时的收缩与滚动 + 拖拽重排”的完整实践。
+
+采用的形态：**`QTabBar` 子类 + 独立 `QProxyStyle`**，不是自定义
+QTabWidget。
+
+要点（按能直接照搬的顺序）：
+
+1. **等宽与拥挤处理**：`QTabBar` 默认 `expanding = true`，标签少时平分
+   剩余宽度；`tabSizeHint()` 给偏好尺寸（YiGuai：240×34，按 DPI 放大），
+   `minimumTabSizeHint()` 给下限（YiGuai：36×32）。实际超出可用宽度后
+   Qt 自动压到下限并出滚动按钮。我们取 YiGuai 的思路，但下限要提高：
+   查看器的标签要能认出文件名，建议偏好 220×34、最小 120×32；再窄就
+   滚动，不做“只剩图标”。
+2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`，可选状态
+   图标（如收藏/音频位）放 `LeftSide`；`showHideTabButton()` 在
+   `resizeEvent` / `tabInserted` / `tabRemoved` 时统一刷新，标签宽度低于
+   阈值就把按钮藏掉，避免文字和关闭按钮互相挤。YiGuai 的阈值是
+   80/40 px，我们按最小标签 120 px 重新定（例如关闭按钮 90 px 以下隐藏）。
+3. **自绘外观**：`QProxyStyle` 覆盖 `CE_TabBarTabShape` /
+   `CE_TabBarTabLabel`，必要时覆盖 `SE_TabBarTabLeftButton` /
+   `SE_TabBarTabText` 的矩形。FluentUI3Style 目前不给 QTabBar 画样式，
+   自绘一层比给上游打补丁更可控（也可以先验证 FluentUI3Style 有没有
+   `CE_TabBarTab` 处理再决定）。
+4. **拖拽重排的数据同步**：`QTabBar::tabMoved(from, to)` 是唯一信号源。
+   先 `TabModel::Move(from, to)`，再同步 `QStackedWidget`：
+   ```cpp
+   const QSignalBlocker blocker(stack);
+   QWidget* w = stack->widget(from);
+   stack->removeWidget(w);
+   stack->insertWidget(to, w);
+   ```
+   （YiGuai `MainWindow::onTabBarTabMoved` 的做法，已在其项目验证。）
+   注意顺序：先拿 widget 再 remove；`to` 用 `tabMoved` 给出的目标下标。
+5. **标题栏宿主**：标签条放进 FluentTitleBar 的 leading widget，旁边依次
+   是菜单、侧栏开关、`+`；空白区留给 QWK 拖动。YiGuai 的
+   `TabPageToolBar` 继承 `CaptionFrame` 自绘窗口按钮并预留 180 px，
+   我们用 QWK 的内置按钮，不需要这一步，但“右侧预留固定宽度给窗口按钮”
+   的思路要保留。
+6. **右键菜单**：YiGuai 有新建/重载/静音/关闭当前/关闭右侧/关闭其他/
+   重开已关闭/垂直标签/全部收藏。我们一期只做：新建标签、关闭标签、
+   关闭其他、关闭右侧；关闭其他/右侧沿用 YiGuai 的
+   “先把目标移到 0，再逐个关右侧”的实现思路。
+7. **DPI**：`tabSizeHint` 按 `logicalDpiX()` 分档（96/120/144/168）。
+   Qt6 的 `QScreen::logicalDotsPerInch` 语义略有差异，移植时用
+   `devicePixelRatioF()` 统一算，别照抄 switch。
+
+## 5. 状态归属表
+
+| 状态 | 归属 | 切标签时 |
+| --- | --- | --- |
+| 路径、当前文件、星标 | 当前 `DocumentTab` | 刷新窗口标题/状态栏/星标/面包屑 |
+| 滚动位置、锚点 | `DocumentTab` | 切走时保存，切回时恢复 |
+| 前进/后退栈 | `DocumentTab` | 切标签即切换按钮可用状态 |
+| 大纲 | `DocumentTab` + 共享的 Outline dock | 切标签时换信号源并重填 |
+| 渲染进度、请求 id | `DocumentTab` | 只显示当前标签的进度 |
+| 缩放 | `DocumentTab` | 切回时恢复本标签的缩放与标签文字 |
+| 主题、行号、admonition、后端、渲染开关、阅读外观、持久缓存目录 | 窗口（全局设置） | 新建标签时继承；修改时广播给所有标签 |
+
+### 5.1 缩放：每标签一份
+
+决定：**缩放属于标签，不是全局。**
+
+原因是成本：全局缩放要改一次所有标签的 `MarkdownView`，每个视图都会
+按新字号重排、重绘，标签越多开销越大；而用户改缩放时在意的通常只是
+眼前这篇。每标签缩放只在当前标签重渲染。
+
+规则：
+
+- `DocumentTab::zoom_percent` 保存本标签的缩放；
+- 新建标签继承**当前激活标签**的缩放（用户刚调过字号，新开的文档
+  不应跳回 100%）；
+- 切换标签时，文档条的缩放文字以新标签的值为准；
+- 关闭标签不影响其它标签；
+- 菜单/快捷键的放大、缩小、重置只作用于当前标签。
+
+## 6. 多实例安全（库侧核查清单）
+
+已核查：
+
+- `CorePipeline` 是进程级单例，worker 数量不随标签增长。✔
+- 每个 `MarkdownView` 自带 `MarkdownRenderContext`（内存缓存、统计）。✔
+- QuickJS 引擎状态是 `thread_local`，按 worker 线程隔离。✔
+- 静态量只读（主题 CSS、qjsc 载荷哈希）。✔
+- 持久化缓存目录来自 per-view 的 `RenderCacheConfig`；**应用层必须
+  把同一个目录写给每个新建的 view**（现在 `render_settings_panel`
+  只写当前 `view_`）。⚠
+- 主题样式表、阅读外观 CSS 是 per-view 注入；新建标签时要重放。⚠
+
+需要补的库侧文档（不是代码）：在 `docs/qt-widget.md` 写明
+“一个进程可创建多个 `MarkdownView`；每个实例独立；持久缓存目录由宿主
+统一设置”。
+
+## 7. 实施阶段（每阶段可构建、可手测）
+
+### P0：抽象出“当前文档”
+
+- 新增 `DocumentTab` / `ReaderPage` / `TabModel` 骨架；
+- 窗口内所有 `view_` → `CurrentTab()->view`，`displayed_file_` →
+  `CurrentTab()->path`；
+- 先只允许一个标签（欢迎标签），行为与今天完全一致；
+- 测试：现有 41 项全绿，手测清单不改。
+
+### P1：多视图容器
+
+- 中心区 `QStackedWidget` + 常驻欢迎页；
+- 打开文件时创建新 `ReaderPage`；切标签时刷新外壳；
+- 设置广播函数 `ApplyGlobalSettings(DocumentTab*)`，新建标签调用一次；
+- 历史/滚动/大纲/缩放按标签隔离；
+- 测试：两个标签来回切，检查标题、路径、星标、大纲、进度、缩放。
+
+### P2：标题栏标签条
+
+- 标题栏 host 里放 `QTabBar` + `+` + 菜单；
+- 欢迎标签固定第一位、无关闭按钮；
+- 自绘 `QTabBar` 子类 + `QProxyStyle`（§4.7）：等宽、最小宽度后滚动、
+  每标签按钮按宽度显隐；
+- 关闭、中键关闭、右键菜单、**拖拽重排（一期做）**；
+- 标签标题 = 文件名，tooltip = 相对路径；
+- 与 QWK 的拖动/hit-test 按 `temp/tabbed_doc_demo` 的原型处理。
+
+### P3：打开约定与会话
+
+- 普通点击替换当前标签；Ctrl+点击/中键在新标签打开；
+- `+` / `Ctrl+T` / 菜单项 → 文件对话框，新标签打开；**已打开的文件
+  直接切到原标签**，不产生重复标签；
+- 打开根外文件不重根：直接在标签打开，面包屑按“根内相对 / 根外绝对”显示；
+- 会话存 `open_tabs` + `active`；启动恢复，缺失文件跳过；
+- 会话只由主窗口读写：首个窗口恢复会话，后续新窗口停在欢迎页、不回写；
+- 关闭最后一个文档标签 → 停在欢迎标签；
+- 卸载工作区 = 关闭所有文档标签 + 清会话 + 留在欢迎标签；
+- 文件菜单加“最近打开的工作区”。
+
+### P4：收尾
+
+- 设置广播覆盖全量（主题、样式表、行距、栏宽、持久缓存目录、后端切换）；
+- 渲染设置 Dock 改为「设置…」对话框：分组 + 说明文字，齿轮 / 菜单 /
+  `Ctrl+,` 打开，配置项即时生效；
+- 文件监视去重：同一文件不重复开标签（P3 的去重已覆盖）；
+- 新控件补齐 objectName 与测试钩子（§11.5）；
+- README/CHANGELOG/docs；`TabModel` 无头测试进 CI。
+
+## 8. 已定决策
+
+| 议题 | 决定 |
+| --- | --- |
+| 缩放 | 每标签一份，新标签继承当前标签；改缩放只重渲染当前标签 |
+| 欢迎页 | 常驻标签，固定第一位，不可关闭 |
+| 同一文件重复打开 | 切到已有标签，不重复创建 |
+| tab 是否下沉到库 | 不下沉；库只保证多实例安全 |
+| 全局设置是否做成标签 | 不做；`Aa` 弹层 + 标题栏主题按钮 + 设置对话框三处 |
+| 渲染设置 Dock | 退役，改为「设置…」对话框（齿轮 / 菜单 / `Ctrl+,`） |
+| 工作区 | 单工作区；多工作区用多窗口实现，不做一个窗口多个根 |
+| 打开根外文件 | 不重根，直接在标签打开；只有“打开目录”才改根 |
+| 多窗口会话 | 只由主窗口读写；新窗口默认欢迎页、不回写会话 |
+| 标签拖拽重排 | 一期做；自绘 `QTabBar` + `QProxyStyle`，参考 YiGuai（§4.7） |
+| GUI 测试手段 | 开发期用 agent-desktop 目视验证；回归继续用 gtest；funq 一期不引入（§11） |
+
+## 9. 仍待拍板
+
+无。标签拖拽重排已定为一期做，实现参考 §4.7。
+
+## 10. 风险
+
+| 风险 | 表现 | 缓解 |
+| --- | --- | --- |
+| 外壳状态串标签 | A 的进度/标题作用到 B | 所有外壳刷新集中在 `ActivateTab()` 一个函数里 |
+| 异步渲染串标签 | 旧标签的渲染结果画到新标签 | 按标签记录 request id，回调先校验 |
+| 设置只生效在新标签 | 切回旧标签发现主题/外观不一致 | 广播函数 + 新建时继承，二选一都不漏 |
+| 持久缓存目录不一致 | 不同标签的公式/Mermaid 命中率不同 | 统一在广播函数里设置 |
+| 缩放状态丢失 | 切回标签字号回到 100% | `DocumentTab::zoom_percent` + 激活时重放 |
+| 多窗口互写会话 | 两个窗口互相覆盖根/标签/上次文档 | 会话只由主窗口读写；次窗口不回写 |
+| 根外文件误导面包屑 | 根外文件显示成根内相对路径 | 面包屑按路径前缀判定，根外显示绝对路径 |
+| 拖标签变成拖窗口 | 按在标签上拖动却移动了窗口 | 标签区交给 QTabBar 处理；只有 blank 区留给 QWK 拖动 |
+| 重排后页面错位 | 标签顺序变了、内容没变 | `tabMoved` → `TabModel::Move` → `QStackedWidget` remove/insert，一次做完 |
+| 标签太窄认不出 | 等宽收缩到只剩关闭按钮 | 最小宽度 120 px，低于阈值让位给滚动按钮 |
+
+## 11. GUI 测试手段：agent-desktop 与 funq 实测结论
+
+日期 2026-11-23。被测对象是当前 `main` 编出来的
+`build/qt5_15_2-x86/bin/qt_md_viewer.exe`（Qt 5.15.2 x86，
+RelWithDebInfo）。目标不是“选一个测试框架”，而是回答两个问题：
+
+1. 多标签改造期间，怎么在不写死断言的情况下“看见”界面；
+2. 要不要为标签页补一套无人值守的 GUI 回归。
+
+### 11.1 agent-desktop
+
+按无障碍树（Windows UIA）操作真实窗口，本机已安装，与被测程序零耦合。
+
+实测有效：
+
+- 能读到完整控件树（一次快照 166 个节点），role 覆盖 window / group /
+  button / checkbox / tab / treeitem / textfield / combobox / outline /
+  status。
+- **automation id 就是点分 objectName 路径**，例如
+  `mdViewerWindow.fluent-chrome-header.fluent-title-bar.titleSearchEdit`；
+  `find --native-id` 可直接按它定位，稳定且唯一。
+- 点击（按钮、页签）、勾选（收藏星标）、`set-value`（侧栏筛选框）、
+  `press`（`Ctrl+K` 聚焦标题栏搜索）、窗口截图均已验证；`set-value`
+  之后文件树真的按关键词过滤，说明走的是应用真实回调，不是只改显示。
+- 截图按窗口抓，窗口被终端的窗口压住也拍得到。
+
+实测限制（按严重程度）：
+
+1. **模态菜单会阻塞 UIA**。点标题栏“菜单”按钮后，`Invoke` 返回
+   `UIA_E_TIMEOUT`，之后所有 `find` / `snapshot` 调用排队超时，直到
+   用物理 `press escape` 关闭菜单才恢复。原因是 `QMenu::exec` 的嵌套
+   模态循环让那次 Invoke 不返回。截图不受影响（走 DWM，不经过应用）。
+2. **`type` 在无头模式下被拒**：`POLICY_DENIED`（没有语义写入路径，且
+   禁止焦点回退）。QLineEdit 用 `set-value` 可以写入；逐字模拟输入不行。
+3. **重名元素无法点**：文件树里 4 个 `CHANGELOG.md`，ref 被判
+   `AMBIGUOUS_TARGET / identity_not_unique`。QTreeWidget 的 item 没有
+   automation id；带 objectName 的控件可以用 `--native-id` 绕开。
+4. **拖拽 / 双击 / hover 需要 `--headed`**（物理输入，抢焦点和光标），
+   不适合无人值守。
+5. 每条命令起一个进程，约 1 秒级开销；ref 只在一次快照内有效。
+6. 拿不到渲染正文：`QLiteHtmlWidget` 在无障碍树里只有空 group，像素
+   能看、文本读不到。
+
+### 11.2 funq
+
+注入式，TCP 传 JSON 命令。用 `qt-cmake-base-env` 里现成的 32 位
+embed Python 与暂存好的 `libFunq-x86-relwithdebinfo.dll`，直接注入本仓
+x86 产物，**未改一行代码、一次成功**。
+
+实测有效：
+
+- 读到 534 个控件，路径即 objectName，例如
+  `mdViewerWindow::documentDock::DocumentsPanel::sidebarTabs`。
+- `object_properties` 读属性；`object_set_properties` 把侧栏
+  `currentIndex` 从 0 设为 1，页签真的切换（读回 1）。
+- `tabbar_list` 读页签文字；`shortcut("Ctrl+K")` 后读
+  `titleSearchEdit.focus == true`。
+- `grab` 按 oid 抓窗口 PNG，窗口被遮挡也能拍。
+- **菜单打开时仍可服务命令**：点开 QMenu 后 `widgets_list` 照常返回。
+
+实测限制：
+
+- `widget_click` 只点控件中心，选不了“第 N 个页签”（切换用
+  `currentIndex` 属性即可）。
+- `drag_n_drop` 的移动事件按 `widgetAt(全局坐标)` 找目标，窗口被遮住时
+  不可靠。
+- 注入要求位数一致：x86 靶子必须用 32 位 Python 执行注入。
+- `shortcut("Escape")` 未能关闭 QMenu（可用 `visible=false` 兜底）。
+- CI 桌面环境未验证；`3rdparty` 引入与补丁维护成本未计入。
+
+### 11.3 对照
+
+| 测试需求 | agent-desktop | funq |
+| --- | --- | --- |
+| 点页签切换 | 可以（role=tab，按名字） | 可以（`currentIndex`） |
+| 关闭页签的 × | 自绘 × 看不到；真实子控件可以 | 同左 |
+| 拖拽重排 | 只能 `--headed` 物理拖 | `drag_n_drop` 直接投事件 |
+| 断言每标签状态（缩放等） | 只能读 name/value | 读任意 `Q_PROPERTY` |
+| 菜单内操作 | 会阻塞，基本不可用 | 正常 |
+| 单控件像素截图 | 不支持（窗口 / 整屏） | 支持（按 oid） |
+| 交互式“看一眼” | 很顺手 | 需要写脚本 |
+
+### 11.4 结论
+
+- **开发期目视验证用 agent-desktop**，不引入仓库依赖；定位一律用
+  `find --native-id <点分 objectName>`，菜单相关路径改用快捷键绕开。
+- **逻辑回归继续走 gtest / offscreen**。多标签的核心（TabModel、关闭
+  策略、历史与缩放的归属）都是纯数据，单测覆盖比 GUI 驱动更划算。
+- **funq 一期不引入**。它确实是更合适的自动回归引擎（属性断言、按
+  oid 抓图、模态菜单下仍可用），但要把 `3rdparty/funq-master` 与 8 个
+  补丁、CMake 选项、位数匹配的 Python 一起搬进来，且 CI 桌面环境未
+  验证。触发条件：需要无人值守的标签页回归时，再按
+  `qt-cmake-base-env/docs/guide/funq注入式UI测试.md` 的配方接入。
+
+### 11.5 对实施的反向要求（可测性）
+
+1. 所有新控件设 `objectName`：标签条、每个标签的关闭按钮、`+`、新建
+   标签选择器、设置对话框内的控件。两个工具都把它当锚点。
+2. 每标签状态尽量落成 `Q_PROPERTY`（至少 `zoom_percent`、`tab_count`、
+   激活下标），便于属性断言。
+3. 给标签条加一个单参 `Q_INVOKABLE` 测试钩子（如
+   `QVariant MoveTabForTest(const QVariant&)`）：funq 的 `call_slot`
+   只能传一个 QVariant，`QTabBar::moveTab(int, int)` 调不到。
+4. 默认不引入“只有测试才走”的分支；钩子只做转发，不改变生产路径。
+
+产物：`temp/agent_desktop_probe/`（快照 JSON 与截图）、
+`temp/funq_probe/`（探针脚本与抓图），均不入库。

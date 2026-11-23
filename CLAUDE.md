@@ -178,6 +178,31 @@ clang-format --dry-run --Werror <file>
 提交前，改动的 C++ 文件必须先过 `.clang-format`。头文件顺序敏感处要用
 `// clang-format off` 包住。`clang-tidy` 默认不跑，除非用户明确要求。
 
+## 调试与 GUI 验证
+
+验证顺序：先无头测试，后看界面。
+
+1. 逻辑与渲染回归：`ctest -L MARKDOWN`（无头，CI 只跑这一层）。
+2. 需要“看见”界面时，用本机的 GUI 工具，二者都不接入 CI：
+   - **agent-desktop**（UIA，零耦合）：启动前把 Qt 的 bin 与 plugins 加进
+     `PATH` / `QT_PLUGIN_PATH`；定位优先用
+     `find --native-id <点分 objectName>`。坑：模态 `QMenu` 打开时 UIA
+     调用会阻塞，菜单路径改用快捷键；`QTreeWidget` 的 item 没有
+     automation id，重名时点不了；拖拽/双击必须 `--headed`（物理输入）。
+   - **funq**（注入式，本机参考实现 `D:\trae_workspace\qt-cmake-base-env`）：
+     注入库必须与靶子同架构、同构建配置，x86 靶子要用 32 位 Python 执行
+     注入；配方见该仓 `docs/guide/funq注入式UI测试.md`。本仓暂不 vendor、
+     不接入 CI，接入条件见
+     `docs/plan/qt_md_viewer多标签页改造方案.md` §11.4。
+3. 看界面优先“按控件抓图”（funq 的 `grab` + oid；agent-desktop 的窗口
+   截图），整屏截图只用来确认弹层与菜单。
+
+给 GUI 工具留的约束（写新控件时遵守）：
+
+- 新控件必须设 `objectName`，它是两个工具共同的锚点。
+- 需要被断言的每标签状态用真 `Q_PROPERTY`，不要用动态属性（funq 读不到）。
+- 测试钩子只做转发，不改变生产路径；不写“只在测试里走”的分支。
+
 ## 代码结构
 
 - `src/mdhtml/`：零 Qt 核心，目标名 `qlitemd_mdhtml`；C ABI 共享库
@@ -321,3 +346,19 @@ clang-format --dry-run --Werror <file>
 - 修改公开 API、安装规则或第三方依赖时，更新 README、NOTICE 和
   `docs/` 中对应说明。
 - 发布使用 `RelWithDebInfo`，保留 PDB。
+
+
+## 常用工具
+
+### CodeGraph：查代码
+
+仓库根有 `.codegraph/` 索引。定位代码、理解调用关系时先用它，不要上手 grep：
+
+- MCP 工具 `codegraph_explore`：一次调用拿到相关符号的原文和调用链，包括 grep
+  追不到的回调跳转。命令行等价物是 `codegraph explore "<符号名或问题>"`。
+- 它返回的源码等同于已经读过，不要再用 grep 复核。
+- 配置、文档这类它不索引的东西，直接 Read。
+
+### agent-desktop
+
+用法与约束见「调试与 GUI 验证」；画布类控件在无障碍树里是黑盒，只能截图。
