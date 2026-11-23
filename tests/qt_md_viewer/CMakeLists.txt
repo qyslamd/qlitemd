@@ -148,6 +148,17 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_document_tab_bar
+    SOURCES document_tab_bar_test.cpp
+            ${VIEWER_DIR}/document_tab_bar.cpp
+            ${VIEWER_DIR}/document_tab_bar.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_reader_page
     SOURCES reader_page_test.cpp
             ${VIEWER_DIR}/reader_page.cpp

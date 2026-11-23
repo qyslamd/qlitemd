@@ -39,6 +39,7 @@ class QTimer;
 class QToolButton;
 class QVariantAnimation;
 class DocumentsPanel;
+class DocumentTabBar;
 class ReaderPage;
 class WelcomeView;
 class FluentWindowFrame;
@@ -75,6 +76,8 @@ class MdViewerWindow : public QMainWindow {
   Q_INVOKABLE QVariant OpenPathForTest(const QVariant& path);
   Q_INVOKABLE QVariant ActivateTabForTest(const QVariant& index);
   Q_INVOKABLE QVariant TabStateForTest(const QVariant& unused) const;
+  // 参数为 [from, to]，走标签条真实的 moveTab → tabMoved 链路
+  Q_INVOKABLE QVariant MoveTabForTest(const QVariant& args);
 
  protected:
   void closeEvent(QCloseEvent* event) override;
@@ -184,6 +187,11 @@ class MdViewerWindow : public QMainWindow {
   DocumentTab* CreateDocumentTab();
   void ClearDocumentTabs();
   void ActivateTab(int index);
+  // 激活下标已改好后刷新页面与外壳；关闭标签后也走这里
+  void ShowActiveTab();
+  void CloseTab(int index);
+  void OnTabMoved(int from, int to);
+  void UpdateTabTitle(DocumentTab* tab);
   void ApplyGlobalSettings(DocumentTab* tab);
   void CaptureGlobalSettings(DocumentTab* tab);
   void ConnectTabSignals(DocumentTab* tab);
@@ -192,6 +200,8 @@ class MdViewerWindow : public QMainWindow {
   // 菜单里挂着；菜单栏在 fluent 壳下会被搬进标题栏
   QAction* open_file_action_ = nullptr;
   QAction* open_dir_action_ = nullptr;
+  QAction* new_tab_action_ = nullptr;
+  QAction* close_tab_action_ = nullptr;
   QAction* unload_workspace_action_ = nullptr;
   QAction* quit_action_ = nullptr;
   QAction* about_action_ = nullptr;
@@ -270,6 +280,9 @@ class MdViewerWindow : public QMainWindow {
   // 窄宽度自动收起大纲；用户手动关掉的不算，恢复宽度时也不自动弹开
   bool outline_auto_hidden_ = false;
   QWidget* nav_widget_ = nullptr;
+  QWidget* title_leading_widget_ = nullptr;
+  DocumentTabBar* tab_bar_ = nullptr;
+  QToolButton* add_tab_button_ = nullptr;
   QToolButton* menu_button_ = nullptr;
   QToolButton* appearance_button_ = nullptr;
   QToolButton* zoom_out_button_ = nullptr;

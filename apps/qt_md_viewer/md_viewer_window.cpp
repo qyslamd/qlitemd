@@ -75,6 +75,7 @@
 // clang-format on
 
 #include "document_index.h"
+#include "document_tab_bar.h"
 #include "documents_panel.h"
 #include "image_lightbox.h"
 #include "markdown_outline_widget.h"
@@ -231,6 +232,15 @@ QVariant MdViewerWindow::TabStateForTest(const QVariant& unused) const {
   return state;
 }
 
+QVariant MdViewerWindow::MoveTabForTest(const QVariant& args) {
+  const QVariantList list = args.toList();
+  if (tab_bar_ == nullptr || list.size() != 2) {
+    return false;
+  }
+  tab_bar_->moveTab(list.at(0).toInt(), list.at(1).toInt());
+  return true;
+}
+
 DocumentTab* MdViewerWindow::CurrentTab() const {
   if (active_tab_ < 0 || active_tab_ >= static_cast<int>(tabs_.size())) {
     return nullptr;
@@ -284,10 +294,27 @@ DocumentTab* MdViewerWindow::CreateDocumentTab() {
   ApplyGlobalSettings(tab.get());
   ConnectTabSignals(tab.get());
   tabs_.push_back(std::move(tab));
-  return tabs_.back().get();
+  DocumentTab* created = tabs_.back().get();
+  if (tab_bar_ != nullptr) {
+    tab_bar_->addTab(created->path.isEmpty()
+                         ? QStringLiteral("新标签页")
+                         : QFileInfo(created->path).fileName());
+    tab_bar_->setTabToolTip(
+        tab_bar_->count() - 1,
+        created->path.isEmpty()
+            ? QStringLiteral("新标签页")
+            : DocumentDisplayTitle(root_dir_, created->path));
+  }
+  return created;
 }
 
 void MdViewerWindow::ClearDocumentTabs() {
+  if (tab_bar_ != nullptr) {
+    const QSignalBlocker blocker(tab_bar_);
+    while (tab_bar_->count() > 1) {
+      tab_bar_->removeTab(tab_bar_->count() - 1);
+    }
+  }
   for (int i = static_cast<int>(tabs_.size()) - 1; i >= 1; --i) {
     ReaderPage* page = tabs_[i]->page;
     if (page != nullptr) {
@@ -541,10 +568,17 @@ void MdViewerWindow::ActivateTab(int index) {
     previous->zoom_percent = qRound(previous->view->zoom() * 100.0);
   }
   active_tab_ = index;
+  ShowActiveTab();
+}
+
+void MdViewerWindow::ShowActiveTab() {
   if (scroll_animation_ != nullptr) {
     scroll_animation_->stop();
   }
   DocumentTab* tab = CurrentTab();
+  if (tab == nullptr) {
+    return;
+  }
   QWidget* page =
       tab->page != nullptr ? static_cast<QWidget*>(tab->page) : welcome_;
   pages_->setCurrentWidget(page);
@@ -560,11 +594,102 @@ void MdViewerWindow::ActivateTab(int index) {
                                                  : tab->outline);
     UpdateZoomLabel(tab->zoom_percent / 100.0);
   }
+  if (tab_bar_ != nullptr) {
+    const QSignalBlocker blocker(tab_bar_);
+    if (active_tab_ < tab_bar_->count()) {
+      tab_bar_->setCurrentIndex(active_tab_);
+    }
+    UpdateTabTitle(tab);
+  }
   UpdateShellForActiveTab();
+}
+
+void MdViewerWindow::CloseTab(int index) {
+  if (index <= 0 || index >= static_cast<int>(tabs_.size())) {
+    return;
+  }
+  const bool was_active = index == active_tab_;
+  DocumentTab* tab = tabs_[index].get();
+  if (tab->page != nullptr) {
+    pages_->removeWidget(tab->page);
+    tab->page->deleteLater();
+  }
+  tabs_.erase(tabs_.begin() + index);
+  if (tab_bar_ != nullptr) {
+    const QSignalBlocker blocker(tab_bar_);
+    if (index < tab_bar_->count()) {
+      tab_bar_->removeTab(index);
+    }
+  }
+  if (index < active_tab_) {
+    --active_tab_;
+  } else if (was_active) {
+    // 关掉当前标签：落到右邻居，没有就落回左邻居
+    active_tab_ = qMin(index, static_cast<int>(tabs_.size()) - 1);
+  }
+  if (was_active) {
+    ShowActiveTab();
+  } else {
+    UpdateShellForActiveTab();
+  }
+}
+
+void MdViewerWindow::OnTabMoved(int from, int to) {
+  if (from <= 0 || to <= 0 || from >= static_cast<int>(tabs_.size()) ||
+      to >= static_cast<int>(tabs_.size())) {
+    // 欢迎标签固定第 0 位：把标签条上的移动撤回去
+    if (tab_bar_ != nullptr && from != to) {
+      const QSignalBlocker blocker(tab_bar_);
+      tab_bar_->moveTab(to, from);
+    }
+    return;
+  }
+  DocumentTab* active = CurrentTab();
+  std::unique_ptr<DocumentTab> moved = std::move(tabs_[from]);
+  tabs_.erase(tabs_.begin() + from);
+  tabs_.insert(tabs_.begin() + to, std::move(moved));
+  for (int i = 0; i < static_cast<int>(tabs_.size()); ++i) {
+    if (tabs_[i].get() == active) {
+      active_tab_ = i;
+      break;
+    }
+  }
+}
+
+void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
+  if (tab == nullptr || tab_bar_ == nullptr) {
+    return;
+  }
+  int index = -1;
+  for (int i = 0; i < static_cast<int>(tabs_.size()); ++i) {
+    if (tabs_[i].get() == tab) {
+      index = i;
+      break;
+    }
+  }
+  if (index < 0 || index >= tab_bar_->count()) {
+    return;
+  }
+  const bool welcome = tab->path.isEmpty();
+  tab_bar_->setTabText(index, welcome ? QStringLiteral("欢迎")
+                                      : QFileInfo(tab->path).fileName());
+  tab_bar_->setTabToolTip(index,
+                          welcome ? QStringLiteral("欢迎页")
+                                  : DocumentDisplayTitle(root_dir_, tab->path));
 }
 
 void MdViewerWindow::UpdateShellForActiveTab() {
   DocumentTab* tab = CurrentTab();
+  if (close_tab_action_ != nullptr) {
+    close_tab_action_->setEnabled(active_tab_ > 0);
+  }
+  if (tab_bar_ != nullptr) {
+    const QSignalBlocker blocker(tab_bar_);
+    if (active_tab_ < tab_bar_->count()) {
+      tab_bar_->setCurrentIndex(active_tab_);
+    }
+    UpdateTabTitle(tab);
+  }
   const bool welcome = tab == nullptr || tab->path.isEmpty();
   if (welcome) {
     setWindowTitle(QStringLiteral("Markdown 查看器"));
@@ -613,6 +738,12 @@ void MdViewerWindow::createActions() {
   open_file_action_ = new QAction(QStringLiteral("打开文件…"), this);
   open_file_action_->setShortcut(QKeySequence::Open);
   open_dir_action_ = new QAction(QStringLiteral("打开目录…"), this);
+  new_tab_action_ = new QAction(QStringLiteral("新建标签页"), this);
+  new_tab_action_->setObjectName(QStringLiteral("newTabAction"));
+  new_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+T")));
+  close_tab_action_ = new QAction(QStringLiteral("关闭标签页"), this);
+  close_tab_action_->setObjectName(QStringLiteral("closeTabAction"));
+  close_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
   unload_workspace_action_ = new QAction(QStringLiteral("卸载工作区"), this);
   unload_workspace_action_->setObjectName(
       QStringLiteral("unloadWorkspaceAction"));
@@ -834,6 +965,9 @@ void MdViewerWindow::initUi() {
   // 汉堡菜单在 dock 建好后创建，视图菜单才能挂上 toggleViewAction
   app_menu_ = new QMenu(this);
   QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
+  file_menu->addAction(new_tab_action_);
+  file_menu->addAction(close_tab_action_);
+  file_menu->addSeparator();
   file_menu->addAction(open_file_action_);
   file_menu->addAction(open_dir_action_);
   file_menu->addAction(unload_workspace_action_);
@@ -893,6 +1027,8 @@ void MdViewerWindow::initUi() {
   // 菜单挂到标题栏按钮后不再是 QMenuBar；关键动作仍挂到窗口，快捷键才稳
   addAction(open_file_action_);
   addAction(open_dir_action_);
+  addAction(new_tab_action_);
+  addAction(close_tab_action_);
   addAction(quit_action_);
   addAction(find_action_);
   addAction(quick_open_action_);
@@ -914,7 +1050,34 @@ void MdViewerWindow::initUi() {
   menu_button_->setPopupMode(QToolButton::InstantPopup);
   menu_button_->setMenu(app_menu_);
   menu_button_->setToolTip(QStringLiteral("菜单"));
-  fluent_frame_->titleBar()->setLeadingWidget(menu_button_);
+
+  // 标题栏左侧：菜单 + 标签条 + 新建；标签条吃掉剩余宽度
+  title_leading_widget_ = new QWidget(fluent_frame_->titleBar());
+  title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
+  auto* leading_layout = new QHBoxLayout(title_leading_widget_);
+  leading_layout->setContentsMargins(0, 0, 0, 0);
+  leading_layout->setSpacing(2);
+  leading_layout->addWidget(menu_button_);
+  tab_bar_ = new DocumentTabBar(title_leading_widget_);
+  tab_bar_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  leading_layout->addWidget(tab_bar_, 1);
+  add_tab_button_ = new QToolButton(title_leading_widget_);
+  add_tab_button_->setObjectName(QStringLiteral("addTabButton"));
+  add_tab_button_->setAutoRaise(true);
+  add_tab_button_->setText(QStringLiteral("+"));
+  add_tab_button_->setToolTip(QStringLiteral("新建标签页（Ctrl+T）"));
+  leading_layout->addWidget(add_tab_button_);
+  fluent_frame_->titleBar()->setLeadingWidget(title_leading_widget_);
+  // 标题由标签显示，标题栏不再单独占一行文字；把剩余宽度让给标签条
+  fluent_frame_->titleBar()->setTitleVisible(false);
+  if (auto* title_layout =
+          qobject_cast<QHBoxLayout*>(fluent_frame_->titleBar()->layout())) {
+    title_layout->setStretchFactor(title_leading_widget_, 1);
+  }
+  // 欢迎标签固定第 0 位、不可关闭
+  tab_bar_->addTab(QStringLiteral("欢迎"));
+  tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
+  tab_bar_->RemoveCloseButton(0);
 
   nav_widget_ = new QWidget(fluent_frame_->titleBar());
   nav_widget_->setObjectName(QStringLiteral("navWidget"));
@@ -1188,6 +1351,28 @@ void MdViewerWindow::initSignals() {
       CurrentView()->setFocus();
     }
   });
+  connect(new_tab_action_, &QAction::triggered, this,
+          &MdViewerWindow::OpenFileDialog);
+  connect(close_tab_action_, &QAction::triggered, this,
+          [this] { CloseTab(active_tab_); });
+  if (tab_bar_ != nullptr) {
+    connect(tab_bar_, &QTabBar::currentChanged, this, [this](int index) {
+      if (index >= 0) {
+        ActivateTab(index);
+      }
+    });
+    connect(tab_bar_, &QTabBar::tabCloseRequested, this,
+            &MdViewerWindow::CloseTab);
+    connect(tab_bar_, &DocumentTabBar::closeTabRequested, this,
+            &MdViewerWindow::CloseTab);
+    connect(tab_bar_, &DocumentTabBar::newTabRequested, this,
+            &MdViewerWindow::OpenFileDialog);
+    connect(tab_bar_, &QTabBar::tabMoved, this, &MdViewerWindow::OnTabMoved);
+  }
+  if (add_tab_button_ != nullptr) {
+    connect(add_tab_button_, &QToolButton::clicked, this,
+            &MdViewerWindow::OpenFileDialog);
+  }
   // P2 的标签条到位前，先用键盘在标签间切换
   auto* next_tab =
       new QShortcut(QKeySequence(QStringLiteral("Ctrl+Tab")), this);
@@ -2041,7 +2226,6 @@ void MdViewerWindow::UpdateChromeVisibility() {
   if (search_edit_ != nullptr) {
     search_edit_->setVisible(window_width >= 780);
   }
-  fluent_frame_->titleBar()->setTitleVisible(window_width >= 660);
   if (outline_dock_ != nullptr) {
     if (window_width < 980) {
       if (!outline_dock_->isHidden()) {
