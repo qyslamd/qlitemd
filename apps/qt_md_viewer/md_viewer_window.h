@@ -1,6 +1,7 @@
 #ifndef FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_
 #define FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_
 
+#include <memory>
 #include <optional>
 
 #include <QByteArray>
@@ -14,6 +15,7 @@
 #include <QVector>
 
 #include "bookmarks.h"
+#include "document_tab.h"
 #include "markdown_types.h"
 #include "md_viewer_settings.h"
 #include "navigation_history.h"
@@ -167,6 +169,9 @@ class MdViewerWindow : public QMainWindow {
   void UpdateZoomLabel(qreal factor);
   // 文档渲染后对比上一次状态，把引擎加载与本次失败报到状态栏
   void ReportRenderStatus();
+  // P0 只有一份；P1 起由 TabModel 的激活下标决定
+  DocumentTab* CurrentTab() const;
+  MarkdownView* CurrentView() const;
 
   // 菜单里挂着；菜单栏在 fluent 壳下会被搬进标题栏
   QAction* open_file_action_ = nullptr;
@@ -198,7 +203,8 @@ class MdViewerWindow : public QMainWindow {
   // 同一查询重开扫描时，查询文本兜不住旧一轮的排队信号，再加请求 id
   std::optional<quint64> active_search_id_;
 
-  MarkdownView* view_ = nullptr;
+  // 当前标签的全部文档级状态；窗口壳与全局设置不在里面
+  std::unique_ptr<DocumentTab> current_tab_;
   MarkdownOutlineWidget* outline_ = nullptr;
   RenderSettingsPanel* render_settings_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;
@@ -220,26 +226,16 @@ class MdViewerWindow : public QMainWindow {
   QLabel* reading_time_label_ = nullptr;
   QLabel* backend_label_ = nullptr;
   QProgressBar* render_progress_ = nullptr;
-  quint64 progress_request_ = 0;
   // 上一次渲染状态：只用来看引擎首次加载与本次失败增量
   MarkdownRendererStatus last_render_status_;
   // 当前文档集的根目录；单文件在根外时才换根
   QString root_dir_;
-  // ShowFile 已经加载但可能还在渲染的文件；星标要认它，而不是
-  // MarkdownView::current_file()（那要等 renderFinished 才提交）
-  QString displayed_file_;
   BookmarkStore bookmarks_;
   ReadingPositionStore positions_;
   QSet<QString> large_file_prompted_;
   QFileSystemWatcher* root_watcher_ = nullptr;
   QTimer* root_rescan_timer_ = nullptr;
   QStringList watched_dirs_;
-  int pending_restore_scroll_ = -1;
-  QString pending_restore_path_;
-  // 文件跳转与锚点跳转共用的历史栈
-  NavigationHistory history_;
-  // 换文档后要等的锚点；renderFinished 时再滚
-  QString pending_fragment_;
   struct PendingJump {
     QString path;
     int ordinal = 0;

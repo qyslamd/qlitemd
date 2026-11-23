@@ -204,6 +204,12 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, QWidget* parent)
 // qApp->quit() 不会走 closeEvent，析构时补一次落盘
 MdViewerWindow::~MdViewerWindow() { SaveSettings(); }
 
+DocumentTab* MdViewerWindow::CurrentTab() const { return current_tab_.get(); }
+
+MarkdownView* MdViewerWindow::CurrentView() const {
+  return current_tab_ != nullptr ? current_tab_->view : nullptr;
+}
+
 void MdViewerWindow::createActions() {
   open_file_action_ = new QAction(QStringLiteral("打开文件…"), this);
   open_file_action_->setShortcut(QKeySequence::Open);
@@ -233,17 +239,18 @@ void MdViewerWindow::initUi() {
   resize(1100, 800);
 
   // 渲染全部由模块负责：加载、样式、缩放、锚点、代码块复制都是它的内置能力
-  view_ = new MarkdownView(this);
+  current_tab_ = std::make_unique<DocumentTab>();
+  current_tab_->view = new MarkdownView(this);
   // 主题与渲染开关要在面板构造前落到视图上，面板才能显示正确的初始值
-  view_->SetTheme(settings_->dark_theme ? MarkdownTheme::Dark
-                                        : MarkdownTheme::Light);
-  view_->SetCodeLineNumbers(settings_->code_line_numbers);
-  view_->SetAdmonitionMode(settings_->admonition_mode);
-  view_->SetMermaidBackend(settings_->mermaid_backend);
-  view_->SetFormulaBackend(settings_->formula_backend);
-  view_->SetFormulaRenderingEnabled(settings_->formula_rendering);
-  view_->SetMermaidRenderingEnabled(settings_->mermaid_rendering);
-  view_->SetPersistentRenderCacheEnabled(settings_->persistent_cache);
+  CurrentView()->SetTheme(settings_->dark_theme ? MarkdownTheme::Dark
+                                                : MarkdownTheme::Light);
+  CurrentView()->SetCodeLineNumbers(settings_->code_line_numbers);
+  CurrentView()->SetAdmonitionMode(settings_->admonition_mode);
+  CurrentView()->SetMermaidBackend(settings_->mermaid_backend);
+  CurrentView()->SetFormulaBackend(settings_->formula_backend);
+  CurrentView()->SetFormulaRenderingEnabled(settings_->formula_rendering);
+  CurrentView()->SetMermaidRenderingEnabled(settings_->mermaid_rendering);
+  CurrentView()->SetPersistentRenderCacheEnabled(settings_->persistent_cache);
 
   // 阅读区顶部进度线 + 面包屑；正文仍由 MarkdownView 独占剩余空间
   auto* reader = new QWidget(this);
@@ -268,7 +275,7 @@ void MdViewerWindow::initUi() {
   breadcrumb_->setFont(crumb_font);
   breadcrumb_->hide();
   reader_layout->addWidget(breadcrumb_);
-  reader_layout->addWidget(view_, 1);
+  reader_layout->addWidget(CurrentView(), 1);
 
   // 欢迎页与正文互斥：没有已提交文档时收起 view，避免空白阅读区
   welcome_ = new WelcomeView(reader);
@@ -290,8 +297,8 @@ void MdViewerWindow::initUi() {
   scroll_animation_->setEasingCurve(QEasingCurve::OutCubic);
   connect(scroll_animation_, &QVariantAnimation::valueChanged, this,
           [this](const QVariant& value) {
-            if (view_ != nullptr) {
-              view_->SetScrollPosition(value.toInt());
+            if (CurrentView() != nullptr) {
+              CurrentView()->SetScrollPosition(value.toInt());
             }
           });
   connect(back_to_top_, &QToolButton::clicked, this,
@@ -317,7 +324,7 @@ void MdViewerWindow::initUi() {
   // 渲染状态：引擎加载情况与渲染/命中计数，独立成 dock 便于常开观察
   auto* status_dock = new QDockWidget(QStringLiteral("渲染状态"), this);
   status_dock->setObjectName(QStringLiteral("renderStatusDock"));
-  render_status_ = new RenderStatusPanel(view_, status_dock);
+  render_status_ = new RenderStatusPanel(CurrentView(), status_dock);
   status_dock->setWidget(render_status_);
   addDockWidget(Qt::RightDockWidgetArea, status_dock);
   // 默认收起；需要时从“视图”菜单打开。已保存的 dock 布局会覆盖这个默认值
@@ -327,7 +334,7 @@ void MdViewerWindow::initUi() {
   settings_dock_ = new QDockWidget(QStringLiteral("渲染设置"), this);
   settings_dock_->setObjectName(QStringLiteral("renderSettingsDock"));
   settings_dock_->setMinimumWidth(280);
-  render_settings_ = new RenderSettingsPanel(view_, settings_dock_);
+  render_settings_ = new RenderSettingsPanel(CurrentView(), settings_dock_);
   render_settings_->SetWindowMaterial(settings_->window_material);
   render_settings_->SetReadingStyle(settings_->reading_style);
   render_settings_->SetTransparentReading(settings_->transparent_reading);
@@ -405,7 +412,7 @@ void MdViewerWindow::initUi() {
   stats_layout->addWidget(zoom_label_);
   statusBar()->addPermanentWidget(render_progress_);
   statusBar()->addPermanentWidget(stats_widget);
-  UpdateZoomLabel(view_->zoom());
+  UpdateZoomLabel(CurrentView()->zoom());
 
   // 无边框壳 + Fluent 标题栏；菜单栏不再单独占一行
   fluent_frame_ = new FluentWindowFrame(this, this);
@@ -415,7 +422,7 @@ void MdViewerWindow::initUi() {
     button->setVisible(false);
   }
   // 与文档主题初始一致；标题栏据此选搜索图标等自身角色的配色
-  fluent_frame_->titleBar()->setThemeDark(view_->theme() !=
+  fluent_frame_->titleBar()->setThemeDark(CurrentView()->theme() !=
                                           MarkdownTheme::Light);
 
   // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
@@ -666,9 +673,11 @@ void MdViewerWindow::initSignals() {
   connect(back_action_, &QAction::triggered, this, &MdViewerWindow::GoBack);
   connect(forward_action_, &QAction::triggered, this,
           &MdViewerWindow::GoForward);
-  connect(zoom_in_action_, &QAction::triggered, view_, &MarkdownView::ZoomIn);
-  connect(zoom_out_action_, &QAction::triggered, view_, &MarkdownView::ZoomOut);
-  connect(zoom_reset_action_, &QAction::triggered, view_,
+  connect(zoom_in_action_, &QAction::triggered, CurrentView(),
+          &MarkdownView::ZoomIn);
+  connect(zoom_out_action_, &QAction::triggered, CurrentView(),
+          &MarkdownView::ZoomOut);
+  connect(zoom_reset_action_, &QAction::triggered, CurrentView(),
           &MarkdownView::ResetZoom);
   connect(open_file_action_, &QAction::triggered, this,
           &MdViewerWindow::OpenFileDialog);
@@ -717,26 +726,27 @@ void MdViewerWindow::initSignals() {
   connect(star_button_, &QToolButton::clicked, this,
           &MdViewerWindow::SetBookmarkChecked);
   connect(bookmark_action_, &QAction::triggered, this, [this] {
-    const QString path = displayed_file_;
+    const QString path = CurrentTab()->path;
     SetBookmarkChecked(!path.isEmpty() && !bookmarks_.Contains(path));
   });
-  connect(view_, &MarkdownView::outlineChanged, this,
-          [this] { outline_->SetHeadings(view_->outline()); });
-  connect(view_, &MarkdownView::zoomChanged, this, [this](qreal factor) {
-    UpdateZoomLabel(factor);
-    // 缩放有 150ms 合并窗口，等重排完成后再量进度
-    QTimer::singleShot(250, this,
-                       &MdViewerWindow::ScheduleReadingProgressRefresh);
-  });
-  connect(view_, &MarkdownView::renderStatusChanged, this,
+  connect(CurrentView(), &MarkdownView::outlineChanged, this,
+          [this] { outline_->SetHeadings(CurrentView()->outline()); });
+  connect(CurrentView(), &MarkdownView::zoomChanged, this,
+          [this](qreal factor) {
+            UpdateZoomLabel(factor);
+            // 缩放有 150ms 合并窗口，等重排完成后再量进度
+            QTimer::singleShot(250, this,
+                               &MdViewerWindow::ScheduleReadingProgressRefresh);
+          });
+  connect(CurrentView(), &MarkdownView::renderStatusChanged, this,
           &MdViewerWindow::ReportRenderStatus);
-  connect(view_, &MarkdownView::documentReloaded, this, [this] {
+  connect(CurrentView(), &MarkdownView::documentReloaded, this, [this] {
     statusBar()->showMessage(QStringLiteral("文件已更新，已重新加载"), 3000);
   });
-  connect(view_, &MarkdownView::renderProgress, this,
+  connect(CurrentView(), &MarkdownView::renderProgress, this,
           [this](quint64 request_id, int completed, int total, int in_flight) {
             Q_UNUSED(in_flight);
-            progress_request_ = request_id;
+            CurrentTab()->render_request = request_id;
             if (total > 0) {
               render_progress_->setRange(0, total);
               render_progress_->setValue(completed);
@@ -746,46 +756,48 @@ void MdViewerWindow::initSignals() {
               render_progress_->hide();
             }
           });
-  connect(view_, &MarkdownView::renderFinished, this, [this](quint64) {
+  connect(CurrentView(), &MarkdownView::renderFinished, this, [this](quint64) {
     render_progress_->hide();
     render_progress_->setRange(0, 1);
     render_progress_->setValue(0);
-    progress_request_ = 0;
-    if (!pending_fragment_.isEmpty()) {
-      const QString fragment = pending_fragment_;
-      pending_fragment_.clear();
-      pending_restore_scroll_ = -1;
-      pending_restore_path_.clear();
+    CurrentTab()->render_request = 0;
+    if (!CurrentTab()->pending_fragment.isEmpty()) {
+      const QString fragment = CurrentTab()->pending_fragment;
+      CurrentTab()->pending_fragment.clear();
+      CurrentTab()->pending_restore = false;
+      CurrentTab()->pending_restore_path.clear();
       ScrollToFragment(fragment);
     } else if (pending_search_hit_.has_value()) {
       const PendingJump jump = *pending_search_hit_;
       pending_search_hit_.reset();
-      pending_restore_scroll_ = -1;
-      pending_restore_path_.clear();
-      if (jump.path == view_->current_file()) {
+      CurrentTab()->pending_restore = false;
+      CurrentTab()->pending_restore_path.clear();
+      if (jump.path == CurrentView()->current_file()) {
         JumpToSearchHit(jump.ordinal, jump.query);
       }
-    } else if (pending_restore_scroll_ >= 0 &&
-               pending_restore_path_ == view_->current_file()) {
-      const int scroll = pending_restore_scroll_;
-      pending_restore_scroll_ = -1;
-      pending_restore_path_.clear();
-      view_->SetScrollPosition(scroll);
+    } else if (CurrentTab()->pending_restore &&
+               CurrentTab()->pending_restore_path ==
+                   CurrentView()->current_file()) {
+      const int scroll = CurrentTab()->scroll_position;
+      CurrentTab()->pending_restore = false;
+      CurrentTab()->pending_restore_path.clear();
+      CurrentView()->SetScrollPosition(scroll);
     } else {
-      pending_restore_scroll_ = -1;
-      pending_restore_path_.clear();
+      CurrentTab()->pending_restore = false;
+      CurrentTab()->pending_restore_path.clear();
     }
     HideWelcome();
-    UpdateReadingProgress(view_->ScrollPosition());
+    UpdateReadingProgress(CurrentView()->ScrollPosition());
     UpdateReadingTime();
   });
-  connect(view_, &MarkdownView::codeCopied, this, [this] {
+  connect(CurrentView(), &MarkdownView::codeCopied, this, [this] {
     statusBar()->showMessage(QStringLiteral("已复制代码块"), 2000);
   });
-  connect(view_, &MarkdownView::imageClicked, this, &MdViewerWindow::OpenImage);
-  connect(view_, &MarkdownView::imageContextMenuRequested, this,
+  connect(CurrentView(), &MarkdownView::imageClicked, this,
+          &MdViewerWindow::OpenImage);
+  connect(CurrentView(), &MarkdownView::imageContextMenuRequested, this,
           &MdViewerWindow::ShowImageContextMenu);
-  connect(view_, &MarkdownView::resourceLoadFailed, this,
+  connect(CurrentView(), &MarkdownView::resourceLoadFailed, this,
           [this](const QUrl& url) {
             const QString label = url.isLocalFile()
                                       ? QFileInfo(url.toLocalFile()).fileName()
@@ -795,7 +807,8 @@ void MdViewerWindow::initSignals() {
           });
   connect(outline_, &MarkdownOutlineWidget::headingActivated, this,
           [this](const QString& anchor) {
-            NavigateTo(view_->current_file(), anchor, /*record_history=*/true);
+            NavigateTo(CurrentView()->current_file(), anchor,
+                       /*record_history=*/true);
           });
   connect(render_settings_, &RenderSettingsPanel::statusMessage, this,
           [this](const QString& message) {
@@ -808,11 +821,12 @@ void MdViewerWindow::initSignals() {
   // 当前章节由宿主反查：最后一个 AnchorY <= 滚动位置 的标题。
   // 标题自带 margin，顶部标题的 y 通常大于 0；滚动到顶时留一段容差，
   // 否则第一项永远选不中
-  connect(view_, &MarkdownView::viewportScrolled, this, [this](int y) {
+  connect(CurrentView(), &MarkdownView::viewportScrolled, this, [this](int y) {
     constexpr int kAnchorSlackPx = 32;
     QString current;
-    for (const MarkdownHeading& heading : view_->outline()) {
-      const std::optional<int> anchor_y = view_->AnchorY(heading.anchor);
+    for (const MarkdownHeading& heading : CurrentView()->outline()) {
+      const std::optional<int> anchor_y =
+          CurrentView()->AnchorY(heading.anchor);
       if (!anchor_y.has_value()) {
         continue;
       }
@@ -825,7 +839,7 @@ void MdViewerWindow::initSignals() {
     UpdateReadingProgress(y);
   });
 
-  connect(view_, &MarkdownView::loadFailed, this,
+  connect(CurrentView(), &MarkdownView::loadFailed, this,
           [this](const QString& path, const QString& reason) {
             statusBar()->showMessage(
                 QStringLiteral("打开失败：%1（%2）")
@@ -841,35 +855,37 @@ void MdViewerWindow::initSignals() {
   // 页内锚点只滚；本地 .md 换篇（带锚点就载入后滚过去）；其余交系统。
   // 锚点判定要比对"去掉 fragment 是不是当前文档的目录"——qlitehtml 把纯
   // fragment 拼到基准 URL（目录）上，判 isLocalFile/路径空永远判不中
-  connect(view_, &MarkdownView::linkClicked, this, [this](const QUrl& url) {
-    const QString fragment = url.fragment();
-    if (!fragment.isEmpty()) {
-      const QUrl no_frag = url.adjusted(QUrl::RemoveFragment);
-      const QUrl here =
-          view_->has_document()
-              ? QUrl::fromLocalFile(
-                    QFileInfo(view_->current_file()).absolutePath() +
-                    QLatin1Char('/'))
-              : QUrl();
-      if (no_frag.isEmpty() || no_frag == here) {
-        NavigateTo(view_->current_file(), fragment, /*record_history=*/true);
-        return;
-      }
-    }
-    const QString path = url.isLocalFile() ? url.toLocalFile() : QString();
-    if (!path.isEmpty() &&
-        (path.endsWith(QStringLiteral(".md"), Qt::CaseInsensitive) ||
-         path.endsWith(QStringLiteral(".markdown"), Qt::CaseInsensitive))) {
-      NavigateTo(path, fragment, /*record_history=*/true);
-      return;
-    }
-    const bool web_link = url.scheme() == QLatin1String("http") ||
-                          url.scheme() == QLatin1String("https") ||
-                          url.scheme() == QLatin1String("mailto");
-    if (web_link || QFileInfo(path).isFile()) {
-      QDesktopServices::openUrl(url);
-    }
-  });
+  connect(
+      CurrentView(), &MarkdownView::linkClicked, this, [this](const QUrl& url) {
+        const QString fragment = url.fragment();
+        if (!fragment.isEmpty()) {
+          const QUrl no_frag = url.adjusted(QUrl::RemoveFragment);
+          const QUrl here =
+              CurrentView()->has_document()
+                  ? QUrl::fromLocalFile(QFileInfo(CurrentView()->current_file())
+                                            .absolutePath() +
+                                        QLatin1Char('/'))
+                  : QUrl();
+          if (no_frag.isEmpty() || no_frag == here) {
+            NavigateTo(CurrentView()->current_file(), fragment,
+                       /*record_history=*/true);
+            return;
+          }
+        }
+        const QString path = url.isLocalFile() ? url.toLocalFile() : QString();
+        if (!path.isEmpty() &&
+            (path.endsWith(QStringLiteral(".md"), Qt::CaseInsensitive) ||
+             path.endsWith(QStringLiteral(".markdown"), Qt::CaseInsensitive))) {
+          NavigateTo(path, fragment, /*record_history=*/true);
+          return;
+        }
+        const bool web_link = url.scheme() == QLatin1String("http") ||
+                              url.scheme() == QLatin1String("https") ||
+                              url.scheme() == QLatin1String("mailto");
+        if (web_link || QFileInfo(path).isFile()) {
+          QDesktopServices::openUrl(url);
+        }
+      });
   connect(quick_open_action_, &QAction::triggered, this,
           &MdViewerWindow::ShowQuickOpen);
   connect(find_action_, &QAction::triggered, this,
@@ -941,7 +957,7 @@ void MdViewerWindow::initSignals() {
   auto* escape = new QShortcut(QKeySequence(Qt::Key_Escape), this);
   connect(escape, &QShortcut::activated, this, [this] {
     if (search_edit_->hasFocus()) {
-      view_->setFocus();
+      CurrentView()->setFocus();
     }
   });
 }
@@ -953,22 +969,23 @@ void MdViewerWindow::OpenPath(const QString& path) {
 void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
                                 bool record_history) {
   // 正在渲染时旧 HTML 还在屏幕上：同目标只更新待滚锚点，别再滚旧文档
-  if (view_->is_rendering() && path == view_->pending_file()) {
-    pending_fragment_ = fragment;
+  if (CurrentView()->is_rendering() && path == CurrentView()->pending_file()) {
+    CurrentTab()->pending_fragment = fragment;
     if (record_history) {
       PushHistory(path, fragment);
     }
     return;
   }
   // 同文件只滚锚点，不重加载；否则后退到同文档的另一个锚点会闪一下
-  if (!view_->current_file().isEmpty() && path == view_->current_file()) {
-    if (view_->is_rendering()) {
+  if (!CurrentView()->current_file().isEmpty() &&
+      path == CurrentView()->current_file()) {
+    if (CurrentView()->is_rendering()) {
       // 用户回到了屏幕上已提交的文档：放弃还没提交的换篇
-      view_->CancelPendingRender();
-      pending_fragment_.clear();
+      CurrentView()->CancelPendingRender();
+      CurrentTab()->pending_fragment.clear();
       render_progress_->hide();
-      progress_request_ = 0;
-      displayed_file_ = view_->current_file();
+      CurrentTab()->render_request = 0;
+      CurrentTab()->path = CurrentView()->current_file();
       UpdateBookmarkUi();
     }
     if (record_history) {
@@ -978,17 +995,17 @@ void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
     return;
   }
   // 新文档的锚点要等提交后再滚；旧文档的 heading_ids_ 里没有它
-  pending_fragment_ = fragment;
+  CurrentTab()->pending_fragment = fragment;
   const QString opened = OpenPathCore(path);
   if (opened.isEmpty()) {
-    pending_fragment_.clear();
+    CurrentTab()->pending_fragment.clear();
     return;
   }
   if (record_history) {
     PushHistory(opened, fragment);
   }
   if (fragment.isEmpty()) {
-    pending_fragment_.clear();
+    CurrentTab()->pending_fragment.clear();
     ScrollToFragment(QString());
   }
 }
@@ -1087,20 +1104,20 @@ QString MdViewerWindow::OpenPathCore(const QString& path) {
 }
 
 void MdViewerWindow::PushHistory(const QString& path, const QString& fragment) {
-  history_.Push({path, fragment});
+  CurrentTab()->history.Push({path, fragment});
   UpdateHistoryActions();
 }
 
 void MdViewerWindow::ScrollToFragment(const QString& fragment) {
   if (fragment.isEmpty()) {
-    view_->SetScrollPosition(0);
+    CurrentView()->SetScrollPosition(0);
     return;
   }
-  view_->ScrollToAnchor(fragment);
+  CurrentView()->ScrollToAnchor(fragment);
 }
 
 void MdViewerWindow::GoBack() {
-  const std::optional<NavigationEntry> entry = history_.Back();
+  const std::optional<NavigationEntry> entry = CurrentTab()->history.Back();
   if (!entry.has_value()) {
     return;
   }
@@ -1109,7 +1126,7 @@ void MdViewerWindow::GoBack() {
 }
 
 void MdViewerWindow::GoForward() {
-  const std::optional<NavigationEntry> entry = history_.Forward();
+  const std::optional<NavigationEntry> entry = CurrentTab()->history.Forward();
   if (!entry.has_value()) {
     return;
   }
@@ -1119,23 +1136,24 @@ void MdViewerWindow::GoForward() {
 
 void MdViewerWindow::UpdateHistoryActions() {
   if (back_action_ != nullptr) {
-    back_action_->setEnabled(history_.CanGoBack());
+    back_action_->setEnabled(CurrentTab()->history.CanGoBack());
   }
   if (forward_action_ != nullptr) {
-    forward_action_->setEnabled(history_.CanGoForward());
+    forward_action_->setEnabled(CurrentTab()->history.CanGoForward());
   }
 }
 
 void MdViewerWindow::RememberCurrentPosition() {
   // 占位页的 ScrollPosition 恒为 0；渲染中记录会把上一篇的位置冲掉
-  if (view_ == nullptr || !view_->has_document() || view_->is_rendering()) {
+  if (CurrentView() == nullptr || !CurrentView()->has_document() ||
+      CurrentView()->is_rendering()) {
     return;
   }
-  const QString path = view_->current_file();
+  const QString path = CurrentView()->current_file();
   if (path.isEmpty()) {
     return;
   }
-  positions_.Update(path, view_->ScrollPosition(),
+  positions_.Update(path, CurrentView()->ScrollPosition(),
                     QDateTime::currentSecsSinceEpoch());
   settings_->positions_json = positions_.ToJson();
   settings_->SavePositions();
@@ -1163,7 +1181,7 @@ void MdViewerWindow::RestoreSession() {
         PushHistory(absolute, QString());
       }
     }
-    if (!view_->is_rendering() && !view_->has_document()) {
+    if (!CurrentView()->is_rendering() && !CurrentView()->has_document()) {
       ShowWelcome();
     }
     return;
@@ -1244,12 +1262,12 @@ void MdViewerWindow::UnloadWorkspace() {
   }
   watched_dirs_.clear();
   // 历史里的路径属于旧工作区；留着会让“后退”把它静默拉回来
-  history_.Clear();
+  CurrentTab()->history.Clear();
   UpdateHistoryActions();
 
-  pending_fragment_.clear();
-  displayed_file_.clear();
-  view_->ClearDocument();
+  CurrentTab()->pending_fragment.clear();
+  CurrentTab()->path.clear();
+  CurrentView()->ClearDocument();
   setWindowTitle(QStringLiteral("qlitemd"));
   if (breadcrumb_ != nullptr) {
     breadcrumb_->clear();
@@ -1274,11 +1292,11 @@ void MdViewerWindow::ShowQuickOpen() {
   }
 
   QVector<QuickOpenItem> items;
-  const QString current_file = view_->current_file();
-  if (view_->has_document() && !view_->is_rendering() &&
+  const QString current_file = CurrentView()->current_file();
+  if (CurrentView()->has_document() && !CurrentView()->is_rendering() &&
       !current_file.isEmpty()) {
     int heading_count = 0;
-    for (const MarkdownHeading& heading : view_->outline()) {
+    for (const MarkdownHeading& heading : CurrentView()->outline()) {
       if (heading_count >= kMaxQuickOpenHeadings) {
         break;
       }
@@ -1332,14 +1350,14 @@ void MdViewerWindow::ShowQuickOpen() {
     add_command(QStringLiteral("卸载工作区"), QStringLiteral("文件"),
                 QStringLiteral("unload-workspace"));
   }
-  add_command(view_->theme() == MarkdownTheme::Dark
+  add_command(CurrentView()->theme() == MarkdownTheme::Dark
                   ? QStringLiteral("切换到浅色主题")
                   : QStringLiteral("切换到深色主题"),
               QStringLiteral("外观"), QStringLiteral("toggle-theme"));
   add_command(QStringLiteral("阅读外观…"), QStringLiteral("外观"),
               QStringLiteral("appearance"));
   const bool starred =
-      !displayed_file_.isEmpty() && bookmarks_.Contains(displayed_file_);
+      !CurrentTab()->path.isEmpty() && bookmarks_.Contains(CurrentTab()->path);
   add_command(starred ? QStringLiteral("取消收藏当前文档")
                       : QStringLiteral("收藏当前文档"),
               QStringLiteral("阅读"), QStringLiteral("toggle-bookmark"));
@@ -1349,8 +1367,8 @@ void MdViewerWindow::ShowQuickOpen() {
               QStringLiteral("export-pdf"));
   add_command(QStringLiteral("刷新文档树"), QStringLiteral("视图"),
               QStringLiteral("refresh-root"));
-  if (view_->has_document() && !view_->is_rendering() &&
-      !view_->GeneratedImageUrls().isEmpty()) {
+  if (CurrentView()->has_document() && !CurrentView()->is_rendering() &&
+      !CurrentView()->GeneratedImageUrls().isEmpty()) {
     add_command(QStringLiteral("预览公式/图表"), QStringLiteral("阅读"),
                 QStringLiteral("preview-image"));
   }
@@ -1411,7 +1429,7 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
   } else if (id == QLatin1String("appearance")) {
     ShowReaderAppearance();
   } else if (id == QLatin1String("preview-image")) {
-    const QVector<QUrl> images = view_->GeneratedImageUrls();
+    const QVector<QUrl> images = CurrentView()->GeneratedImageUrls();
     if (!images.isEmpty()) {
       ShowImagePreview(images.first());
     }
@@ -1445,11 +1463,12 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   qApp->setStyle(new FluentUI3Style);
   qApp->setPalette(qApp->style()->standardPalette());
   fluent_frame_->titleBar()->setThemeDark(dark);
-  const bool theme_changed = view_->theme() != theme;
-  view_->SetTheme(theme);
-  if (theme_changed && (view_->has_document() || view_->is_rendering())) {
+  const bool theme_changed = CurrentView()->theme() != theme;
+  CurrentView()->SetTheme(theme);
+  if (theme_changed &&
+      (CurrentView()->has_document() || CurrentView()->is_rendering())) {
     // 换肤同样要等整篇重渲染；否则旧配色会一直留在屏幕上
-    view_->ShowPlaceholder(QStringLiteral("正在渲染…"));
+    CurrentView()->ShowPlaceholder(QStringLiteral("正在渲染…"));
   }
   // 面板是被动同步方，用 QSignalBlocker 防止再发一次 themeChanged
   render_settings_->SetTheme(theme);
@@ -1493,7 +1512,8 @@ void MdViewerWindow::RefreshThemeIcons() {
 }
 
 bool MdViewerWindow::ThemeDark() const {
-  return view_ != nullptr && view_->theme() == MarkdownTheme::Dark;
+  return CurrentView() != nullptr &&
+         CurrentView()->theme() == MarkdownTheme::Dark;
 }
 
 void MdViewerWindow::ToggleTheme() {
@@ -1579,40 +1599,41 @@ void MdViewerWindow::RefreshChromePalette() {
 }
 
 void MdViewerWindow::ApplyReadingStyle() {
-  if (view_ == nullptr || settings_ == nullptr) {
+  if (CurrentView() == nullptr || settings_ == nullptr) {
     return;
   }
   if (settings_->reading_style == ReadingStyle::kPrototype) {
-    view_->SetThemeStyleSheet(MarkdownTheme::Light,
-                              LoadTextResource(QStringLiteral(
+    CurrentView()->SetThemeStyleSheet(
+        MarkdownTheme::Light, LoadTextResource(QStringLiteral(
                                   ":/resources/themes/viewer-light.css")));
-    view_->SetThemeStyleSheet(
+    CurrentView()->SetThemeStyleSheet(
         MarkdownTheme::Dark,
         LoadTextResource(QStringLiteral(":/resources/themes/viewer-dark.css")));
   } else {
-    view_->SetThemeStyleSheet(MarkdownTheme::Light, QString());
-    view_->SetThemeStyleSheet(MarkdownTheme::Dark, QString());
+    CurrentView()->SetThemeStyleSheet(MarkdownTheme::Light, QString());
+    CurrentView()->SetThemeStyleSheet(MarkdownTheme::Dark, QString());
   }
   ApplyReaderAppearance();
   UpdateReadingSurface();
 }
 
 QColor MdViewerWindow::ReadingPageColor() const {
-  if (view_ != nullptr && view_->theme() == MarkdownTheme::Dark) {
+  if (CurrentView() != nullptr &&
+      CurrentView()->theme() == MarkdownTheme::Dark) {
     return QColor(0x0d, 0x11, 0x17);
   }
   return QColor(0xff, 0xff, 0xff);
 }
 
 void MdViewerWindow::UpdateReadingSurface() {
-  if (view_ == nullptr || settings_ == nullptr) {
+  if (CurrentView() == nullptr || settings_ == nullptr) {
     return;
   }
   const bool transparent =
       settings_->reading_style == ReadingStyle::kPrototype &&
       settings_->transparent_reading;
-  view_->SetPageBackground(transparent ? QColor(Qt::transparent)
-                                       : ReadingPageColor());
+  CurrentView()->SetPageBackground(transparent ? QColor(Qt::transparent)
+                                               : ReadingPageColor());
 }
 
 ReaderPreferences MdViewerWindow::CurrentReaderPreferences() const {
@@ -1627,16 +1648,16 @@ ReaderPreferences MdViewerWindow::CurrentReaderPreferences() const {
 }
 
 void MdViewerWindow::ApplyReaderAppearance() {
-  if (view_ == nullptr) {
+  if (CurrentView() == nullptr) {
     return;
   }
   const bool prototype = settings_ != nullptr &&
                          settings_->reading_style == ReadingStyle::kPrototype;
   const ReaderPreferences preferences = CurrentReaderPreferences();
-  view_->AppendThemeStyleSheet(MarkdownTheme::Light,
-                               ReaderAppearanceCss(preferences, prototype));
-  view_->AppendThemeStyleSheet(MarkdownTheme::Dark,
-                               ReaderAppearanceCss(preferences, prototype));
+  CurrentView()->AppendThemeStyleSheet(
+      MarkdownTheme::Light, ReaderAppearanceCss(preferences, prototype));
+  CurrentView()->AppendThemeStyleSheet(
+      MarkdownTheme::Dark, ReaderAppearanceCss(preferences, prototype));
 }
 
 void MdViewerWindow::ShowReaderAppearance() {
@@ -1648,7 +1669,7 @@ void MdViewerWindow::ShowReaderAppearance() {
 }
 
 void MdViewerWindow::ShowWelcome() {
-  if (welcome_ == nullptr || view_ == nullptr) {
+  if (welcome_ == nullptr || CurrentView() == nullptr) {
     return;
   }
   welcome_->SetRecentFiles(settings_->recent_files, root_dir_);
@@ -1667,7 +1688,7 @@ void MdViewerWindow::ShowWelcome() {
   if (outline_dock_ != nullptr && welcome_outline_was_visible_) {
     outline_dock_->hide();
   }
-  view_->hide();
+  CurrentView()->hide();
   welcome_->show();
   welcome_->raise();
 }
@@ -1684,8 +1705,8 @@ void MdViewerWindow::HideWelcome() {
   if (welcome_ != nullptr) {
     welcome_->hide();
   }
-  if (view_ != nullptr && !view_->isVisible()) {
-    view_->show();
+  if (CurrentView() != nullptr && !CurrentView()->isVisible()) {
+    CurrentView()->show();
   }
   if (reading_progress_ != nullptr) {
     reading_progress_->show();
@@ -1697,22 +1718,22 @@ void MdViewerWindow::HideWelcome() {
 
 void MdViewerWindow::UpdateReadingProgress(int y) {
   if (reading_progress_ == nullptr || back_to_top_ == nullptr ||
-      view_ == nullptr) {
+      CurrentView() == nullptr) {
     return;
   }
-  if (!view_->has_document() || !view_->isVisible()) {
+  if (!CurrentView()->has_document() || !CurrentView()->isVisible()) {
     reading_progress_->SetProgress(0.0);
     back_to_top_->hide();
     return;
   }
-  const int document_height = view_->DocumentHeight();
-  const int viewport_height = view_->ViewportHeight();
+  const int document_height = CurrentView()->DocumentHeight();
+  const int viewport_height = CurrentView()->ViewportHeight();
   const int max_scroll = qMax(1, document_height - viewport_height);
   const qreal progress = qBound(0.0, qreal(y) / max_scroll, 1.0);
   reading_progress_->SetProgress(progress);
   // 短文档的滚动范围可能还不到一屏；按约 200 设备像素判断更可靠。
   // y 是虚拟像素，缩放后要乘回去。
-  const qreal zoom = qMax<qreal>(0.1, view_->zoom());
+  const qreal zoom = qMax<qreal>(0.1, CurrentView()->zoom());
   const bool show = y * zoom > 200.0;
   back_to_top_->setVisible(show);
   if (show) {
@@ -1722,21 +1743,21 @@ void MdViewerWindow::UpdateReadingProgress(int y) {
 
 void MdViewerWindow::ScheduleReadingProgressRefresh() {
   QTimer::singleShot(0, this, [this] {
-    if (view_ != nullptr) {
-      UpdateReadingProgress(view_->ScrollPosition());
+    if (CurrentView() != nullptr) {
+      UpdateReadingProgress(CurrentView()->ScrollPosition());
     }
   });
 }
 
 void MdViewerWindow::UpdateReadingTime() {
-  if (reading_time_label_ == nullptr || view_ == nullptr) {
+  if (reading_time_label_ == nullptr || CurrentView() == nullptr) {
     return;
   }
-  if (!view_->has_document() || view_->is_rendering()) {
+  if (!CurrentView()->has_document() || CurrentView()->is_rendering()) {
     reading_time_label_->clear();
     return;
   }
-  const int chars = view_->document_stats().source_chars;
+  const int chars = CurrentView()->document_stats().source_chars;
   if (chars <= 0) {
     reading_time_label_->clear();
     return;
@@ -1757,15 +1778,15 @@ void MdViewerWindow::PositionBackToTop() {
 }
 
 void MdViewerWindow::ScrollToTop() {
-  if (view_ == nullptr) {
+  if (CurrentView() == nullptr) {
     return;
   }
   if (scroll_animation_ == nullptr) {
-    view_->SetScrollPosition(0);
+    CurrentView()->SetScrollPosition(0);
     return;
   }
   scroll_animation_->stop();
-  scroll_animation_->setStartValue(view_->ScrollPosition());
+  scroll_animation_->setStartValue(CurrentView()->ScrollPosition());
   scroll_animation_->setEndValue(0);
   scroll_animation_->start();
 }
@@ -1826,15 +1847,16 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
     }
     large_file_prompted_.insert(absolute_path);
   }
-  if (!view_->current_file().isEmpty() &&
-      view_->current_file() != absolute_path) {
+  if (!CurrentView()->current_file().isEmpty() &&
+      CurrentView()->current_file() != absolute_path) {
     RememberCurrentPosition();
   }
-  pending_restore_path_ = absolute_path;
-  pending_restore_scroll_ = positions_.ScrollFor(absolute_path);
-  if (!view_->LoadFile(absolute_path)) {
-    pending_restore_scroll_ = -1;
-    pending_restore_path_.clear();
+  CurrentTab()->pending_restore_path = absolute_path;
+  CurrentTab()->scroll_position = positions_.ScrollFor(absolute_path);
+  CurrentTab()->pending_restore = CurrentTab()->scroll_position >= 0;
+  if (!CurrentView()->LoadFile(absolute_path)) {
+    CurrentTab()->pending_restore = false;
+    CurrentTab()->pending_restore_path.clear();
     // 视图里已经提交了错误页；欢迎页正显示时必须让位，否则用户
     // 只看得到 5 秒状态栏消息
     HideWelcome();
@@ -1842,8 +1864,8 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
   }
   HideWelcome();
   // 旧文档还在屏幕上，而新文档已在后台渲染；先给一个明确的等待页
-  view_->ShowPlaceholder(QStringLiteral("正在渲染…"));
-  displayed_file_ = absolute_path;
+  CurrentView()->ShowPlaceholder(QStringLiteral("正在渲染…"));
+  CurrentTab()->path = absolute_path;
   // 标题栏标签跟 windowTitle 走：根目录 / 相对路径，和原型的面包屑一致
   setWindowTitle(DocumentDisplayTitle(root_dir_, absolute_path));
   if (breadcrumb_ != nullptr) {
@@ -1873,7 +1895,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason) {
 
 void MdViewerWindow::UpdateBookmarkUi() {
   const bool starred =
-      !displayed_file_.isEmpty() && bookmarks_.Contains(displayed_file_);
+      !CurrentTab()->path.isEmpty() && bookmarks_.Contains(CurrentTab()->path);
   if (star_button_ != nullptr) {
     const QSignalBlocker blocker(star_button_);
     star_button_->setChecked(starred);
@@ -1891,7 +1913,7 @@ void MdViewerWindow::UpdateBookmarkUi() {
 }
 
 void MdViewerWindow::SetBookmarkChecked(bool starred) {
-  const QString path = displayed_file_;
+  const QString path = CurrentTab()->path;
   if (path.isEmpty()) {
     UpdateBookmarkUi();
     statusBar()->showMessage(QStringLiteral("先打开一篇文档再收藏"), 3000);
@@ -1964,7 +1986,7 @@ void MdViewerWindow::RefreshRecentMenu() {
 }
 
 void MdViewerWindow::SaveSettings() {
-  if (settings_ == nullptr || view_ == nullptr) {
+  if (settings_ == nullptr || CurrentView() == nullptr) {
     return;
   }
   RememberCurrentPosition();
@@ -1977,14 +1999,15 @@ void MdViewerWindow::SaveSettings() {
   } else {
     settings_->dock_state = saveState();
   }
-  settings_->dark_theme = view_->theme() == MarkdownTheme::Dark;
-  settings_->code_line_numbers = view_->code_line_numbers();
-  settings_->admonition_mode = view_->admonition_mode();
-  settings_->mermaid_backend = view_->mermaid_backend();
-  settings_->formula_backend = view_->formula_backend();
-  settings_->formula_rendering = view_->formula_rendering_enabled();
-  settings_->mermaid_rendering = view_->mermaid_rendering_enabled();
-  settings_->persistent_cache = view_->persistent_render_cache_enabled();
+  settings_->dark_theme = CurrentView()->theme() == MarkdownTheme::Dark;
+  settings_->code_line_numbers = CurrentView()->code_line_numbers();
+  settings_->admonition_mode = CurrentView()->admonition_mode();
+  settings_->mermaid_backend = CurrentView()->mermaid_backend();
+  settings_->formula_backend = CurrentView()->formula_backend();
+  settings_->formula_rendering = CurrentView()->formula_rendering_enabled();
+  settings_->mermaid_rendering = CurrentView()->mermaid_rendering_enabled();
+  settings_->persistent_cache =
+      CurrentView()->persistent_render_cache_enabled();
   settings_->window_material = window_material_;
   settings_->root_dir = root_dir_;
   settings_->Save();
@@ -1995,7 +2018,7 @@ void MdViewerWindow::UpdateZoomLabel(qreal factor) {
 }
 
 void MdViewerWindow::ReportRenderStatus() {
-  const MarkdownRendererStatus now = view_->renderer_status();
+  const MarkdownRendererStatus now = CurrentView()->renderer_status();
   QStringList failed_engines;
   QStringList loaded_engines;
   auto note_engine = [&](const MarkdownEngineStatus& before,
@@ -2133,17 +2156,19 @@ void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {
   }
   const QString query = active_search_query_.has_value() ? *active_search_query_
                                                          : search_edit_->text();
-  if (hit.file_path == view_->current_file()) {
+  if (hit.file_path == CurrentView()->current_file()) {
     // 当前文档正在重渲染：等 renderFinished 再跳，别取消这次渲染
-    if (view_->is_rendering() && view_->pending_file() == hit.file_path) {
+    if (CurrentView()->is_rendering() &&
+        CurrentView()->pending_file() == hit.file_path) {
       pending_search_hit_ = PendingJump{hit.file_path, hit.file_ordinal, query};
       return;
     }
     // 后台正在换到别的文档：取消换篇，留在当前文档里跳
-    if (view_->is_rendering() && !view_->pending_file().isEmpty()) {
-      view_->CancelPendingRender();
-      pending_fragment_.clear();
-      displayed_file_ = view_->current_file();
+    if (CurrentView()->is_rendering() &&
+        !CurrentView()->pending_file().isEmpty()) {
+      CurrentView()->CancelPendingRender();
+      CurrentTab()->pending_fragment.clear();
+      CurrentTab()->path = CurrentView()->current_file();
       UpdateBookmarkUi();
     }
     pending_search_hit_.reset();
@@ -2153,8 +2178,8 @@ void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {
   pending_search_hit_ = PendingJump{hit.file_path, hit.file_ordinal, query};
   NavigateTo(hit.file_path, QString(), /*record_history=*/true);
   // 搜索跳转自己管滚动，别让阅读位置恢复把选区顶掉
-  pending_restore_scroll_ = -1;
-  pending_restore_path_.clear();
+  CurrentTab()->pending_restore = false;
+  CurrentTab()->pending_restore_path.clear();
 }
 
 void MdViewerWindow::JumpToSearchHit(int ordinal, const QString& query) {
@@ -2162,12 +2187,12 @@ void MdViewerWindow::JumpToSearchHit(int ordinal, const QString& query) {
     return;
   }
   // 从顶部开始数，序号才和源码命中顺序大致对齐
-  view_->ClearSelection();
-  view_->SetScrollPosition(0);
+  CurrentView()->ClearSelection();
+  CurrentView()->SetScrollPosition(0);
   bool wrapped = false;
   for (int i = 0; i <= ordinal; ++i) {
-    if (!view_->FindText(query, MarkdownView::FindNoFlag, &wrapped,
-                         /*incremental=*/false)) {
+    if (!CurrentView()->FindText(query, MarkdownView::FindNoFlag, &wrapped,
+                                 /*incremental=*/false)) {
       statusBar()->showMessage(
           QStringLiteral("无法精确定位该命中，已停在文档顶部"), 4000);
       return;
@@ -2176,18 +2201,18 @@ void MdViewerWindow::JumpToSearchHit(int ordinal, const QString& query) {
 }
 
 void MdViewerWindow::ExportHtml() {
-  if (view_->is_rendering()) {
+  if (CurrentView()->is_rendering()) {
     statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
     return;
   }
-  if (!view_->has_document()) {
+  if (!CurrentView()->has_document()) {
     statusBar()->showMessage(QStringLiteral("先打开一篇 Markdown 再导出"),
                              3000);
     return;
   }
   QString default_path;
-  if (!view_->current_file().isEmpty()) {
-    const QFileInfo info(view_->current_file());
+  if (!CurrentView()->current_file().isEmpty()) {
+    const QFileInfo info(CurrentView()->current_file());
     default_path = info.absolutePath() + QLatin1Char('/') +
                    info.completeBaseName() + QStringLiteral(".html");
   } else {
@@ -2206,7 +2231,7 @@ void MdViewerWindow::ExportHtml() {
   }
 
   QString error;
-  if (!view_->ExportHtml(path, &error)) {
+  if (!CurrentView()->ExportHtml(path, &error)) {
     statusBar()->showMessage(
         error.isEmpty() ? QStringLiteral("导出 HTML 失败") : error, 5000);
     return;
@@ -2219,8 +2244,8 @@ void MdViewerWindow::OpenImage(const QUrl& url) { ShowImagePreview(url); }
 
 void MdViewerWindow::ShowImageContextMenu(const QPoint& global_pos,
                                           const QUrl& url) {
-  const QPixmap pixmap = view_->ImagePixmap(url);
-  const std::optional<MarkdownImageInfo> info = view_->ImageInfo(url);
+  const QPixmap pixmap = CurrentView()->ImagePixmap(url);
+  const std::optional<MarkdownImageInfo> info = CurrentView()->ImageInfo(url);
 
   QMenu menu(this);
   QAction* preview = menu.addAction(QStringLiteral("放大查看"));
@@ -2247,14 +2272,14 @@ void MdViewerWindow::ShowImageContextMenu(const QPoint& global_pos,
 }
 
 void MdViewerWindow::SaveImageAs(const QUrl& url) {
-  const QPixmap pixmap = view_->ImagePixmap(url);
+  const QPixmap pixmap = CurrentView()->ImagePixmap(url);
   if (pixmap.isNull()) {
     statusBar()->showMessage(QStringLiteral("这张图片无法保存"), 3000);
     return;
   }
   QString start_dir = QDir::homePath();
-  if (!view_->current_file().isEmpty()) {
-    start_dir = QFileInfo(view_->current_file()).absolutePath();
+  if (!CurrentView()->current_file().isEmpty()) {
+    start_dir = QFileInfo(CurrentView()->current_file()).absolutePath();
   }
   QString path = QFileDialog::getSaveFileName(
       this, QStringLiteral("图片另存为"),
@@ -2276,12 +2301,12 @@ void MdViewerWindow::SaveImageAs(const QUrl& url) {
 }
 
 void MdViewerWindow::ShowImagePreview(const QUrl& url) {
-  const QPixmap pixmap = view_->ImagePixmap(url);
+  const QPixmap pixmap = CurrentView()->ImagePixmap(url);
   if (pixmap.isNull()) {
     statusBar()->showMessage(QStringLiteral("这张图片无法预览"), 3000);
     return;
   }
-  const std::optional<MarkdownImageInfo> info = view_->ImageInfo(url);
+  const std::optional<MarkdownImageInfo> info = CurrentView()->ImageInfo(url);
   QString title = QStringLiteral("图片预览");
   if (info.has_value()) {
     title = info->kind == MarkdownImageKind::kFormula
@@ -2307,7 +2332,7 @@ void MdViewerWindow::ShowImagePreview(const QUrl& url) {
 }
 
 void MdViewerWindow::ShowImageSource(const QUrl& url) {
-  const std::optional<MarkdownImageInfo> info = view_->ImageInfo(url);
+  const std::optional<MarkdownImageInfo> info = CurrentView()->ImageInfo(url);
   if (!info.has_value()) {
     return;
   }
@@ -2324,18 +2349,18 @@ void MdViewerWindow::ShowImageSource(const QUrl& url) {
 }
 
 void MdViewerWindow::ExportPdf() {
-  if (view_->is_rendering()) {
+  if (CurrentView()->is_rendering()) {
     statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
     return;
   }
-  if (!view_->has_document()) {
+  if (!CurrentView()->has_document()) {
     statusBar()->showMessage(QStringLiteral("先打开一篇 Markdown 再导出"),
                              3000);
     return;
   }
   QString default_path;
-  if (!view_->current_file().isEmpty()) {
-    const QFileInfo info(view_->current_file());
+  if (!CurrentView()->current_file().isEmpty()) {
+    const QFileInfo info(CurrentView()->current_file());
     default_path = info.absolutePath() + QLatin1Char('/') +
                    info.completeBaseName() + QStringLiteral(".pdf");
   } else {
@@ -2353,14 +2378,14 @@ void MdViewerWindow::ExportPdf() {
   }
 
   // 分页与 print 媒体重排都在控件里（见 MarkdownView::Print 的注释）
-  if (view_->is_rendering()) {
+  if (CurrentView()->is_rendering()) {
     statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
     return;
   }
   QPrinter printer(QPrinter::HighResolution);
   printer.setOutputFormat(QPrinter::PdfFormat);
   printer.setOutputFileName(path);
-  view_->Print(&printer);
+  CurrentView()->Print(&printer);
 
   statusBar()->showMessage(
       QStringLiteral("已导出：%1").arg(QFileInfo(path).fileName()), 5000);

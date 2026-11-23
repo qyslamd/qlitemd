@@ -10,6 +10,16 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_tab_model
+    SOURCES tab_model_test.cpp
+            ${VIEWER_DIR}/tab_model.cpp
+            ${VIEWER_DIR}/tab_model.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Core
+    LABELS MARKDOWN
+)
+
+add_unit_test(
     NAME test_md_viewer_settings
     SOURCES md_viewer_settings_test.cpp
             ${VIEWER_DIR}/md_viewer_settings.cpp

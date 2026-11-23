@@ -6,6 +6,7 @@ set(ALL_SRCS
     bookmarks.h
     document_index.cpp
     document_index.h
+    document_tab.h
     documents_panel.cpp
     documents_panel.h
     image_lightbox.cpp
