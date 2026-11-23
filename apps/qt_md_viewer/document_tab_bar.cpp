@@ -53,62 +53,69 @@ CornerMode RightCorner(const QStyleOptionTab* tab, bool selected) {
 
 QPainterPath ChromeTabPath(const QStyleOptionTab* tab) {
   const QRectF rect = tab->rect;
-  const qreal per = rect.height() / 5.0;  // Chrome 斜线水平偏移
+  const qreal slant = rect.height() / 5.0;
   const bool selected = (tab->state & QStyle::State_Selected) != 0;
 
-  qreal p1x = rect.left();
-  qreal p2x = rect.left() + per;
+  // 底部斜线的两个端点：left_bottom -> left_side（右侧同理）
+  qreal left_bottom = rect.left();
+  qreal left_side = rect.left() + slant;
   switch (LeftCorner(tab, selected)) {
     case CornerMode::kExtend:
-      p1x = rect.left() - per;
-      p2x = rect.left();
+      left_bottom = rect.left() - slant;
+      left_side = rect.left();
       break;
     case CornerMode::kNormal:
-      p1x = rect.left();
-      p2x = rect.left() + per;
+      left_bottom = rect.left();
+      left_side = rect.left() + slant;
       break;
     case CornerMode::kRetract:
-      p1x = rect.left() + per;
-      p2x = rect.left();
+      left_bottom = rect.left() + slant;
+      left_side = rect.left();
       break;
   }
-
-  qreal p8x = rect.right();
-  qreal p7x = rect.right() - per;
+  qreal right_bottom = rect.right();
+  qreal right_side = rect.right() - slant;
   switch (RightCorner(tab, selected)) {
     case CornerMode::kExtend:
-      p8x = rect.right() + per;
-      p7x = rect.right();
+      right_bottom = rect.right() + slant;
+      right_side = rect.right();
       break;
     case CornerMode::kNormal:
-      p8x = rect.right();
-      p7x = rect.right() - per;
+      right_bottom = rect.right();
+      right_side = rect.right() - slant;
       break;
     case CornerMode::kRetract:
-      p8x = rect.right() - per;
-      p7x = rect.right();
+      right_bottom = rect.right() - slant;
+      right_side = rect.right();
       break;
   }
 
-  const QPointF p1(p1x, rect.bottom());
-  const QPointF p2(p2x, rect.bottom() - per);
-  const QPointF p3(p2x, rect.top() + per);
-  const QPointF p4(p2x + per, rect.top());
-  const QPointF p5(p7x - per, rect.top());
-  const QPointF p6(p7x, rect.top() + per);
-  const QPointF p7(p7x, rect.bottom() - per);
-  const QPointF p8(p8x, rect.bottom());
+  // 顶部圆角单独给半径，比沿用底部斜线宽度更圆
+  const qreal top = rect.top();
+  const qreal bottom = rect.bottom();
+  qreal radius = qMin<qreal>(12.0, rect.height() * 0.4);
+  radius = qMin(radius, qMax<qreal>(0.0, (right_side - left_side) / 2.0));
 
   QPainterPath path;
-  path.moveTo(p1);
-  path.quadTo(QPointF(p2.x(), p1.y()), p2);
-  path.lineTo(p3);
-  path.quadTo(QPointF(p3.x(), p4.y()), p4);
-  path.lineTo(p5);
-  path.quadTo(QPointF(p6.x(), p5.y()), p6);
-  path.lineTo(p7);
-  path.quadTo(QPointF(p7.x(), p8.y()), p8);
-  path.lineTo(p1);
+  path.moveTo(left_bottom, bottom);
+  path.lineTo(left_side, bottom - slant);
+  path.lineTo(left_side, top + radius);
+  if (radius > 1.0) {
+    path.arcTo(QRectF(left_side, top, radius * 2.0, radius * 2.0), 180.0,
+               -90.0);
+  } else {
+    path.lineTo(left_side, top);
+  }
+  path.lineTo(right_side - radius, top);
+  if (radius > 1.0) {
+    path.arcTo(
+        QRectF(right_side - radius * 2.0, top, radius * 2.0, radius * 2.0),
+        90.0, -90.0);
+  }
+  path.lineTo(right_side, top + radius);
+  path.lineTo(right_side, bottom - slant);
+  path.lineTo(right_bottom, bottom);
+  path.closeSubpath();
   return path;
 }
 

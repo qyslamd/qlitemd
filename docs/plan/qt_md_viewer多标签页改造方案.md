@@ -196,10 +196,11 @@ QTabWidget。
 
 要点（按能直接照搬的顺序）：
 
-1. **等宽与拥挤处理**：采用 YiGuai 的同一口径——`tabSizeHint()` 240×34，
-   `minimumTabSizeHint()` 36×32，`expanding = true`。标签少时等宽铺满，
-   多了按等宽压缩到 36 再出滚动按钮。实测 11 个标签、窗口 1200px 时
-   每个约 74px，与 YiGuai 行为一致。
+1. **等宽与拥挤处理**：采用 YiGuai 的同一口径——`tabSizeHint()` 240×30，
+   `minimumTabSizeHint()` 36×26，`expanding = true`。标签少时等宽铺满，
+   多了按等宽压缩到 36 再出滚动按钮。标签条顶部在标题栏里留 8px，避免
+   贴住窗口最上沿；顶部圆角单独取 12px（比斜线宽度更圆）。实测 11 个
+   标签、窗口 1200px 时每个约 74px，与 YiGuai 行为一致。
 2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`；
    `ShowHideTabButtons()` 在 `resizeEvent` / `tabInserted` / `tabRemoved`
    时统一刷新，标签宽度低于 40px 就把关闭按钮藏掉（YiGuai 的 RHideW）。

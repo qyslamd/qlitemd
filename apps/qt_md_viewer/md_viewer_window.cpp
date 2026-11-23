@@ -1209,7 +1209,8 @@ void MdViewerWindow::initUi() {
   title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
   title_leading_widget_->setAutoFillBackground(true);
   auto* leading_layout = new QHBoxLayout(title_leading_widget_);
-  leading_layout->setContentsMargins(0, 0, 0, 0);
+  // 顶部至少留 8px：标签贴着窗口最上沿会很挤
+  leading_layout->setContentsMargins(0, 8, 0, 0);
   leading_layout->setSpacing(2);
   leading_layout->addWidget(menu_button_);
   tab_bar_ = new DocumentTabBar(title_leading_widget_);

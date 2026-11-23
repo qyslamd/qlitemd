@@ -19,11 +19,13 @@ All notable changes to qlitemd are documented here.
   separators, and hover uses a translucent overlay. Labels are painted by
   the tab style so selected/normal text colors follow the same theme. The
   shape code follows `qt-libui`'s `ChromeTabAppearance`.
-- Tab metrics and layout now follow YiGuai: 240x34 preferred, 36x32
-  minimum, equal widths that compress as tabs accumulate; the new-tab "+"
-  sits immediately after the last tab, followed by a draggable blank area
+- Tab metrics and layout now follow YiGuai: 240x30 preferred, 36x26
+  minimum, equal widths that compress as tabs accumulate; the tab strip
+  keeps an 8 px gap below the window's top edge. The new-tab "+" sits
+  immediately after the last tab, followed by a draggable blank area
   (double-click maximizes); close buttons hide below 40 px; each document
-  tab shows the file icon with left-aligned, elided text.
+  tab shows the file icon with left-aligned, elided text. Top corners use a
+  12 px radius, rounder than the slant-derived corner of the first pass.
 
 - `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
   bar and a `QStackedWidget` whose first page is the permanent welcome page;
