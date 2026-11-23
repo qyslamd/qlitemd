@@ -105,13 +105,68 @@ TEST(DocumentsPanelTest, StarClickRequestsBookmarkToggle) {
   QString activated;
   QObject::connect(&panel, &DocumentsPanel::bookmarkToggleRequested,
                    [&toggled](const QString& path) { toggled = path; });
-  QObject::connect(&panel, &DocumentsPanel::fileActivated,
-                   [&activated](const QString& path) { activated = path; });
+  QObject::connect(
+      &panel, &DocumentsPanel::fileActivated,
+      [&activated](const QString& path, bool) { activated = path; });
   QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier,
                     QPoint(item_rect.right() - 10, item_rect.center().y()));
   EXPECT_EQ(toggled, QStringLiteral("/docs/a.md"));
   // 星标点击不能顺带打开文档
   EXPECT_TRUE(activated.isEmpty());
+}
+
+TEST(DocumentsPanelTest, CtrlClickRequestsNewTab) {
+  DocumentsPanel panel;
+  panel.SetRoot(SampleRoot());
+  panel.resize(360, 400);
+  panel.show();
+  QApplication::processEvents();
+  auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
+  ASSERT_NE(tree, nullptr);
+  QTreeWidgetItem* a = tree->topLevelItem(0)->child(1);
+  tree->scrollToItem(a);
+  QApplication::processEvents();
+  const QRect item_rect = tree->visualItemRect(a);
+  ASSERT_TRUE(item_rect.isValid());
+
+  QString activated;
+  bool new_tab = false;
+  QObject::connect(&panel, &DocumentsPanel::fileActivated,
+                   [&activated, &new_tab](const QString& path, bool nt) {
+                     activated = path;
+                     new_tab = nt;
+                   });
+  QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::ControlModifier,
+                    item_rect.center());
+  EXPECT_EQ(activated, QStringLiteral("/docs/a.md"));
+  EXPECT_TRUE(new_tab);
+}
+
+TEST(DocumentsPanelTest, MiddleClickRequestsNewTab) {
+  DocumentsPanel panel;
+  panel.SetRoot(SampleRoot());
+  panel.resize(360, 400);
+  panel.show();
+  QApplication::processEvents();
+  auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
+  ASSERT_NE(tree, nullptr);
+  QTreeWidgetItem* a = tree->topLevelItem(0)->child(1);
+  tree->scrollToItem(a);
+  QApplication::processEvents();
+  const QRect item_rect = tree->visualItemRect(a);
+  ASSERT_TRUE(item_rect.isValid());
+
+  QString activated;
+  bool new_tab = false;
+  QObject::connect(&panel, &DocumentsPanel::fileActivated,
+                   [&activated, &new_tab](const QString& path, bool nt) {
+                     activated = path;
+                     new_tab = nt;
+                   });
+  QTest::mouseClick(tree->viewport(), Qt::MiddleButton, Qt::NoModifier,
+                    item_rect.center());
+  EXPECT_EQ(activated, QStringLiteral("/docs/a.md"));
+  EXPECT_TRUE(new_tab);
 }
 
 TEST(DocumentsPanelTest, FilterHidesNonMatchingNodes) {

@@ -116,6 +116,39 @@ TEST(MdViewerSettingsTest, OpeningWorkspaceClearsClosedFlag) {
   EXPECT_EQ(final_state.root_dir, QStringLiteral("D:/other"));
 }
 
+TEST(MdViewerSettingsTest, SaveSessionRoundTripsOpenTabs) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings settings;
+  settings.Load();
+  settings.open_tabs_json =
+      QByteArrayLiteral("{\"tabs\":[\"\",\"/a\",\"/b\"],\"active\":2}");
+  settings.SaveSession();
+
+  MdViewerSettings reloaded;
+  reloaded.Load();
+  EXPECT_EQ(reloaded.open_tabs_json, settings.open_tabs_json);
+}
+
+TEST(MdViewerSettingsTest, RecentRootsDedupeAndCap) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings settings;
+  settings.Load();
+  for (int i = 0; i < 10; ++i) {
+    settings.AddRecentRoot(QStringLiteral("D:/root%1").arg(i));
+  }
+  settings.AddRecentRoot(QStringLiteral("D:/root5"));
+  EXPECT_EQ(settings.recent_roots.first(), QStringLiteral("D:/root5"));
+  EXPECT_EQ(settings.recent_roots.size(), 8);
+  EXPECT_EQ(settings.recent_roots.count(QStringLiteral("D:/root5")), 1);
+
+  settings.Save();
+  MdViewerSettings reloaded;
+  reloaded.Load();
+  EXPECT_EQ(reloaded.recent_roots, settings.recent_roots);
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

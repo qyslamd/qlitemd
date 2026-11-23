@@ -59,7 +59,8 @@ class DocumentsPanel : public QWidget {
   void SetThemeDark(bool dark);
 
  signals:
-  void fileActivated(const QString& absolute_path);
+  // new_tab：Ctrl+点击或中键；普通点击替换当前标签
+  void fileActivated(const QString& absolute_path, bool new_tab);
   void bookmarkActivated(const QString& absolute_path);
   void bookmarkRemoveRequested(const QString& absolute_path);
   // 文档树行内星标：切换该文件的收藏状态
@@ -67,6 +68,9 @@ class DocumentsPanel : public QWidget {
   void searchHitActivated(const SearchHit& hit);
   void cancelSearchRequested();
   void chooseRootRequested();
+
+ protected:
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
  private:
   void initUi();
@@ -102,6 +106,9 @@ class DocumentsPanel : public QWidget {
   // delegate 在 mouseRelease 里先切换收藏，随后视图还会发 itemClicked；
   // 这里记一笔，避免同一次点击又把文档打开
   bool star_click_pending_ = false;
+  // 文档树点击时记下 Ctrl 状态；中键自己发信号后吞掉随后的 itemClicked
+  bool ctrl_click_ = false;
+  bool suppress_item_click_ = false;
   bool theme_dark_ = false;
   DocumentTreeDelegate* document_tree_delegate_ = nullptr;
   BookmarkDelegate* bookmark_tree_delegate_ = nullptr;

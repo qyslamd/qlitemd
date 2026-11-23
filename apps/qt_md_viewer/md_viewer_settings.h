@@ -35,9 +35,12 @@ struct MdViewerSettings {
   void SaveSession() const;
   void SaveBookmarks() const;
   void SavePositions() const;
+  void SaveRecentRoots() const;
 
   // 最近的放最前，最多 10 条
   void AddRecentFile(const QString& path);
+  // 最近打开的工作区，最多 8 条
+  void AddRecentRoot(const QString& root);
 
   QByteArray window_geometry;
   QByteArray dock_state;
@@ -59,8 +62,11 @@ struct MdViewerSettings {
   bool mermaid_rendering = true;
   bool persistent_cache = true;
   QStringList recent_files;
+  QStringList recent_roots;
   QString root_dir;
   QString last_file;
+  // TabModel 序列化的 open_tabs + active；多标签会话恢复用
+  QByteArray open_tabs_json;
   // 用户显式卸载了工作区：重启回欢迎页，不自动恢复最近文档。
   // 打开任意文件/目录即清除
   bool workspace_closed = false;

@@ -62,7 +62,8 @@ class MdViewerWindow : public QMainWindow {
   Q_OBJECT
 
  public:
-  explicit MdViewerWindow(MdViewerSettings* settings,
+  // session_owner：只有第一个窗口读写会话（open_tabs/几何/dock）
+  explicit MdViewerWindow(MdViewerSettings* settings, bool session_owner = true,
                           QWidget* parent = nullptr);
   ~MdViewerWindow() override;
 
@@ -74,6 +75,8 @@ class MdViewerWindow : public QMainWindow {
   // 测试钩子：注入式 GUI 探针（funq）只能给单参 QVariant，这两个入口
   // 只做转发，不改变正常路径
   Q_INVOKABLE QVariant OpenPathForTest(const QVariant& path);
+  Q_INVOKABLE QVariant OpenPathReplaceForTest(const QVariant& path);
+  Q_INVOKABLE QVariant RootDirForTest(const QVariant& unused) const;
   Q_INVOKABLE QVariant ActivateTabForTest(const QVariant& index);
   Q_INVOKABLE QVariant TabStateForTest(const QVariant& unused) const;
   // 参数为 [from, to]，走标签条真实的 moveTab → tabMoved 链路
@@ -92,13 +95,16 @@ class MdViewerWindow : public QMainWindow {
   void initUi();
   void initSignals();
 
+  enum class OpenReason { kUser, kRestore };
+  // kReplace 替换当前标签；kNewTab 新开；kHistory 只给前进/后退用
+  enum class OpenIntent { kReplace, kNewTab, kHistory };
   // 统一的导航入口：同文件只滚锚点，不重加载；跨文件才走加载
   void NavigateTo(const QString& path, const QString& fragment,
-                  bool record_history, bool new_tab = true);
+                  bool record_history,
+                  OpenIntent intent = OpenIntent::kReplace);
   // 真正打开路径（文件或目录），返回实际打开的文件；失败返回空
-  QString OpenPathCore(const QString& path, bool new_tab);
-  enum class OpenReason { kUser, kRestore };
-  bool ShowFile(const QString& path, OpenReason reason, bool new_tab);
+  QString OpenPathCore(const QString& path, OpenIntent intent);
+  bool ShowFile(const QString& path, OpenReason reason, OpenIntent intent);
   void PushHistory(const QString& path, const QString& fragment);
   void ScrollToFragment(const QString& fragment);
   void GoBack();
@@ -192,6 +198,11 @@ class MdViewerWindow : public QMainWindow {
   void CloseTab(int index);
   void OnTabMoved(int from, int to);
   void UpdateTabTitle(DocumentTab* tab);
+  void SyncTabSessionFields();
+  void WriteTabSession();
+  void SaveTabSession();
+  void RefreshRecentRootsMenu();
+  void OpenRecentRoot(const QString& root);
   void ApplyGlobalSettings(DocumentTab* tab);
   void CaptureGlobalSettings(DocumentTab* tab);
   void ConnectTabSignals(DocumentTab* tab);
@@ -202,6 +213,7 @@ class MdViewerWindow : public QMainWindow {
   QAction* open_dir_action_ = nullptr;
   QAction* new_tab_action_ = nullptr;
   QAction* close_tab_action_ = nullptr;
+  QAction* new_window_action_ = nullptr;
   QAction* unload_workspace_action_ = nullptr;
   QAction* quit_action_ = nullptr;
   QAction* about_action_ = nullptr;
@@ -296,6 +308,10 @@ class MdViewerWindow : public QMainWindow {
   // 标准配置目录下的 md_viewer.ini，归 main 持有，生命周期长于本窗口
   MdViewerSettings* settings_ = nullptr;
   QMenu* recent_menu_ = nullptr;
+  QMenu* recent_roots_menu_ = nullptr;
+  // 只有主窗口写会话；恢复期间不把半成品写回
+  bool session_owner_ = true;
+  bool restoring_session_ = false;
 };
 
 #endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_

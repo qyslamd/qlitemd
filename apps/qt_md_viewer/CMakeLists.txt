@@ -33,6 +33,8 @@ set(ALL_SRCS
     render_settings_panel.h
     render_status_panel.cpp
     render_status_panel.h
+    tab_model.cpp
+    tab_model.h
     theme_icons.h
     welcome_view.cpp
     welcome_view.h

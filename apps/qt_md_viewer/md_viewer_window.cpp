@@ -86,6 +86,7 @@
 #include "reading_progress.h"
 #include "render_settings_panel.h"
 #include "render_status_panel.h"
+#include "tab_model.h"
 #include "text_search.h"
 #include "theme_icons.h"
 #include "welcome_view.h"
@@ -178,8 +179,9 @@ class SourceDialog final : public QDialog {
 
 }  // namespace
 
-MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, QWidget* parent)
-    : QMainWindow(parent), settings_(settings) {
+MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
+                               QWidget* parent)
+    : QMainWindow(parent), settings_(settings), session_owner_(session_owner) {
   Q_ASSERT(settings_ != nullptr);
   bookmarks_ = BookmarkStore::FromJson(settings_->bookmarks_json);
   positions_ = ReadingPositionStore::FromJson(settings_->positions_json);
@@ -187,10 +189,11 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, QWidget* parent)
   createActions();
   initUi();
   initSignals();
-  if (!settings_->window_geometry.isEmpty()) {
+  // 次窗口不继承主窗口的几何与 dock；它只负责一次性阅读
+  if (session_owner_ && !settings_->window_geometry.isEmpty()) {
     restoreGeometry(settings_->window_geometry);
   }
-  if (!settings_->dock_state.isEmpty()) {
+  if (session_owner_ && !settings_->dock_state.isEmpty()) {
     restoreState(settings_->dock_state);
   }
   // 旧布局把大纲放在左侧；新默认是正文右侧整列，恢复后迁移一次
@@ -212,6 +215,17 @@ MdViewerWindow::~MdViewerWindow() { SaveSettings(); }
 QVariant MdViewerWindow::OpenPathForTest(const QVariant& path) {
   OpenPath(path.toString());
   return path.toString();
+}
+
+QVariant MdViewerWindow::OpenPathReplaceForTest(const QVariant& path) {
+  NavigateTo(path.toString(), QString(), /*record_history=*/true,
+             OpenIntent::kReplace);
+  return TabStateForTest(QVariant());
+}
+
+QVariant MdViewerWindow::RootDirForTest(const QVariant& unused) const {
+  Q_UNUSED(unused);
+  return root_dir_;
 }
 
 QVariant MdViewerWindow::ActivateTabForTest(const QVariant& index) {
@@ -604,6 +618,37 @@ void MdViewerWindow::ShowActiveTab() {
   UpdateShellForActiveTab();
 }
 
+void MdViewerWindow::SyncTabSessionFields() {
+  if (!session_owner_ || settings_ == nullptr) {
+    return;
+  }
+  TabModel model;
+  for (const auto& tab : tabs_) {
+    model.Add(tab->path);
+  }
+  if (active_tab_ >= 0 && active_tab_ < model.count()) {
+    model.SetActive(active_tab_);
+  }
+  settings_->open_tabs_json = model.Serialize();
+  settings_->last_file =
+      CurrentTab() != nullptr ? CurrentTab()->path : QString();
+}
+
+void MdViewerWindow::WriteTabSession() {
+  if (!session_owner_ || settings_ == nullptr) {
+    return;
+  }
+  SyncTabSessionFields();
+  settings_->SaveSession();
+}
+
+void MdViewerWindow::SaveTabSession() {
+  if (!session_owner_ || restoring_session_ || settings_ == nullptr) {
+    return;
+  }
+  WriteTabSession();
+}
+
 void MdViewerWindow::CloseTab(int index) {
   if (index <= 0 || index >= static_cast<int>(tabs_.size())) {
     return;
@@ -632,6 +677,7 @@ void MdViewerWindow::CloseTab(int index) {
   } else {
     UpdateShellForActiveTab();
   }
+  SaveTabSession();
 }
 
 void MdViewerWindow::OnTabMoved(int from, int to) {
@@ -744,6 +790,9 @@ void MdViewerWindow::createActions() {
   close_tab_action_ = new QAction(QStringLiteral("关闭标签页"), this);
   close_tab_action_->setObjectName(QStringLiteral("closeTabAction"));
   close_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
+  new_window_action_ = new QAction(QStringLiteral("新建窗口"), this);
+  new_window_action_->setObjectName(QStringLiteral("newWindowAction"));
+  new_window_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
   unload_workspace_action_ = new QAction(QStringLiteral("卸载工作区"), this);
   unload_workspace_action_->setObjectName(
       QStringLiteral("unloadWorkspaceAction"));
@@ -967,11 +1016,13 @@ void MdViewerWindow::initUi() {
   QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
   file_menu->addAction(new_tab_action_);
   file_menu->addAction(close_tab_action_);
+  file_menu->addAction(new_window_action_);
   file_menu->addSeparator();
   file_menu->addAction(open_file_action_);
   file_menu->addAction(open_dir_action_);
   file_menu->addAction(unload_workspace_action_);
   recent_menu_ = file_menu->addMenu(QStringLiteral("最近打开"));
+  recent_roots_menu_ = file_menu->addMenu(QStringLiteral("最近打开的工作区"));
   file_menu->addSeparator();
   file_menu->addAction(export_html_action_);
   file_menu->addAction(export_pdf_action_);
@@ -1029,6 +1080,7 @@ void MdViewerWindow::initUi() {
   addAction(open_dir_action_);
   addAction(new_tab_action_);
   addAction(close_tab_action_);
+  addAction(new_window_action_);
   addAction(quit_action_);
   addAction(find_action_);
   addAction(quick_open_action_);
@@ -1153,6 +1205,7 @@ void MdViewerWindow::initUi() {
   root_rescan_timer_->setSingleShot(true);
   root_rescan_timer_->setInterval(300);
 
+  RefreshRecentRootsMenu();
   ApplyWindowMaterial(settings_->window_material, /*announce=*/false);
   ApplyReadingStyle();
   UpdateChromeVisibility();
@@ -1238,8 +1291,9 @@ void MdViewerWindow::initSignals() {
           });
   // 点树里的文件换文档；树在根外打开书签时不换根
   connect(documents_panel_, &DocumentsPanel::fileActivated, this,
-          [this](const QString& path) {
-            NavigateTo(path, QString(), /*record_history=*/true);
+          [this](const QString& path, bool new_tab) {
+            NavigateTo(path, QString(), /*record_history=*/true,
+                       new_tab ? OpenIntent::kNewTab : OpenIntent::kReplace);
           });
   connect(documents_panel_, &DocumentsPanel::chooseRootRequested, this,
           &MdViewerWindow::OpenDirectoryDialog);
@@ -1353,6 +1407,13 @@ void MdViewerWindow::initSignals() {
   });
   connect(new_tab_action_, &QAction::triggered, this,
           &MdViewerWindow::OpenFileDialog);
+  connect(new_window_action_, &QAction::triggered, this, [this] {
+    // 次窗口不读写会话：停在自己的欢迎页，多工作区靠它实现
+    auto* window = new MdViewerWindow(settings_, /*session_owner=*/false);
+    window->setAttribute(Qt::WA_DeleteOnClose);
+    window->resize(1100, 800);
+    window->show();
+  });
   connect(close_tab_action_, &QAction::triggered, this,
           [this] { CloseTab(active_tab_); });
   if (tab_bar_ != nullptr) {
@@ -1392,11 +1453,11 @@ void MdViewerWindow::initSignals() {
 }
 
 void MdViewerWindow::OpenPath(const QString& path) {
-  NavigateTo(path, QString(), /*record_history=*/true);
+  NavigateTo(path, QString(), /*record_history=*/true, OpenIntent::kNewTab);
 }
 
 void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
-                                bool record_history, bool new_tab) {
+                                bool record_history, OpenIntent intent) {
   // 正在渲染时旧 HTML 还在屏幕上：同目标只更新待滚锚点，别再滚旧文档
   if (CurrentView()->is_rendering() && path == CurrentView()->pending_file()) {
     CurrentTab()->pending_fragment = fragment;
@@ -1425,7 +1486,7 @@ void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
   }
   // 新文档的锚点要等提交后再滚；旧文档的 heading_ids_ 里没有它
   CurrentTab()->pending_fragment = fragment;
-  const QString opened = OpenPathCore(path, new_tab);
+  const QString opened = OpenPathCore(path, intent);
   if (opened.isEmpty()) {
     CurrentTab()->pending_fragment.clear();
     return;
@@ -1453,7 +1514,9 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
     settings_->root_dir = root_dir_;
     // 任何一次成功换根都视为"重新有了工作区"，解除卸载标志
     settings_->workspace_closed = false;
-    settings_->SaveSession();
+    settings_->AddRecentRoot(root_dir_);
+    RefreshRecentRootsMenu();
+    SaveTabSession();
     if (unload_workspace_action_ != nullptr) {
       unload_workspace_action_->setEnabled(true);
     }
@@ -1501,14 +1564,7 @@ void MdViewerWindow::RefreshRoot() {
   SetRootDir(root_dir_);
 }
 
-void MdViewerWindow::EnsureRootForFile(const QString& path) {
-  if (!root_dir_.isEmpty() && IsPathUnderRoot(path, root_dir_)) {
-    return;
-  }
-  SetRootDir(QFileInfo(path).absolutePath());
-}
-
-QString MdViewerWindow::OpenPathCore(const QString& path, bool new_tab) {
+QString MdViewerWindow::OpenPathCore(const QString& path, OpenIntent intent) {
   const QFileInfo info(path);
   if (info.isDir()) {
     const DocumentScanResult result = SetRootDir(info.absoluteFilePath());
@@ -1520,7 +1576,7 @@ QString MdViewerWindow::OpenPathCore(const QString& path, bool new_tab) {
     }
     for (const DocumentEntry& entry : result.entries) {
       if (!entry.is_dir) {
-        return ShowFile(entry.absolute_path, OpenReason::kUser, new_tab)
+        return ShowFile(entry.absolute_path, OpenReason::kUser, intent)
                    ? entry.absolute_path
                    : QString();
       }
@@ -1528,8 +1584,8 @@ QString MdViewerWindow::OpenPathCore(const QString& path, bool new_tab) {
     return {};
   }
   const QString absolute = info.absoluteFilePath();
-  EnsureRootForFile(absolute);
-  return ShowFile(absolute, OpenReason::kUser, new_tab) ? absolute : QString();
+  // 根外文件直接在标签里打开，不重建根；只有“打开目录”才改根
+  return ShowFile(absolute, OpenReason::kUser, intent) ? absolute : QString();
 }
 
 void MdViewerWindow::PushHistory(const QString& path, const QString& fragment) {
@@ -1551,7 +1607,7 @@ void MdViewerWindow::GoBack() {
     return;
   }
   NavigateTo(entry->path, entry->fragment, /*record_history=*/false,
-             /*new_tab=*/false);
+             OpenIntent::kHistory);
   UpdateHistoryActions();
 }
 
@@ -1561,7 +1617,7 @@ void MdViewerWindow::GoForward() {
     return;
   }
   NavigateTo(entry->path, entry->fragment, /*record_history=*/false,
-             /*new_tab=*/false);
+             OpenIntent::kHistory);
   UpdateHistoryActions();
 }
 
@@ -1599,25 +1655,60 @@ void MdViewerWindow::RestoreSession() {
     ShowWelcome();
     return;
   }
+  // 恢复期间不改会话：SetRootDir/ShowFile 内部的保存都跳过，
+  // 恢复完统一写回一次
+  const QByteArray saved_tabs = settings_->open_tabs_json;
+  restoring_session_ = true;
+  struct RestoreScope {
+    bool* flag;
+    ~RestoreScope() { *flag = false; }
+  } restore_scope{&restoring_session_};
   if (!settings_->root_dir.isEmpty()) {
     const DocumentScanResult result = SetRootDir(settings_->root_dir);
     if (!result.root_exists) {
       ShowWelcome();
       return;  // SetRootDir 已显示空态
     }
+  }
+  // 多标签会话优先；缺失的文件跳过，不阻塞其它标签
+  TabModel model;
+  if (!saved_tabs.isEmpty() && model.Restore(saved_tabs) && model.count() > 1) {
+    for (int i = 1; i < model.count(); ++i) {
+      const QString path = model.path_at(i);
+      if (!QFileInfo(path).isFile()) {
+        continue;
+      }
+      if (ShowFile(path, OpenReason::kRestore, OpenIntent::kNewTab)) {
+        PushHistory(path, QString());
+      }
+    }
+    if (tabs_.size() > 1) {
+      const QString active_path = model.path_at(model.active());
+      const int index = active_path.isEmpty() ? 0 : FindTabIndex(active_path);
+      if (index >= 0) {
+        ActivateTab(index);
+      }
+      WriteTabSession();
+      return;
+    }
+  }
+  // 旧会话（没有 open_tabs）按 last_file 恢复
+  if (!settings_->root_dir.isEmpty()) {
     if (QFileInfo(settings_->last_file).isFile()) {
       const QString absolute =
           QFileInfo(settings_->last_file).absoluteFilePath();
-      if (ShowFile(absolute, OpenReason::kRestore, true)) {
+      if (ShowFile(absolute, OpenReason::kRestore, OpenIntent::kNewTab)) {
         PushHistory(absolute, QString());
       }
     }
     if (!CurrentView()->is_rendering() && !CurrentView()->has_document()) {
       ShowWelcome();
     }
+    WriteTabSession();
     return;
   }
   OpenLastFile();
+  WriteTabSession();
 }
 
 void MdViewerWindow::OpenLastFile() {
@@ -1626,8 +1717,7 @@ void MdViewerWindow::OpenLastFile() {
       continue;
     }
     const QString absolute = QFileInfo(path).absoluteFilePath();
-    EnsureRootForFile(absolute);
-    if (ShowFile(absolute, OpenReason::kRestore, true)) {
+    if (ShowFile(absolute, OpenReason::kRestore, OpenIntent::kNewTab)) {
       PushHistory(absolute, QString());
       statusBar()->showMessage(
           QStringLiteral("已恢复上次打开：%1").arg(QFileInfo(path).fileName()),
@@ -1681,7 +1771,7 @@ void MdViewerWindow::UnloadWorkspace() {
   settings_->last_file.clear();
   // 意图标志：没有它，重启时 OpenLastFile 会从最近列表把工作区拉回来
   settings_->workspace_closed = true;
-  settings_->SaveSession();
+  SaveTabSession();
 
   quick_open_files_.clear();
   if (root_watcher_ != nullptr && !watched_dirs_.isEmpty()) {
@@ -2240,14 +2330,15 @@ void MdViewerWindow::UpdateChromeVisibility() {
 }
 
 bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
-                              bool new_tab) {
+                              OpenIntent intent) {
   const QFileInfo info(path);
   const QString absolute_path = info.absoluteFilePath();
   if (pending_search_hit_.has_value() &&
       pending_search_hit_->path != absolute_path) {
     pending_search_hit_.reset();
   }
-  if (new_tab) {
+  // 已打开的文件切过去，不产生重复标签；历史导航例外，它在当前标签内换篇
+  if (intent != OpenIntent::kHistory) {
     const int existing = FindTabIndex(absolute_path);
     if (existing > 0) {
       ActivateTab(existing);
@@ -2267,7 +2358,8 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
     large_file_prompted_.insert(absolute_path);
   }
   DocumentTab* target = CurrentTab();
-  if (new_tab || target == nullptr || target->path.isEmpty()) {
+  if (intent == OpenIntent::kNewTab || target == nullptr ||
+      target->path.isEmpty()) {
     target = CreateDocumentTab();
     ActivateTab(static_cast<int>(tabs_.size()) - 1);
     target = CurrentTab();
@@ -2297,7 +2389,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   // 标题栏、面包屑、状态栏路径统一由当前标签刷新
   UpdateShellForActiveTab();
   settings_->last_file = absolute_path;
-  settings_->SaveSession();
+  SaveTabSession();
   // 最近记录立即落盘：即使随后异常退出，也不会丢这次打开
   settings_->AddRecentFile(absolute_path);
   RefreshRecentMenu();
@@ -2368,7 +2460,7 @@ void MdViewerWindow::OpenBookmark(const QString& path) {
   }
   const bool outside_root = !IsPathUnderRoot(path, root_dir_);
   const QString absolute = QFileInfo(path).absoluteFilePath();
-  if (!ShowFile(absolute, OpenReason::kUser, true)) {
+  if (!ShowFile(absolute, OpenReason::kUser, OpenIntent::kNewTab)) {
     return;
   }
   PushHistory(absolute, QString());
@@ -2390,8 +2482,10 @@ void MdViewerWindow::RefreshRecentMenu() {
   for (const QString& path : settings_->recent_files) {
     QAction* action = recent_menu_->addAction(QFileInfo(path).fileName());
     action->setToolTip(path);
-    connect(action, &QAction::triggered, this,
-            [this, path] { OpenPath(path); });
+    connect(action, &QAction::triggered, this, [this, path] {
+      NavigateTo(path, QString(), /*record_history=*/true,
+                 OpenIntent::kReplace);
+    });
   }
   recent_menu_->addSeparator();
   QAction* clear = recent_menu_->addAction(QStringLiteral("清除最近记录"));
@@ -2402,11 +2496,49 @@ void MdViewerWindow::RefreshRecentMenu() {
   });
 }
 
+void MdViewerWindow::RefreshRecentRootsMenu() {
+  if (recent_roots_menu_ == nullptr || settings_ == nullptr) {
+    return;
+  }
+  recent_roots_menu_->clear();
+  if (settings_->recent_roots.isEmpty()) {
+    QAction* empty = recent_roots_menu_->addAction(QStringLiteral("（无）"));
+    empty->setEnabled(false);
+    return;
+  }
+  for (const QString& root : settings_->recent_roots) {
+    QAction* action =
+        recent_roots_menu_->addAction(QDir::toNativeSeparators(root));
+    action->setToolTip(root);
+    connect(action, &QAction::triggered, this,
+            [this, root] { OpenRecentRoot(root); });
+  }
+  recent_roots_menu_->addSeparator();
+  QAction* clear =
+      recent_roots_menu_->addAction(QStringLiteral("清除最近工作区"));
+  connect(clear, &QAction::triggered, this, [this] {
+    settings_->recent_roots.clear();
+    settings_->SaveRecentRoots();
+    RefreshRecentRootsMenu();
+  });
+}
+
+void MdViewerWindow::OpenRecentRoot(const QString& root) {
+  if (!QFileInfo(root).isDir()) {
+    statusBar()->showMessage(QStringLiteral("工作区不存在：%1").arg(root),
+                             4000);
+    return;
+  }
+  NavigateTo(root, QString(), /*record_history=*/true, OpenIntent::kReplace);
+}
+
 void MdViewerWindow::SaveSettings() {
-  if (settings_ == nullptr || CurrentView() == nullptr) {
+  // 会话与几何只归主窗口；次窗口退出不写任何东西
+  if (!session_owner_ || settings_ == nullptr || CurrentView() == nullptr) {
     return;
   }
   RememberCurrentPosition();
+  SyncTabSessionFields();
   settings_->window_geometry = saveGeometry();
   const bool welcome_visible = welcome_ != nullptr && welcome_->isVisible();
   if (welcome_visible && !welcome_dock_state_.isEmpty()) {

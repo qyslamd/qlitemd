@@ -10,6 +10,7 @@
 namespace {
 
 constexpr int kMaxRecentFiles = 10;
+constexpr int kMaxRecentRoots = 8;
 
 constexpr char kKeyGeometry[] = "window/geometry";
 constexpr char kKeyDockState[] = "window/dock_state";
@@ -30,8 +31,10 @@ constexpr char kKeyFormula[] = "render/formula";
 constexpr char kKeyMermaid[] = "render/mermaid";
 constexpr char kKeyPersistentCache[] = "render/persistent_cache";
 constexpr char kKeyRecentFiles[] = "recent/files";
+constexpr char kKeyRecentRoots[] = "recent/roots";
 constexpr char kKeyRootDir[] = "root/dir";
 constexpr char kKeyLastFile[] = "session/last_file";
+constexpr char kKeyOpenTabs[] = "session/open_tabs";
 constexpr char kKeyWorkspaceClosed[] = "session/workspace_closed";
 constexpr char kKeyBookmarks[] = "bookmarks/files";
 constexpr char kKeyPositions[] = "session/positions";
@@ -138,8 +141,13 @@ void MdViewerSettings::Load() {
   while (recent_files.size() > kMaxRecentFiles) {
     recent_files.removeLast();
   }
+  recent_roots = settings.value(kKeyRecentRoots).toStringList();
+  while (recent_roots.size() > kMaxRecentRoots) {
+    recent_roots.removeLast();
+  }
   root_dir = settings.value(kKeyRootDir).toString();
   last_file = settings.value(kKeyLastFile).toString();
+  open_tabs_json = settings.value(kKeyOpenTabs).toByteArray();
   workspace_closed = settings.value(kKeyWorkspaceClosed, false).toBool();
   bookmarks_json = settings.value(kKeyBookmarks).toString();
   positions_json = settings.value(kKeyPositions).toString();
@@ -172,7 +180,9 @@ void MdViewerSettings::Save() const {
   settings.setValue(kKeyRecentFiles, recent_files);
   settings.setValue(kKeyRootDir, root_dir);
   settings.setValue(kKeyLastFile, last_file);
+  settings.setValue(kKeyOpenTabs, open_tabs_json);
   settings.setValue(kKeyWorkspaceClosed, workspace_closed);
+  settings.setValue(kKeyRecentRoots, recent_roots);
   settings.setValue(kKeyBookmarks, bookmarks_json);
   settings.setValue(kKeyPositions, positions_json);
   settings.sync();
@@ -192,7 +202,17 @@ void MdViewerSettings::SaveSession() const {
   SetIniUtf8(settings);
   settings.setValue(kKeyRootDir, root_dir);
   settings.setValue(kKeyLastFile, last_file);
+  settings.setValue(kKeyOpenTabs, open_tabs_json);
   settings.setValue(kKeyWorkspaceClosed, workspace_closed);
+  settings.setValue(kKeyRecentRoots, recent_roots);
+  settings.sync();
+  WarnWriteFailed(settings);
+}
+
+void MdViewerSettings::SaveRecentRoots() const {
+  QSettings settings(WritableSettingsPath(), QSettings::IniFormat);
+  SetIniUtf8(settings);
+  settings.setValue(kKeyRecentRoots, recent_roots);
   settings.sync();
   WarnWriteFailed(settings);
 }
@@ -221,4 +241,14 @@ void MdViewerSettings::AddRecentFile(const QString& path) {
     recent_files.removeLast();
   }
   SaveRecent();
+}
+
+void MdViewerSettings::AddRecentRoot(const QString& root) {
+  const QString absolute = QFileInfo(root).absoluteFilePath();
+  recent_roots.removeAll(absolute);
+  recent_roots.prepend(absolute);
+  while (recent_roots.size() > kMaxRecentRoots) {
+    recent_roots.removeLast();
+  }
+  SaveRecentRoots();
 }

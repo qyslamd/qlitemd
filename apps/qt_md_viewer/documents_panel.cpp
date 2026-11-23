@@ -411,6 +411,9 @@ void DocumentsPanel::initUi() {
   document_tree_->setUniformRowHeights(true);
   document_tree_->setMouseTracking(true);
   document_tree_->viewport()->setMouseTracking(true);
+  // Ctrl+点击与中键新开标签需要事件里的 modifiers/button；itemClicked
+  // 两个都拿不到
+  document_tree_->viewport()->installEventFilter(this);
   document_tree_delegate_ =
       new DocumentTreeDelegate(document_tree_, [this](const QString& path) {
         star_click_pending_ = true;
@@ -514,11 +517,38 @@ void DocumentsPanel::initUi() {
   outer->addWidget(footer);
 }
 
+bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
+  if (document_tree_ != nullptr && watched == document_tree_->viewport()) {
+    if (event->type() == QEvent::MouseButtonPress) {
+      auto* mouse = static_cast<QMouseEvent*>(event);
+      ctrl_click_ = (mouse->modifiers() & Qt::ControlModifier) != 0;
+      if (mouse->button() == Qt::MiddleButton) {
+        QTreeWidgetItem* item = document_tree_->itemAt(mouse->pos());
+        if (item != nullptr && !item->data(0, kIsDirectoryRole).toBool()) {
+          suppress_item_click_ = true;
+          emit fileActivated(item->data(0, kPathRole).toString(), true);
+          return true;
+        }
+      }
+    } else if (event->type() == QEvent::MouseButtonRelease) {
+      auto* mouse = static_cast<QMouseEvent*>(event);
+      if (mouse->button() == Qt::MiddleButton) {
+        return true;
+      }
+    }
+  }
+  return QWidget::eventFilter(watched, event);
+}
+
 void DocumentsPanel::initSignals() {
   connect(filter_edit_, &QLineEdit::textChanged, this,
           &DocumentsPanel::SetFilter);
   connect(document_tree_, &QTreeWidget::itemClicked, this,
           [this](QTreeWidgetItem* item, int) {
+            if (suppress_item_click_) {
+              suppress_item_click_ = false;
+              return;
+            }
             if (star_click_pending_) {
               star_click_pending_ = false;
               return;
@@ -527,7 +557,8 @@ void DocumentsPanel::initSignals() {
               item->setExpanded(!item->isExpanded());
               return;
             }
-            emit fileActivated(item->data(0, kPathRole).toString());
+            emit fileActivated(item->data(0, kPathRole).toString(),
+                               ctrl_click_);
           });
   connect(choose_root_button_, &QPushButton::clicked, this,
           &DocumentsPanel::chooseRootRequested);
