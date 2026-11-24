@@ -57,6 +57,8 @@ class DocumentsPanel : public QWidget {
   void SetSearchError(const QString& message);
   void ShowTab(Tab tab);
   Tab currentTab() const;
+  // 活动栏模式下页签条由外部取代，内部只负责切页
+  void SetTabBarVisible(bool visible);
   // 暗色/亮色两套 SVG 图标：切主题后由窗口调用，delegate 与页签图标
   // 一起刷新
   void SetThemeDark(bool dark);

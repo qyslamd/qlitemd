@@ -25,7 +25,6 @@
 class QAction;
 class QActionGroup;
 class QCloseEvent;
-class QDockWidget;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
@@ -38,6 +37,7 @@ class QResizeEvent;
 class QStackedWidget;
 class QTimer;
 class QToolButton;
+class ActivityBar;
 class TopToolBar;
 class WelcomeBar;
 class QVariantAnimation;
@@ -137,6 +137,10 @@ class MdViewerWindow : public QMainWindow {
   // 当前文档查找（Ctrl+F）与工作区搜索（Ctrl+Shift+F）是两个入口
   void FocusDocumentFind();
   void FocusWorkspaceSearch();
+  // 活动栏切换侧栏视图；点已选中的项则收起/展开侧栏
+  void ShowSideView(int view);
+  void EnsureSideView(int view);
+  void UpdateOutlineVisibility();
   void FindInDocument(const QString& query, bool backward);
   void UpdateFindControls();
   void StartSearch();
@@ -240,6 +244,10 @@ class MdViewerWindow : public QMainWindow {
   QAction* export_pdf_action_ = nullptr;
   QAction* find_action_ = nullptr;
   QAction* workspace_search_action_ = nullptr;
+  QAction* view_documents_action_ = nullptr;
+  QAction* view_bookmarks_action_ = nullptr;
+  QAction* view_render_status_action_ = nullptr;
+  QAction* outline_action_ = nullptr;
   QAction* quick_open_action_ = nullptr;
   QAction* back_action_ = nullptr;
   QAction* forward_action_ = nullptr;
@@ -309,15 +317,16 @@ class MdViewerWindow : public QMainWindow {
 
   // 无边框窗口壳（QWK + Fluent 标题栏）
   FluentWindowFrame* fluent_frame_ = nullptr;
-  QDockWidget* document_dock_ = nullptr;
-  QDockWidget* outline_dock_ = nullptr;
   SettingsDialog* settings_dialog_ = nullptr;
-  // 欢迎页会临时收起空大纲；采样一次，避免重复 ShowWelcome 覆盖
-  bool welcome_outline_was_visible_ = false;
-  // 欢迎页显示期间关闭窗口时保存这份布局，别把临时隐藏写进配置
-  QByteArray welcome_dock_state_;
-  // 窄宽度自动收起大纲；用户手动关掉的不算，恢复宽度时也不自动弹开
-  bool outline_auto_hidden_ = false;
+  ActivityBar* activity_bar_ = nullptr;
+  QWidget* side_panel_ = nullptr;
+  QLabel* side_title_ = nullptr;
+  QStackedWidget* side_stack_ = nullptr;
+  QWidget* render_status_page_ = nullptr;
+  QWidget* outline_column_ = nullptr;
+  QToolButton* outline_hide_button_ = nullptr;
+  // 用户是否希望看到大纲；窄窗自动隐藏不改这个值
+  bool outline_user_visible_ = true;
   QWidget* title_leading_widget_ = nullptr;
   DocumentBar* document_bar_ = nullptr;
   DocumentTabBar* tab_bar_ = nullptr;

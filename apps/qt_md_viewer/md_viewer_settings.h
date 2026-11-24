@@ -43,7 +43,11 @@ struct MdViewerSettings {
   void AddRecentRoot(const QString& root);
 
   QByteArray window_geometry;
-  QByteArray dock_state;
+  // 左侧活动栏当前视图（0 文档 / 1 搜索 / 2 收藏 / 3 渲染状态）
+  int sidebar_view = 0;
+  bool sidebar_visible = true;
+  // 大纲列是否由用户打开；窄窗自动隐藏不写回这里
+  bool outline_visible = true;
   bool dark_theme = false;
   WindowMaterial window_material = WindowMaterial::kAuto;
   // opt-in：默认库样式；原型样式由用户主动启用

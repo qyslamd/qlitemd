@@ -154,6 +154,23 @@ TEST(MdViewerSettingsTest, RecentRootsDedupeAndCap) {
   EXPECT_EQ(reloaded.recent_roots, settings.recent_roots);
 }
 
+TEST(MdViewerSettingsTest, SidebarLayoutRoundTrips) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings settings;
+  settings.Load();
+  settings.sidebar_view = 2;
+  settings.sidebar_visible = false;
+  settings.outline_visible = false;
+  settings.Save();
+
+  MdViewerSettings reloaded;
+  reloaded.Load();
+  EXPECT_EQ(reloaded.sidebar_view, 2);
+  EXPECT_FALSE(reloaded.sidebar_visible);
+  EXPECT_FALSE(reloaded.outline_visible);
+}
+
 TEST(MdViewerSettingsTest, ReadOnlyCopyDoesNotWrite) {
   AppGuard();
   ResetConfigFile();

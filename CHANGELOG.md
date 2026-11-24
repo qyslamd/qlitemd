@@ -2,6 +2,17 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- The window no longer uses dock widgets. A 30 px activity bar on the left
+  switches one side panel between documents, workspace search, bookmarks
+  and render status; clicking the active icon collapses or reopens the
+  panel. The outline is a fixed right-hand column with a hide button, and
+  the document panel's own tab strip is gone. View, panel visibility and
+  outline visibility are stored in settings; `Ctrl+Shift+E/F/B/R` select a
+  view and `Ctrl+Shift+O` toggles the outline. The old dock layout key and
+  the dock entries in the View menu are removed.
+
 ## 0.7.0 - 2026-11-24
 
 - The document bar now lives in a real `QToolBar` across the top of the

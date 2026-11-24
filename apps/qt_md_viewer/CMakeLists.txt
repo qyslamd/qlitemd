@@ -2,6 +2,8 @@ set(TARGET_NAME "qt_md_viewer")
 
 set(ALL_SRCS
     main.cpp
+    activity_bar.cpp
+    activity_bar.h
     bookmarks.cpp
     bookmarks.h
     document_index.cpp

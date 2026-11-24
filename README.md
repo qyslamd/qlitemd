@@ -315,9 +315,10 @@ navigation, session and per-document reading-position restore, workspace
 unloading (File menu: close the current directory and return to the welcome
 page; the session is not restored on the next start, while recent files,
 bookmarks and reading positions are kept), a single-row
-title bar that merges the menu, navigation, zoom and search, a right-hand
-outline, segmented sidebar tabs with inline bookmark stars, closable and
-floating docks,
+title bar that carries the tabs, a document bar for navigation, zoom and
+in-document find, a 30 px activity bar (documents, search, bookmarks,
+render status) sharing one side panel, and a fixed right-hand outline with
+a hide button,
 Mica/acrylic window materials, a status bar with document count and build
 backend labels, an opt-in prototype reading style (left-aligned page with
 a 760px text measure, cards, transparent surface) with a breadcrumb, a

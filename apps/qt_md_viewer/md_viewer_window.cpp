@@ -23,7 +23,6 @@
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDir>
-#include <QDockWidget>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
@@ -75,6 +74,7 @@
 #endif
 // clang-format on
 
+#include "activity_bar.h"
 #include "document_bar.h"
 #include "document_index.h"
 #include "document_tab_bar.h"
@@ -213,6 +213,29 @@ class SourceDialog final : public QDialog {
   }
 };
 
+QString ActivityViewTitle(int view) {
+  switch (view) {
+    case ActivityBar::kSearch:
+      return QStringLiteral("搜索");
+    case ActivityBar::kBookmarks:
+      return QStringLiteral("收藏");
+    case ActivityBar::kRenderStatus:
+      return QStringLiteral("渲染状态");
+    default:
+      return QStringLiteral("文档");
+  }
+}
+
+DocumentsPanel::Tab DocumentsTabForActivityView(int view) {
+  if (view == ActivityBar::kSearch) {
+    return DocumentsPanel::Tab::kSearch;
+  }
+  if (view == ActivityBar::kBookmarks) {
+    return DocumentsPanel::Tab::kBookmarks;
+  }
+  return DocumentsPanel::Tab::kDocuments;
+}
+
 }  // namespace
 
 MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
@@ -235,21 +258,29 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
   if (session_owner_ && !settings_->window_geometry.isEmpty()) {
     restoreGeometry(settings_->window_geometry);
   }
-  if (session_owner_ && !settings_->dock_state.isEmpty()) {
-    restoreState(settings_->dock_state);
-  }
-  // restoreState 也管工具条的可见性与几何，恢复后压回固定横带
   if (top_tool_bar_ != nullptr) {
     top_tool_bar_->ResetInvariants();
   }
-  // 旧布局把大纲放在左侧；新默认是正文右侧整列，恢复后迁移一次
-  if (outline_dock_ != nullptr &&
-      dockWidgetArea(outline_dock_) != Qt::RightDockWidgetArea) {
-    addDockWidget(Qt::RightDockWidgetArea, outline_dock_);
-    outline_dock_->show();
+  // 活动栏、侧栏与大纲不走 dock 状态，直接按设置恢复
+  outline_user_visible_ = settings_->outline_visible;
+  if (outline_action_ != nullptr) {
+    outline_action_->setChecked(outline_user_visible_);
   }
-  resizeDocks({document_dock_, outline_dock_}, {300, 212}, Qt::Horizontal);
-  CaptureWelcomeState();
+  if (activity_bar_ != nullptr && side_panel_ != nullptr) {
+    const int view = qBound(0, settings_->sidebar_view,
+                            static_cast<int>(ActivityBar::kRenderStatus));
+    if (view == ActivityBar::kRenderStatus) {
+      side_stack_->setCurrentWidget(render_status_page_);
+    } else {
+      side_stack_->setCurrentWidget(documents_panel_);
+      documents_panel_->ShowTab(DocumentsTabForActivityView(view));
+    }
+    activity_bar_->SetActiveView(view);
+    if (side_title_ != nullptr) {
+      side_title_->setText(ActivityViewTitle(view));
+    }
+    side_panel_->setVisible(settings_->sidebar_visible);
+  }
   ShowWelcome();
   // 侧栏/欢迎页/快速跳转的图标初始为亮色套；暗色启动在这里同步
   RefreshThemeIcons();
@@ -910,6 +941,7 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     welcome_bar_->SetWorkspaceName(root_dir_);
   }
   UpdateFindControls();
+  UpdateOutlineVisibility();
   if (welcome) {
     setWindowTitle(QStringLiteral("Markdown 查看器"));
     if (welcome_ != nullptr) {
@@ -921,9 +953,6 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     if (documents_panel_ != nullptr) {
       documents_panel_->SetCurrentFile(QString());
     }
-    if (outline_dock_ != nullptr && welcome_outline_was_visible_) {
-      outline_dock_->hide();
-    }
   } else {
     setWindowTitle(DocumentDisplayTitle(root_dir_, tab->path));
     if (document_bar_ != nullptr) {
@@ -932,9 +961,6 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     }
     if (documents_panel_ != nullptr) {
       documents_panel_->SetCurrentFile(tab->path);
-    }
-    if (welcome_outline_was_visible_ && outline_dock_ != nullptr) {
-      outline_dock_->show();
     }
   }
   if (tab_count_label_ != nullptr) {
@@ -989,6 +1015,22 @@ void MdViewerWindow::createActions() {
       QKeySequence(QStringLiteral("Ctrl+Shift+F")));
   workspace_search_action_->setToolTip(
       QStringLiteral("搜索工作区文件与内容（Ctrl+Shift+F）"));
+
+  // 活动栏的四个视图与大纲开关
+  view_documents_action_ = new QAction(QStringLiteral("文档视图"), this);
+  view_documents_action_->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+E")));
+  view_bookmarks_action_ = new QAction(QStringLiteral("收藏视图"), this);
+  view_bookmarks_action_->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+B")));
+  view_render_status_action_ =
+      new QAction(QStringLiteral("渲染状态视图"), this);
+  view_render_status_action_->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+R")));
+  outline_action_ = new QAction(QStringLiteral("大纲"), this);
+  outline_action_->setObjectName(QStringLiteral("outlineAction"));
+  outline_action_->setCheckable(true);
+  outline_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+O")));
 }
 
 void MdViewerWindow::initUi() {
@@ -1016,7 +1058,6 @@ void MdViewerWindow::initUi() {
   top_tool_bar_ = new TopToolBar(this);
   top_tool_bar_->addWidget(bar_stack_);
   addToolBar(Qt::TopToolBarArea, top_tool_bar_);
-  setCentralWidget(pages_);
 
   // 欢迎标签：不是文档，但保留一个空视图给设置/状态面板做初始绑定
   auto welcome_tab = std::make_unique<DocumentTab>();
@@ -1035,33 +1076,75 @@ void MdViewerWindow::initUi() {
             }
           });
 
-  // 递归文档树 / 书签 / 搜索结果的侧栏
-  document_dock_ = new QDockWidget(QStringLiteral("文档"), this);
-  document_dock_->setObjectName(QStringLiteral("documentDock"));
-  // 最小宽度只保证栏还能用；默认值仍由 resizeDocks 给到 300
-  document_dock_->setMinimumWidth(200);
-  // 侧栏是窄栏；不设上限时搜索结果会把左栏撑到 400 以上
-  document_dock_->setMaximumWidth(320);
-  documents_panel_ = new DocumentsPanel(document_dock_);
-  document_dock_->setWidget(documents_panel_);
-  addDockWidget(Qt::LeftDockWidgetArea, document_dock_);
+  // 活动栏 + 侧栏 + 正文 + 大纲：固定布局，不再使用 dock
+  activity_bar_ = new ActivityBar(this);
 
-  // 大纲：标题层级 + 点击回跳；原型把它放在正文右侧整列
-  outline_dock_ = new QDockWidget(QStringLiteral("大纲"), this);
-  outline_dock_->setObjectName(QStringLiteral("outlineDock"));
-  outline_dock_->setMinimumWidth(140);
-  outline_ = new MarkdownOutlineWidget(outline_dock_);
-  outline_dock_->setWidget(outline_);
-  addDockWidget(Qt::RightDockWidgetArea, outline_dock_);
+  documents_panel_ = new DocumentsPanel(this);
+  documents_panel_->SetTabBarVisible(false);
 
-  // 渲染状态：引擎加载情况与渲染/命中计数，独立成 dock 便于常开观察
-  auto* status_dock = new QDockWidget(QStringLiteral("渲染状态"), this);
-  status_dock->setObjectName(QStringLiteral("renderStatusDock"));
-  render_status_ = new RenderStatusPanel(CurrentView(), status_dock);
-  status_dock->setWidget(render_status_);
-  addDockWidget(Qt::RightDockWidgetArea, status_dock);
-  // 默认收起；需要时从“视图”菜单打开。已保存的 dock 布局会覆盖这个默认值
-  status_dock->hide();
+  side_panel_ = new QWidget(this);
+  side_panel_->setObjectName(QStringLiteral("sidePanel"));
+  side_panel_->setFixedWidth(280);
+  auto* side_layout = new QVBoxLayout(side_panel_);
+  side_layout->setContentsMargins(0, 0, 0, 0);
+  side_layout->setSpacing(0);
+  side_title_ = new QLabel(QStringLiteral("文档"), side_panel_);
+  side_title_->setObjectName(QStringLiteral("sidePanelTitle"));
+  side_title_->setContentsMargins(10, 8, 10, 4);
+  QFont side_title_font = side_title_->font();
+  side_title_font.setBold(true);
+  side_title_->setFont(side_title_font);
+  side_layout->addWidget(side_title_);
+  side_stack_ = new QStackedWidget(side_panel_);
+  side_stack_->setObjectName(QStringLiteral("sideStack"));
+  side_stack_->addWidget(documents_panel_);
+
+  render_status_page_ = new QWidget(side_stack_);
+  render_status_page_->setObjectName(QStringLiteral("renderStatusPage"));
+  auto* status_layout = new QVBoxLayout(render_status_page_);
+  status_layout->setContentsMargins(8, 8, 8, 8);
+  status_layout->setSpacing(6);
+  render_status_ = new RenderStatusPanel(CurrentView(), render_status_page_);
+  status_layout->addWidget(render_status_, 1);
+  side_stack_->addWidget(render_status_page_);
+  side_layout->addWidget(side_stack_, 1);
+
+  // 大纲固定在正文右侧；标题行留一个收起按钮
+  outline_column_ = new QWidget(this);
+  outline_column_->setObjectName(QStringLiteral("outlineColumn"));
+  outline_column_->setFixedWidth(212);
+  auto* outline_layout = new QVBoxLayout(outline_column_);
+  outline_layout->setContentsMargins(0, 0, 0, 0);
+  outline_layout->setSpacing(0);
+  auto* outline_header = new QWidget(outline_column_);
+  outline_header->setObjectName(QStringLiteral("outlineHeader"));
+  auto* outline_header_layout = new QHBoxLayout(outline_header);
+  outline_header_layout->setContentsMargins(10, 6, 6, 6);
+  outline_header_layout->setSpacing(6);
+  auto* outline_title = new QLabel(QStringLiteral("大纲"), outline_header);
+  outline_title->setObjectName(QStringLiteral("outlineTitle"));
+  outline_header_layout->addWidget(outline_title);
+  outline_header_layout->addStretch(1);
+  outline_hide_button_ = new QToolButton(outline_header);
+  outline_hide_button_->setObjectName(QStringLiteral("outlineHideButton"));
+  outline_hide_button_->setAutoRaise(true);
+  outline_hide_button_->setText(QStringLiteral("×"));
+  outline_hide_button_->setToolTip(QStringLiteral("隐藏大纲（Ctrl+Shift+O）"));
+  outline_header_layout->addWidget(outline_hide_button_);
+  outline_ = new MarkdownOutlineWidget(outline_column_);
+  outline_layout->addWidget(outline_header);
+  outline_layout->addWidget(outline_, 1);
+
+  auto* center = new QWidget(this);
+  center->setObjectName(QStringLiteral("mainColumns"));
+  auto* columns = new QHBoxLayout(center);
+  columns->setContentsMargins(0, 0, 0, 0);
+  columns->setSpacing(0);
+  columns->addWidget(activity_bar_);
+  columns->addWidget(side_panel_);
+  columns->addWidget(pages_, 1);
+  columns->addWidget(outline_column_);
+  setCentralWidget(center);
 
   // 阅读外观弹层：改的是全局阅读参数，不做成 dock，也不占正文
   appearance_popup_ = new ReaderAppearancePopup(this);
@@ -1231,10 +1314,12 @@ void MdViewerWindow::initUi() {
 
   view_menu_ = app_menu_->addMenu(QStringLiteral("视图(&V)"));
   view_menu_->addAction(quick_open_action_);
+  view_menu_->addAction(workspace_search_action_);
   view_menu_->addSeparator();
-  view_menu_->addAction(document_dock_->toggleViewAction());
-  view_menu_->addAction(outline_dock_->toggleViewAction());
-  view_menu_->addAction(status_dock->toggleViewAction());
+  view_menu_->addAction(view_documents_action_);
+  view_menu_->addAction(view_bookmarks_action_);
+  view_menu_->addAction(view_render_status_action_);
+  view_menu_->addAction(outline_action_);
   view_menu_->addSeparator();
   view_menu_->addAction(back_action_);
   view_menu_->addAction(forward_action_);
@@ -1286,6 +1371,10 @@ void MdViewerWindow::initUi() {
   addAction(quit_action_);
   addAction(find_action_);
   addAction(workspace_search_action_);
+  addAction(view_documents_action_);
+  addAction(view_bookmarks_action_);
+  addAction(view_render_status_action_);
+  addAction(outline_action_);
   addAction(quick_open_action_);
   addAction(back_action_);
   addAction(forward_action_);
@@ -1359,6 +1448,27 @@ void MdViewerWindow::initUi() {
   });
   connect(welcome_bar_, &WelcomeBar::settingsRequested, this,
           &MdViewerWindow::ShowSettings);
+  connect(activity_bar_, &ActivityBar::viewActivated, this,
+          &MdViewerWindow::ShowSideView);
+  connect(outline_hide_button_, &QToolButton::clicked, this, [this] {
+    outline_user_visible_ = false;
+    settings_->outline_visible = false;
+    if (outline_action_ != nullptr) {
+      outline_action_->setChecked(false);
+    }
+    UpdateOutlineVisibility();
+  });
+  connect(view_documents_action_, &QAction::triggered, this,
+          [this] { EnsureSideView(ActivityBar::kDocuments); });
+  connect(view_bookmarks_action_, &QAction::triggered, this,
+          [this] { EnsureSideView(ActivityBar::kBookmarks); });
+  connect(view_render_status_action_, &QAction::triggered, this,
+          [this] { EnsureSideView(ActivityBar::kRenderStatus); });
+  connect(outline_action_, &QAction::toggled, this, [this](bool on) {
+    outline_user_visible_ = on;
+    settings_->outline_visible = on;
+    UpdateOutlineVisibility();
+  });
   connect(document_bar_->copy_button(), &QToolButton::clicked, this, [this] {
     const QString path =
         CurrentTab() != nullptr ? CurrentTab()->path : QString();
@@ -2383,8 +2493,8 @@ void MdViewerWindow::RefreshChromePalette() {
   };
   setPalette(app_palette);
   apply_palette(statusBar(), app_palette);
-  apply_palette(document_dock_, app_palette);
-  apply_palette(outline_dock_, app_palette);
+  apply_palette(side_panel_, app_palette);
+  apply_palette(outline_column_, app_palette);
 }
 
 void MdViewerWindow::ApplyReadingChromeTo(MarkdownView* view) {
@@ -2498,28 +2608,12 @@ void MdViewerWindow::ShowWelcome() {
   if (appearance_popup_ != nullptr) {
     appearance_popup_->hide();
   }
-  if (outline_dock_ != nullptr && welcome_outline_was_visible_) {
-    outline_dock_->hide();
-  }
   // 启动时就停在欢迎标签时 ActivateTab(0) 会提前返回，工具条不会自己
   // 切页；这里统一补一次，保证欢迎栏与文档栏始终跟当前标签一致
   UpdateShellForActiveTab();
 }
 
-void MdViewerWindow::CaptureWelcomeState() {
-  welcome_outline_was_visible_ =
-      outline_dock_ != nullptr && !outline_dock_->isHidden();
-  if (welcome_ != nullptr) {
-    welcome_dock_state_ = saveState();
-  }
-}
-
-void MdViewerWindow::HideWelcome() {
-  // 页栈已经保证欢迎页与正文互斥，这里只负责恢复大纲的可见性
-  if (welcome_outline_was_visible_ && outline_dock_ != nullptr) {
-    outline_dock_->show();
-  }
-}
+void MdViewerWindow::HideWelcome() { UpdateOutlineVisibility(); }
 
 void MdViewerWindow::UpdateReadingProgress(int y) {
   ReaderPage* page = CurrentPage();
@@ -2617,18 +2711,7 @@ void MdViewerWindow::UpdateChromeVisibility() {
   if (fluent_frame_ == nullptr || fluent_frame_->titleBar() == nullptr) {
     return;
   }
-  const int window_width = width();
-  if (outline_dock_ != nullptr) {
-    if (window_width < 980) {
-      if (!outline_dock_->isHidden()) {
-        outline_dock_->hide();
-        outline_auto_hidden_ = true;
-      }
-    } else if (outline_auto_hidden_) {
-      outline_dock_->show();
-      outline_auto_hidden_ = false;
-    }
-  }
+  UpdateOutlineVisibility();
 }
 
 bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
@@ -2847,14 +2930,13 @@ void MdViewerWindow::SaveSettings() {
   RememberCurrentPosition();
   SyncTabSessionFields();
   settings_->window_geometry = saveGeometry();
-  const bool welcome_visible = welcome_ != nullptr && welcome_->isVisible();
-  if (welcome_visible && !welcome_dock_state_.isEmpty()) {
-    // 欢迎页会临时收起空大纲；保存欢迎页之前的布局，别把临时
-    // 隐藏写进下次启动的 dock_state
-    settings_->dock_state = welcome_dock_state_;
-  } else {
-    settings_->dock_state = saveState();
+  if (activity_bar_ != nullptr) {
+    settings_->sidebar_view = activity_bar_->active_view();
   }
+  if (side_panel_ != nullptr) {
+    settings_->sidebar_visible = side_panel_->isVisible();
+  }
+  settings_->outline_visible = outline_user_visible_;
   CaptureGlobalSettings(CurrentTab());
   settings_->window_material = window_material_;
   settings_->root_dir = root_dir_;
@@ -2934,17 +3016,8 @@ void MdViewerWindow::ReportRenderStatus() {
 }
 
 QMenu* MdViewerWindow::createPopupMenu() {
-  // 工具条是固定横带，不能出现在 QMainWindow 的显示/隐藏菜单里；
-  // dock 的开关仍然保留
-  auto* menu = new QMenu(this);
-  for (QDockWidget* dock : findChildren<QDockWidget*>()) {
-    menu->addAction(dock->toggleViewAction());
-  }
-  if (menu->actions().isEmpty()) {
-    delete menu;
-    return nullptr;
-  }
-  return menu;
+  // 没有 dock，也不允许用户关掉顶部工具条；右键菜单直接不给
+  return nullptr;
 }
 
 void MdViewerWindow::closeEvent(QCloseEvent* event) {
@@ -3000,10 +3073,7 @@ void MdViewerWindow::FocusDocumentFind() {
 }
 
 void MdViewerWindow::FocusWorkspaceSearch() {
-  if (document_dock_ != nullptr) {
-    document_dock_->show();
-  }
-  documents_panel_->ShowTab(DocumentsPanel::Tab::kSearch);
+  EnsureSideView(ActivityBar::kSearch);
   if (workspace_search_edit_ == nullptr ||
       !workspace_search_edit_->isEnabled()) {
     statusBar()->showMessage(QStringLiteral("先打开一个目录"), 2000);
@@ -3011,6 +3081,50 @@ void MdViewerWindow::FocusWorkspaceSearch() {
   }
   workspace_search_edit_->setFocus();
   workspace_search_edit_->selectAll();
+}
+
+void MdViewerWindow::ShowSideView(int view) {
+  if (side_panel_ == nullptr || activity_bar_ == nullptr) {
+    return;
+  }
+  // 点当前已选中的视图 = 收起/展开侧栏
+  if (activity_bar_->active_view() == view && side_panel_->isVisible()) {
+    side_panel_->hide();
+    settings_->sidebar_visible = false;
+    return;
+  }
+  EnsureSideView(view);
+}
+
+void MdViewerWindow::EnsureSideView(int view) {
+  if (side_panel_ == nullptr || activity_bar_ == nullptr) {
+    return;
+  }
+  if (view < ActivityBar::kDocuments || view > ActivityBar::kRenderStatus) {
+    return;
+  }
+  side_panel_->show();
+  activity_bar_->SetActiveView(view);
+  settings_->sidebar_view = view;
+  settings_->sidebar_visible = true;
+  if (side_title_ != nullptr) {
+    side_title_->setText(ActivityViewTitle(view));
+  }
+  if (view == ActivityBar::kRenderStatus) {
+    side_stack_->setCurrentWidget(render_status_page_);
+    return;
+  }
+  side_stack_->setCurrentWidget(documents_panel_);
+  documents_panel_->ShowTab(DocumentsTabForActivityView(view));
+}
+
+void MdViewerWindow::UpdateOutlineVisibility() {
+  if (outline_column_ == nullptr) {
+    return;
+  }
+  const bool welcome = CurrentTab() == nullptr || CurrentTab()->path.isEmpty();
+  outline_column_->setVisible(outline_user_visible_ && !welcome &&
+                              width() >= 980);
 }
 
 void MdViewerWindow::FindInDocument(const QString& query, bool backward) {

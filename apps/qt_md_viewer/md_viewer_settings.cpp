@@ -14,7 +14,9 @@ constexpr int kMaxRecentRoots = 8;
 
 constexpr char kKeyGeometry[] = "window/geometry";
 // 工具条也参与 QMainWindow::saveState；换新键等于忽略旧布局一次
-constexpr char kKeyDockState[] = "window/layout_state_v2";
+constexpr char kKeySidebarView[] = "window/sidebar_view";
+constexpr char kKeySidebarVisible[] = "window/sidebar_visible";
+constexpr char kKeyOutlineVisible[] = "window/outline_visible";
 constexpr char kKeyDarkTheme[] = "appearance/dark_theme";
 constexpr char kKeyWindowMaterial[] = "appearance/window_material";
 constexpr char kKeyReadingStyle[] = "appearance/reading_style";
@@ -97,7 +99,9 @@ void MdViewerSettings::Load() {
   QSettings settings(DefaultPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   window_geometry = settings.value(kKeyGeometry).toByteArray();
-  dock_state = settings.value(kKeyDockState).toByteArray();
+  sidebar_view = settings.value(kKeySidebarView, 0).toInt();
+  sidebar_visible = settings.value(kKeySidebarVisible, true).toBool();
+  outline_visible = settings.value(kKeyOutlineVisible, true).toBool();
   dark_theme = settings.value(kKeyDarkTheme, false).toBool();
   if (settings.contains(kKeyWindowMaterial)) {
     const int material = settings.value(kKeyWindowMaterial).toInt();
@@ -163,9 +167,9 @@ void MdViewerSettings::Save() const {
   if (!window_geometry.isEmpty()) {
     settings.setValue(kKeyGeometry, window_geometry);
   }
-  if (!dock_state.isEmpty()) {
-    settings.setValue(kKeyDockState, dock_state);
-  }
+  settings.setValue(kKeySidebarView, sidebar_view);
+  settings.setValue(kKeySidebarVisible, sidebar_visible);
+  settings.setValue(kKeyOutlineVisible, outline_visible);
   settings.setValue(kKeyDarkTheme, dark_theme);
   settings.setValue(kKeyWindowMaterial, static_cast<int>(window_material));
   settings.setValue(kKeyWindowBlur, window_material != WindowMaterial::kNone);

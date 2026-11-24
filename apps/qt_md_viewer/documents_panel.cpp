@@ -907,6 +907,10 @@ void DocumentsPanel::ShowTab(Tab tab) {
   UpdateFooter();
 }
 
+void DocumentsPanel::SetTabBarVisible(bool visible) {
+  tabs_->tabBar()->setVisible(visible);
+}
+
 DocumentsPanel::Tab DocumentsPanel::currentTab() const {
   return static_cast<Tab>(tabs_->currentIndex());
 }

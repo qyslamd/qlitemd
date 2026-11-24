@@ -170,6 +170,17 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_activity_bar
+    SOURCES activity_bar_test.cpp
+            ${VIEWER_DIR}/activity_bar.cpp
+            ${VIEWER_DIR}/activity_bar.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_welcome_bar
     SOURCES welcome_bar_test.cpp
             ${VIEWER_DIR}/welcome_bar.cpp
