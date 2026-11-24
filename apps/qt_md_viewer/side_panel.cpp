@@ -1,4 +1,4 @@
-#include "documents_panel.h"
+#include "side_panel.h"
 
 #include <algorithm>
 #include <functional>
@@ -73,7 +73,7 @@ void PaintRowBackground(QPainter* painter, const QStyleOptionViewItem& opt,
 
 }  // namespace
 
-// 三个 delegate 不进匿名命名空间：DocumentsPanel 存前两个的指针，
+// 三个 delegate 不进匿名命名空间：SidePanel 存前两个的指针，
 // 主题切换时调 set_dark。图标在 paint 时按 dark 标志现取
 // 文档树单列自绘：目录计数、文件大小、行内星标都在同一行里
 class DocumentTreeDelegate : public QStyledItemDelegate {
@@ -83,7 +83,7 @@ class DocumentTreeDelegate : public QStyledItemDelegate {
   DocumentTreeDelegate(QWidget* parent, ToggleCallback toggle)
       : QStyledItemDelegate(parent), toggle_(std::move(toggle)) {}
 
-  // 主题切换后由 DocumentsPanel 调；图标在 paint 时按 flag 现取
+  // 主题切换后由 SidePanel 调；图标在 paint 时按 flag 现取
   void set_dark(bool dark) { dark_ = dark; }
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
@@ -361,14 +361,14 @@ void SetEntryRoles(QTreeWidgetItem* item, const DocumentEntry& entry) {
   item->setToolTip(0, entry.absolute_path);
 }
 
-DocumentsPanel::DocumentsPanel(QWidget* parent) : QWidget(parent) {
+SidePanel::SidePanel(QWidget* parent) : QWidget(parent) {
   initUi();
   initSignals();
   // 默认没有工作区：搜索输入禁用，等 SetRoot 成功后由窗口打开
   SetSearchAvailable(false);
 }
 
-void DocumentsPanel::initUi() {
+void SidePanel::initUi() {
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);
   outer->setSpacing(0);
@@ -524,7 +524,7 @@ void DocumentsPanel::initUi() {
   outer->addWidget(tabs_, 1);
 }
 
-bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
+bool SidePanel::eventFilter(QObject* watched, QEvent* event) {
   if (document_tree_ != nullptr && watched == document_tree_->viewport()) {
     if (event->type() == QEvent::MouseButtonPress) {
       auto* mouse = static_cast<QMouseEvent*>(event);
@@ -552,13 +552,12 @@ bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
   return QWidget::eventFilter(watched, event);
 }
 
-void DocumentsPanel::initSignals() {
-  connect(filter_edit_, &QLineEdit::textChanged, this,
-          &DocumentsPanel::SetFilter);
+void SidePanel::initSignals() {
+  connect(filter_edit_, &QLineEdit::textChanged, this, &SidePanel::SetFilter);
   connect(search_edit_, &QLineEdit::textChanged, this,
-          &DocumentsPanel::searchTextChanged);
+          &SidePanel::searchTextChanged);
   connect(search_edit_, &QLineEdit::returnPressed, this,
-          &DocumentsPanel::searchSubmitted);
+          &SidePanel::searchSubmitted);
   connect(document_tree_, &QTreeWidget::itemClicked, this,
           [this](QTreeWidgetItem* item, int) {
             if (suppress_item_click_) {
@@ -577,7 +576,7 @@ void DocumentsPanel::initSignals() {
                                ctrl_click_);
           });
   connect(choose_root_button_, &QPushButton::clicked, this,
-          &DocumentsPanel::chooseRootRequested);
+          &SidePanel::chooseRootRequested);
   connect(bookmark_tree_, &QTreeWidget::itemClicked, this,
           [this](QTreeWidgetItem* item, int) {
             emit bookmarkActivated(item->data(0, kPathRole).toString());
@@ -608,10 +607,10 @@ void DocumentsPanel::initSignals() {
                 item->data(0, kSearchHitRole).value<SearchHit>());
           });
   connect(cancel_button_, &QPushButton::clicked, this,
-          &DocumentsPanel::cancelSearchRequested);
+          &SidePanel::cancelSearchRequested);
 }
 
-void DocumentsPanel::SetRoot(const DocumentScanResult& result) {
+void SidePanel::SetRoot(const DocumentScanResult& result) {
   last_result_ = result;
   if (!result.root_exists) {
     ShowEmptyPage(QStringLiteral("目录不存在或不可读"));
@@ -648,8 +647,7 @@ void DocumentsPanel::SetRoot(const DocumentScanResult& result) {
   document_stack_->setCurrentWidget(document_tree_);
 }
 
-void DocumentsPanel::SetRootMissing(const QString& root,
-                                    const QString& reason) {
+void SidePanel::SetRootMissing(const QString& root, const QString& reason) {
   current_file_.clear();
   document_tree_->clear();
   last_result_ = DocumentScanResult();
@@ -660,7 +658,7 @@ void DocumentsPanel::SetRootMissing(const QString& root,
                                  : reason);
 }
 
-void DocumentsPanel::BuildTree(const DocumentScanResult& result) {
+void SidePanel::BuildTree(const DocumentScanResult& result) {
   // 每个目录显示其子树里的 Markdown 篇数
   QHash<QString, int> directory_counts;
   for (const DocumentEntry& entry : result.entries) {
@@ -719,18 +717,18 @@ void DocumentsPanel::BuildTree(const DocumentScanResult& result) {
   root_item->setExpanded(true);
 }
 
-void DocumentsPanel::ApplyFilter() {
+void SidePanel::ApplyFilter() {
   for (int i = 0; i < document_tree_->topLevelItemCount(); ++i) {
     ApplyFilterToItem(document_tree_->topLevelItem(i), filter_text_);
   }
 }
 
-void DocumentsPanel::SetFilter(const QString& text) {
+void SidePanel::SetFilter(const QString& text) {
   filter_text_ = text;
   ApplyFilter();
 }
 
-void DocumentsPanel::SetSearchAvailable(bool available) {
+void SidePanel::SetSearchAvailable(bool available) {
   if (search_edit_ == nullptr) {
     return;
   }
@@ -743,7 +741,7 @@ void DocumentsPanel::SetSearchAvailable(bool available) {
   }
 }
 
-void DocumentsPanel::SetCurrentFile(const QString& absolute_path) {
+void SidePanel::SetCurrentFile(const QString& absolute_path) {
   current_file_ = absolute_path;
   for (QTreeWidgetItemIterator it(document_tree_); *it; ++it) {
     if ((*it)->data(0, kPathRole).toString() != absolute_path) {
@@ -759,8 +757,8 @@ void DocumentsPanel::SetCurrentFile(const QString& absolute_path) {
   }
 }
 
-void DocumentsPanel::SetBookmarks(const QVector<Bookmark>& bookmarks,
-                                  const QString& current_root) {
+void SidePanel::SetBookmarks(const QVector<Bookmark>& bookmarks,
+                             const QString& current_root) {
   bookmarked_paths_.clear();
   for (const Bookmark& bookmark : bookmarks) {
     bookmarked_paths_.insert(bookmark.path);
@@ -778,7 +776,7 @@ void DocumentsPanel::SetBookmarks(const QVector<Bookmark>& bookmarks,
   UpdateDocumentBookmarkRoles();
 }
 
-void DocumentsPanel::UpdateDocumentBookmarkRoles() {
+void SidePanel::UpdateDocumentBookmarkRoles() {
   if (document_tree_ == nullptr) {
     return;
   }
@@ -792,7 +790,7 @@ void DocumentsPanel::UpdateDocumentBookmarkRoles() {
   document_tree_->viewport()->update();
 }
 
-void DocumentsPanel::BeginSearch(const QString& query) {
+void SidePanel::BeginSearch(const QString& query) {
   current_query_ = query;
   search_groups_.clear();
   search_group_counts_.clear();
@@ -810,8 +808,8 @@ void DocumentsPanel::BeginSearch(const QString& query) {
   }
 }
 
-void DocumentsPanel::AppendSearchHits(const QVector<SearchHit>& hits,
-                                      int scanned_files, int total_files) {
+void SidePanel::AppendSearchHits(const QVector<SearchHit>& hits,
+                                 int scanned_files, int total_files) {
   search_scanned_files_ = scanned_files;
   search_total_files_ = total_files;
   for (const SearchHit& hit : hits) {
@@ -840,7 +838,7 @@ void DocumentsPanel::AppendSearchHits(const QVector<SearchHit>& hits,
           .arg(search_total_hits_));
 }
 
-void DocumentsPanel::EndSearch(bool truncated, bool canceled) {
+void SidePanel::EndSearch(bool truncated, bool canceled) {
   cancel_button_->hide();
   QString notice;
   if (canceled) {
@@ -861,31 +859,31 @@ void DocumentsPanel::EndSearch(bool truncated, bool canceled) {
   }
 }
 
-void DocumentsPanel::SetSearchError(const QString& message) {
+void SidePanel::SetSearchError(const QString& message) {
   cancel_button_->hide();
   search_summary_->setText(message);
   search_empty_->setText(message);
   search_empty_->show();
 }
 
-void DocumentsPanel::ShowTab(Tab tab) {
+void SidePanel::ShowTab(Tab tab) {
   tabs_->setCurrentIndex(static_cast<int>(tab));
 }
 
-void DocumentsPanel::SetTabBarVisible(bool visible) {
+void SidePanel::SetTabBarVisible(bool visible) {
   tabs_->tabBar()->setVisible(visible);
 }
 
-DocumentsPanel::Tab DocumentsPanel::currentTab() const {
+SidePanel::Tab SidePanel::currentTab() const {
   return static_cast<Tab>(tabs_->currentIndex());
 }
 
-void DocumentsPanel::ShowEmptyPage(const QString& message) {
+void SidePanel::ShowEmptyPage(const QString& message) {
   empty_label_->setText(message);
   document_stack_->setCurrentWidget(empty_page_);
 }
 
-void DocumentsPanel::SetThemeDark(bool dark) {
+void SidePanel::SetThemeDark(bool dark) {
   if (theme_dark_ == dark) {
     return;
   }

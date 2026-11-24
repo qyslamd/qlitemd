@@ -87,7 +87,7 @@ void WelcomeBar::SetThemeDark(bool dark) {
 
 void WelcomeBar::resizeEvent(QResizeEvent* event) {
   QWidget::resizeEvent(event);
-  // 窄窗只留欢迎、工作区名与设置，快速跳转让位
+  // 窄窗只留欢迎标识与工作区名，快速跳转让位
   quick_open_button_->setVisible(width() >= 480);
   UpdateWorkspaceText();
 }

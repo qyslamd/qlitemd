@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_RENDER_SETTINGS_PANEL_H_
-#define FILE_EXAMPLES_MD_VIEWER_RENDER_SETTINGS_PANEL_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
+#define FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
 
 #include <QWidget>
 
@@ -16,14 +16,14 @@ class QStackedWidget;
 class QVBoxLayout;
 class MarkdownView;
 
-// 渲染设置面板：主题、行号、公式/Mermaid 开关、持久缓存、诊断。
-// 渲染状态在独立的 RenderStatusPanel（另一个 dock）。直接读写 MarkdownView
-// 的状态；控件只用 Fluent 的属性驱动（isCard / isSwitchButton），不写样式表
-class RenderSettingsPanel : public QWidget {
+// 设置对话框的内容：外观/阅读/内容/缓存/诊断五个分类页。
+// 渲染状态在侧栏的 RenderStatusPanel 独立页。直接读写 MarkdownView 的
+// 状态；控件只用 Fluent 的属性驱动（isCard / isSwitchButton），不写样式表
+class SettingsPanel : public QWidget {
   Q_OBJECT
 
  public:
-  explicit RenderSettingsPanel(MarkdownView* view, QWidget* parent = nullptr);
+  explicit SettingsPanel(MarkdownView* view, QWidget* parent = nullptr);
 
   // 切标签时改绑到新的活动视图；全局设置各标签一致，控件无需重读
   void SetView(MarkdownView* view);
@@ -83,4 +83,4 @@ class RenderSettingsPanel : public QWidget {
   QPushButton* reset_dump_ = nullptr;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_RENDER_SETTINGS_PANEL_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_

@@ -10,7 +10,7 @@
 class MarkdownView;
 class ReaderPage;
 
-// 一个标签的全部文档级状态。主题、后端、Dock 等窗口级状态不进来。
+// 一个标签的全部文档级状态。主题、后端、侧栏等窗口级状态不进来。
 struct DocumentTab {
   QString path;                  // 空 = 欢迎页
   MarkdownView* view = nullptr;  // 欢迎标签为空

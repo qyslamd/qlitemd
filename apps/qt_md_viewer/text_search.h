@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_TEXT_SEARCH_H_
-#define FILE_EXAMPLES_MD_VIEWER_TEXT_SEARCH_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_TEXT_SEARCH_H_
+#define FILE_APPS_QT_MD_VIEWER_TEXT_SEARCH_H_
 
 #include <atomic>
 #include <functional>
@@ -87,4 +87,4 @@ class TextSearch : public QObject {
   quint64 next_request_id_ = 0;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_TEXT_SEARCH_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_TEXT_SEARCH_H_

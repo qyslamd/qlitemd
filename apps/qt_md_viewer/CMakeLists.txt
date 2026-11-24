@@ -6,6 +6,8 @@ set(ALL_SRCS
     activity_bar.h
     bookmarks.cpp
     bookmarks.h
+    reading_positions.cpp
+    reading_positions.h
     document_index.cpp
     document_index.h
     document_tab.h
@@ -13,8 +15,8 @@ set(ALL_SRCS
     document_bar.h
     document_tab_bar.cpp
     document_tab_bar.h
-    documents_panel.cpp
-    documents_panel.h
+    side_panel.cpp
+    side_panel.h
     image_lightbox.cpp
     image_lightbox.h
     md_viewer_settings.cpp
@@ -25,22 +27,24 @@ set(ALL_SRCS
     navigation_history.h
     quick_open.cpp
     quick_open.h
-    reader_appearance.cpp
-    reader_appearance.h
+    reader_preferences.cpp
+    reader_preferences.h
+    reader_appearance_popup.cpp
+    reader_appearance_popup.h
     reader_page.cpp
     reader_page.h
     reading_progress.cpp
     reading_progress.h
-    render_settings_panel.cpp
+    settings_panel.cpp
+    settings_panel.h
     text_search.cpp
     text_search.h
-    render_settings_panel.h
     render_status_panel.cpp
     render_status_panel.h
     settings_dialog.cpp
     settings_dialog.h
-    tab_model.cpp
-    tab_model.h
+    tab_session_codec.cpp
+    tab_session_codec.h
     theme_icons.h
     top_tool_bar.cpp
     top_tool_bar.h

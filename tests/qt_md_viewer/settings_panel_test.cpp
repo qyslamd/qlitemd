@@ -1,4 +1,4 @@
-#include "render_settings_panel.h"
+#include "settings_panel.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -28,9 +28,9 @@ int main(int argc, char** argv) {
   return result;
 }
 
-TEST(RenderSettingsPanelLayoutTest, HasCategoryNavAndPages) {
+TEST(SettingsPanelLayoutTest, HasCategoryNavAndPages) {
   MarkdownView view;
-  RenderSettingsPanel panel(&view);
+  SettingsPanel panel(&view);
 
   auto* categories =
       panel.findChild<QListWidget*>(QStringLiteral("settingsCategoryList"));

@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_DOCUMENTS_PANEL_H_
-#define FILE_EXAMPLES_MD_VIEWER_DOCUMENTS_PANEL_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_
+#define FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_
 
 #include <QHash>
 #include <QSet>
@@ -33,13 +33,13 @@ constexpr int kQueryLengthRole = Qt::UserRole + 9;
 
 // 左侧栏：文档树 / 书签 / 搜索结果三个页签。只负责渲染与发信号，
 // 根目录、书签集合、搜索任务都由 MdViewerWindow 编排。
-class DocumentsPanel : public QWidget {
+class SidePanel : public QWidget {
   Q_OBJECT
 
  public:
   enum class Tab { kDocuments = 0, kBookmarks = 1, kSearch = 2 };
 
-  explicit DocumentsPanel(QWidget* parent = nullptr);
+  explicit SidePanel(QWidget* parent = nullptr);
 
   void SetRoot(const DocumentScanResult& result);
   void SetRootMissing(const QString& root, const QString& reason);
@@ -121,4 +121,4 @@ class DocumentsPanel : public QWidget {
   DocumentScanResult last_result_;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_DOCUMENTS_PANEL_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_

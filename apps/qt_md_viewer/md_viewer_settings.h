@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_SETTINGS_H_
-#define FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_SETTINGS_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_MD_VIEWER_SETTINGS_H_
+#define FILE_APPS_QT_MD_VIEWER_MD_VIEWER_SETTINGS_H_
 
 #include <QByteArray>
 #include <QString>
@@ -71,7 +71,7 @@ struct MdViewerSettings {
   QStringList recent_roots;
   QString root_dir;
   QString last_file;
-  // TabModel 序列化的 open_tabs + active；多标签会话恢复用
+  // TabSessionCodec 序列化的 open_tabs + active；多标签会话恢复用
   QByteArray open_tabs_json;
   // 用户显式卸载了工作区：重启回欢迎页，不自动恢复最近文档。
   // 打开任意文件/目录即清除
@@ -82,4 +82,4 @@ struct MdViewerSettings {
   bool read_only = false;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_SETTINGS_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_MD_VIEWER_SETTINGS_H_

@@ -1,13 +1,13 @@
-#include "tab_model.h"
+#include "tab_session_codec.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 
-TabModel::TabModel() { paths_.append(QString()); }
+TabSessionCodec::TabSessionCodec() { paths_.append(QString()); }
 
-int TabModel::Add(const QString& path) {
+int TabSessionCodec::Add(const QString& path) {
   if (path.isEmpty()) {
     return 0;
   }
@@ -19,7 +19,7 @@ int TabModel::Add(const QString& path) {
   return paths_.size() - 1;
 }
 
-bool TabModel::Remove(int index) {
+bool TabSessionCodec::Remove(int index) {
   if (index <= 0 || index >= paths_.size()) {
     return false;
   }
@@ -33,7 +33,7 @@ bool TabModel::Remove(int index) {
   return true;
 }
 
-bool TabModel::SetActive(int index) {
+bool TabSessionCodec::SetActive(int index) {
   if (index < 0 || index >= paths_.size()) {
     return false;
   }
@@ -41,7 +41,7 @@ bool TabModel::SetActive(int index) {
   return true;
 }
 
-bool TabModel::Move(int from, int to) {
+bool TabSessionCodec::Move(int from, int to) {
   if (from <= 0 || to <= 0 || from >= paths_.size() || to >= paths_.size()) {
     return false;
   }
@@ -55,14 +55,14 @@ bool TabModel::Move(int from, int to) {
   return true;
 }
 
-QString TabModel::path_at(int index) const {
+QString TabSessionCodec::path_at(int index) const {
   if (index < 0 || index >= paths_.size()) {
     return QString();
   }
   return paths_.at(index);
 }
 
-QByteArray TabModel::Serialize() const {
+QByteArray TabSessionCodec::Serialize() const {
   QJsonArray tabs;
   for (const QString& path : paths_) {
     tabs.append(path);
@@ -73,7 +73,7 @@ QByteArray TabModel::Serialize() const {
   return QJsonDocument(object).toJson(QJsonDocument::Compact);
 }
 
-bool TabModel::Restore(const QByteArray& data) {
+bool TabSessionCodec::Restore(const QByteArray& data) {
   QJsonParseError error{};
   const QJsonDocument document = QJsonDocument::fromJson(data, &error);
   if (error.error != QJsonParseError::NoError || !document.isObject()) {

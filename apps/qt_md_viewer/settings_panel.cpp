@@ -1,4 +1,4 @@
-#include "render_settings_panel.h"
+#include "settings_panel.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -114,13 +114,13 @@ void AddPage(QListWidget* list, QStackedWidget* stack, const QString& name,
 
 }  // namespace
 
-RenderSettingsPanel::RenderSettingsPanel(MarkdownView* view, QWidget* parent)
+SettingsPanel::SettingsPanel(MarkdownView* view, QWidget* parent)
     : QWidget(parent), view_(view) {
   initUi();
   initSignals();
 }
 
-QCheckBox* RenderSettingsPanel::CreateSwitch(bool checked) {
+QCheckBox* SettingsPanel::CreateSwitch(bool checked) {
   auto* box = new QCheckBox(
       checked ? QStringLiteral("开") : QStringLiteral("关"), this);
   box->setProperty("isSwitchButton", true);
@@ -131,7 +131,7 @@ QCheckBox* RenderSettingsPanel::CreateSwitch(bool checked) {
   return box;
 }
 
-void RenderSettingsPanel::initUi() {
+void SettingsPanel::initUi() {
   auto* root = new QHBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
@@ -428,13 +428,13 @@ void RenderSettingsPanel::initUi() {
   UpdateReadingControls();
 }
 
-void RenderSettingsPanel::SetView(MarkdownView* view) {
+void SettingsPanel::SetView(MarkdownView* view) {
   if (view != nullptr) {
     view_ = view;
   }
 }
 
-void RenderSettingsPanel::SetTheme(MarkdownTheme theme) {
+void SettingsPanel::SetTheme(MarkdownTheme theme) {
   const int index = theme_->findData(static_cast<int>(theme));
   if (index < 0) {
     return;
@@ -443,7 +443,7 @@ void RenderSettingsPanel::SetTheme(MarkdownTheme theme) {
   theme_->setCurrentIndex(index);
 }
 
-void RenderSettingsPanel::SetWindowMaterial(WindowMaterial material) {
+void SettingsPanel::SetWindowMaterial(WindowMaterial material) {
 #ifdef Q_OS_WIN
   if (window_material_ == nullptr) {
     return;
@@ -459,7 +459,7 @@ void RenderSettingsPanel::SetWindowMaterial(WindowMaterial material) {
 #endif
 }
 
-void RenderSettingsPanel::SetReadingStyle(ReadingStyle style) {
+void SettingsPanel::SetReadingStyle(ReadingStyle style) {
   if (reading_style_ == nullptr) {
     return;
   }
@@ -472,7 +472,7 @@ void RenderSettingsPanel::SetReadingStyle(ReadingStyle style) {
   UpdateReadingControls();
 }
 
-void RenderSettingsPanel::SetTransparentReading(bool enabled) {
+void SettingsPanel::SetTransparentReading(bool enabled) {
   if (transparent_reading_ == nullptr) {
     return;
   }
@@ -482,7 +482,7 @@ void RenderSettingsPanel::SetTransparentReading(bool enabled) {
                                         : QStringLiteral("关"));
 }
 
-void RenderSettingsPanel::UpdateReadingControls() {
+void SettingsPanel::UpdateReadingControls() {
   if (reading_style_ == nullptr || transparent_reading_ == nullptr) {
     return;
   }
@@ -490,7 +490,7 @@ void RenderSettingsPanel::UpdateReadingControls() {
                                    static_cast<int>(ReadingStyle::kPrototype));
 }
 
-void RenderSettingsPanel::initSignals() {
+void SettingsPanel::initSignals() {
   connect(category_list_, &QListWidget::currentRowChanged, page_stack_,
           &QStackedWidget::setCurrentIndex);
 #ifdef Q_OS_WIN
@@ -515,7 +515,7 @@ void RenderSettingsPanel::initSignals() {
                 reading_style_->itemData(index).toInt()));
           });
   connect(transparent_reading_, &QCheckBox::toggled, this,
-          &RenderSettingsPanel::transparentReadingChanged);
+          &SettingsPanel::transparentReadingChanged);
   connect(admonition_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
             if (index < 0) {
@@ -561,7 +561,7 @@ void RenderSettingsPanel::initSignals() {
   });
   connect(trace_, &QCheckBox::toggled, this, [this] { ApplyDiagnostics(); });
   connect(choose_cache_, &QPushButton::clicked, this,
-          &RenderSettingsPanel::BrowseCacheDirectory);
+          &SettingsPanel::BrowseCacheDirectory);
   connect(reset_cache_, &QPushButton::clicked, this, [this] {
     cache_directory_->clear();
     view_->SetRenderCacheDirectory(QString());
@@ -577,14 +577,14 @@ void RenderSettingsPanel::initSignals() {
     emit statusMessage(QStringLiteral("已清除持久渲染缓存"));
   });
   connect(choose_dump_, &QPushButton::clicked, this,
-          &RenderSettingsPanel::BrowseDumpDirectory);
+          &SettingsPanel::BrowseDumpDirectory);
   connect(reset_dump_, &QPushButton::clicked, this, [this] {
     dump_directory_->clear();
     ApplyDiagnostics();
   });
 }
 
-void RenderSettingsPanel::ApplyDiagnostics() {
+void SettingsPanel::ApplyDiagnostics() {
   MarkdownDiagnostics diagnostics;
   diagnostics.trace = trace_->isChecked();
   diagnostics.dump_directory = dump_directory_->text().trimmed();
@@ -592,7 +592,7 @@ void RenderSettingsPanel::ApplyDiagnostics() {
   emit settingsChanged();
 }
 
-void RenderSettingsPanel::BrowseCacheDirectory() {
+void SettingsPanel::BrowseCacheDirectory() {
   const QString dir = QFileDialog::getExistingDirectory(
       this, QStringLiteral("选择持久缓存目录"),
       cache_directory_->text().isEmpty() ? QDir::homePath()
@@ -605,7 +605,7 @@ void RenderSettingsPanel::BrowseCacheDirectory() {
   emit settingsChanged();
 }
 
-void RenderSettingsPanel::BrowseDumpDirectory() {
+void SettingsPanel::BrowseDumpDirectory() {
   const QString dir = QFileDialog::getExistingDirectory(
       this, QStringLiteral("选择 dump 目录"),
       dump_directory_->text().isEmpty() ? QDir::homePath()

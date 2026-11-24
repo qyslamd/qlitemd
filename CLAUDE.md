@@ -212,7 +212,7 @@ clang-format --dry-run --Werror <file>
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
 - `apps/qt_md_viewer/`：FluentUI + QWindowKit 应用（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
-  `text_search` / `navigation_history` / `documents_panel`）
+  `reading_positions` / `text_search` / `navigation_history` / `side_panel`）
 - `examples/qt_widget_minimal/`：`add_subdirectory` 消费示例与 CI 冒烟
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
 - `examples/avalonia_mdhtml/`：C ABI 的 .NET 10/Avalonia 验证程序

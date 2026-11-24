@@ -3,7 +3,7 @@
 
 #include <QToolBar>
 
-// 窗口顶部的固定横带：横跨整窗、位于左右 dock 之上。
+// 窗口顶部的固定横带：横跨整窗、位于侧栏与大纲之上。
 // 只当容器用，不提供拖动、浮动、关闭；绘制由本类接管，避免 Fluent 给
 // QToolBar 画背景、边框和拖动手柄。
 class TopToolBar : public QToolBar {

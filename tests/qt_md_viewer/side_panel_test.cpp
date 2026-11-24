@@ -1,4 +1,4 @@
-#include "documents_panel.h"
+#include "side_panel.h"
 
 #include <QApplication>
 #include <QContextMenuEvent>
@@ -53,8 +53,8 @@ DocumentScanResult SampleRoot() {
 
 }  // namespace
 
-TEST(DocumentsPanelTest, BuildsOnlyDocDirectories) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, BuildsOnlyDocDirectories) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
   ASSERT_NE(tree, nullptr);
@@ -66,8 +66,8 @@ TEST(DocumentsPanelTest, BuildsOnlyDocDirectories) {
   EXPECT_EQ(root->child(1)->text(0), QStringLiteral("a.md"));
 }
 
-TEST(DocumentsPanelTest, ShowsDirectoryCountsAndBookmarkRoles) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, ShowsDirectoryCountsAndBookmarkRoles) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
   ASSERT_NE(tree, nullptr);
@@ -85,8 +85,8 @@ TEST(DocumentsPanelTest, ShowsDirectoryCountsAndBookmarkRoles) {
   EXPECT_TRUE(guide->child(1)->data(0, kBookmarkedRole).toBool());
 }
 
-TEST(DocumentsPanelTest, StarClickRequestsBookmarkToggle) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, StarClickRequestsBookmarkToggle) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   panel.resize(360, 400);
   panel.show();
@@ -103,10 +103,10 @@ TEST(DocumentsPanelTest, StarClickRequestsBookmarkToggle) {
 
   QString toggled;
   QString activated;
-  QObject::connect(&panel, &DocumentsPanel::bookmarkToggleRequested,
+  QObject::connect(&panel, &SidePanel::bookmarkToggleRequested,
                    [&toggled](const QString& path) { toggled = path; });
   QObject::connect(
-      &panel, &DocumentsPanel::fileActivated,
+      &panel, &SidePanel::fileActivated,
       [&activated](const QString& path, bool) { activated = path; });
   QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier,
                     QPoint(item_rect.right() - 10, item_rect.center().y()));
@@ -115,8 +115,8 @@ TEST(DocumentsPanelTest, StarClickRequestsBookmarkToggle) {
   EXPECT_TRUE(activated.isEmpty());
 }
 
-TEST(DocumentsPanelTest, CtrlClickRequestsNewTab) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, CtrlClickRequestsNewTab) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   panel.resize(360, 400);
   panel.show();
@@ -131,7 +131,7 @@ TEST(DocumentsPanelTest, CtrlClickRequestsNewTab) {
 
   QString activated;
   bool new_tab = false;
-  QObject::connect(&panel, &DocumentsPanel::fileActivated,
+  QObject::connect(&panel, &SidePanel::fileActivated,
                    [&activated, &new_tab](const QString& path, bool nt) {
                      activated = path;
                      new_tab = nt;
@@ -142,8 +142,8 @@ TEST(DocumentsPanelTest, CtrlClickRequestsNewTab) {
   EXPECT_TRUE(new_tab);
 }
 
-TEST(DocumentsPanelTest, MiddleClickRequestsNewTab) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, MiddleClickRequestsNewTab) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   panel.resize(360, 400);
   panel.show();
@@ -158,7 +158,7 @@ TEST(DocumentsPanelTest, MiddleClickRequestsNewTab) {
 
   QString activated;
   bool new_tab = false;
-  QObject::connect(&panel, &DocumentsPanel::fileActivated,
+  QObject::connect(&panel, &SidePanel::fileActivated,
                    [&activated, &new_tab](const QString& path, bool nt) {
                      activated = path;
                      new_tab = nt;
@@ -185,8 +185,8 @@ TEST(DocumentsPanelTest, MiddleClickRequestsNewTab) {
   EXPECT_FALSE(new_tab);
 }
 
-TEST(DocumentsPanelTest, FilterHidesNonMatchingNodes) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, FilterHidesNonMatchingNodes) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
   auto* filter =
@@ -211,8 +211,8 @@ TEST(DocumentsPanelTest, FilterHidesNonMatchingNodes) {
   EXPECT_FALSE(deep->isHidden());
 }
 
-TEST(DocumentsPanelTest, PreservesExpansionAcrossRebuild) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, PreservesExpansionAcrossRebuild) {
+  SidePanel panel;
   panel.SetRoot(SampleRoot());
   auto* tree = panel.findChild<QTreeWidget*>(QStringLiteral("documentTree"));
   QTreeWidgetItem* root = tree->topLevelItem(0);
@@ -224,8 +224,8 @@ TEST(DocumentsPanelTest, PreservesExpansionAcrossRebuild) {
   EXPECT_TRUE(guide->isExpanded());
 }
 
-TEST(DocumentsPanelTest, ShowsEmptyStateWhenRootMissing) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, ShowsEmptyStateWhenRootMissing) {
+  SidePanel panel;
   panel.SetRootMissing(QStringLiteral("/gone"),
                        QStringLiteral("目录不存在或不可读"));
   auto* stack =
@@ -236,7 +236,7 @@ TEST(DocumentsPanelTest, ShowsEmptyStateWhenRootMissing) {
   EXPECT_EQ(stack->currentWidget(), empty);
 }
 
-TEST(DocumentsPanelTest, MarksMissingBookmarks) {
+TEST(SidePanelTest, MarksMissingBookmarks) {
   QTemporaryDir temp;
   ASSERT_TRUE(temp.isValid());
   const QString existing = temp.path() + QStringLiteral("/a.md");
@@ -245,7 +245,7 @@ TEST(DocumentsPanelTest, MarksMissingBookmarks) {
   file.write("x");
   file.close();
 
-  DocumentsPanel panel;
+  SidePanel panel;
   BookmarkStore store;
   store.Toggle(existing, temp.path());
   store.Toggle(temp.path() + QStringLiteral("/missing.md"), temp.path());
@@ -261,7 +261,7 @@ TEST(DocumentsPanelTest, MarksMissingBookmarks) {
             QStringLiteral("a.md"));
 }
 
-TEST(DocumentsPanelTest, ContextMenuSurvivesBookmarkRefresh) {
+TEST(SidePanelTest, ContextMenuSurvivesBookmarkRefresh) {
   QTemporaryDir temp;
   ASSERT_TRUE(temp.isValid());
   const QString existing = temp.path() + QStringLiteral("/a.md");
@@ -270,11 +270,11 @@ TEST(DocumentsPanelTest, ContextMenuSurvivesBookmarkRefresh) {
   file.write("x");
   file.close();
 
-  DocumentsPanel panel;
+  SidePanel panel;
   BookmarkStore store;
   store.Toggle(existing, temp.path());
   panel.SetBookmarks(store.items(), temp.path());
-  panel.ShowTab(DocumentsPanel::Tab::kBookmarks);
+  panel.ShowTab(SidePanel::Tab::kBookmarks);
   panel.resize(420, 360);
   panel.show();
   QApplication::processEvents();
@@ -289,7 +289,7 @@ TEST(DocumentsPanelTest, ContextMenuSurvivesBookmarkRefresh) {
   ASSERT_TRUE(item_rect.isValid());
 
   QString removed;
-  QObject::connect(&panel, &DocumentsPanel::bookmarkRemoveRequested,
+  QObject::connect(&panel, &SidePanel::bookmarkRemoveRequested,
                    [&removed](const QString& path) { removed = path; });
   // 菜单 exec 的嵌套事件循环里触发一次书签刷新；不修的话 item 会被删，
   // 菜单返回后再读 item 就是 use-after-free
@@ -309,8 +309,8 @@ TEST(DocumentsPanelTest, ContextMenuSurvivesBookmarkRefresh) {
   EXPECT_EQ(removed, existing);
 }
 
-TEST(DocumentsPanelTest, GroupsSearchHitsByFile) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, GroupsSearchHitsByFile) {
+  SidePanel panel;
   panel.BeginSearch(QStringLiteral("render"));
   SearchHit a0{QStringLiteral("/docs/a.md"),
                QStringLiteral("a.md"),
@@ -350,8 +350,8 @@ TEST(DocumentsPanelTest, GroupsSearchHitsByFile) {
   EXPECT_TRUE(summary->text().contains(QStringLiteral("已截断")));
 }
 
-TEST(DocumentsPanelTest, SearchInputLivesInTheSearchTab) {
-  DocumentsPanel panel;
+TEST(SidePanelTest, SearchInputLivesInTheSearchTab) {
+  SidePanel panel;
   auto* edit = panel.search_edit();
   ASSERT_NE(edit, nullptr);
   EXPECT_EQ(edit->objectName(), QStringLiteral("workspaceSearchEdit"));
@@ -360,9 +360,9 @@ TEST(DocumentsPanelTest, SearchInputLivesInTheSearchTab) {
 
   int changes = 0;
   int submitted = 0;
-  QObject::connect(&panel, &DocumentsPanel::searchTextChanged,
+  QObject::connect(&panel, &SidePanel::searchTextChanged,
                    [&changes](const QString&) { ++changes; });
-  QObject::connect(&panel, &DocumentsPanel::searchSubmitted,
+  QObject::connect(&panel, &SidePanel::searchSubmitted,
                    [&submitted] { ++submitted; });
 
   panel.SetSearchAvailable(true);

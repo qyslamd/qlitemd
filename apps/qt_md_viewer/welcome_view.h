@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_WELCOME_VIEW_H_
-#define FILE_EXAMPLES_MD_VIEWER_WELCOME_VIEW_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_WELCOME_VIEW_H_
+#define FILE_APPS_QT_MD_VIEWER_WELCOME_VIEW_H_
 
 #include <QStringList>
 #include <QWidget>
@@ -43,4 +43,4 @@ class WelcomeView : public QWidget {
   QListWidget* recent_list_ = nullptr;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_WELCOME_VIEW_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_WELCOME_VIEW_H_

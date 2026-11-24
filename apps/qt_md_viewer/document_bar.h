@@ -9,7 +9,7 @@ class QLineEdit;
 class QResizeEvent;
 class QToolButton;
 
-// 标题栏下的文档条：导航、路径、复制、搜索、阅读外观、缩放、设置。
+// 标题栏下的文档条：导航、路径、复制、查找、阅读外观、缩放。
 // 是窗口级控件（作用于当前标签），不属于任何 ReaderPage。
 class DocumentBar : public QWidget {
   Q_OBJECT

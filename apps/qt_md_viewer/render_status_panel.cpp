@@ -408,7 +408,7 @@ RenderStatusPanel::RenderStatusPanel(MarkdownView* view, QWidget* parent)
 }
 
 void RenderStatusPanel::initUi() {
-  // dock 可以被压得很矮：内容放进滚动区，别把计数器挤没
+  // 侧栏可以被压得很矮：内容放进滚动区，别把计数器挤没
   auto* panel_layout = new QVBoxLayout(this);
   panel_layout->setContentsMargins(0, 0, 0, 0);
 
@@ -417,7 +417,7 @@ void RenderStatusPanel::initUi() {
   scroll->setWidgetResizable(true);
   scroll->setFrameShape(QFrame::NoFrame);
   scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  // blur 模式下 dock 本身是半透明的，滚动区不能再自己刷一层底色
+  // blur 模式下侧栏本身是半透明的，滚动区不能再自己刷一层底色
   scroll->setAutoFillBackground(false);
   scroll->setBackgroundRole(QPalette::NoRole);
   scroll->viewport()->setAutoFillBackground(false);

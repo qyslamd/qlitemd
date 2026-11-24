@@ -1,11 +1,11 @@
-#include "reader_appearance.h"
-
 #include <QAbstractButton>
 #include <QApplication>
 #include <QPushButton>
 #include <QSignalSpy>
 
 #include <gtest/gtest.h>
+
+#include "reader_appearance_popup.h"
 
 int main(int argc, char** argv) {
   qputenv("QT_QPA_PLATFORM", "offscreen");

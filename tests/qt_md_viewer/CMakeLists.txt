@@ -10,10 +10,10 @@ add_unit_test(
 )
 
 add_unit_test(
-    NAME test_tab_model
-    SOURCES tab_model_test.cpp
-            ${VIEWER_DIR}/tab_model.cpp
-            ${VIEWER_DIR}/tab_model.h
+    NAME test_tab_session_codec
+    SOURCES tab_session_codec_test.cpp
+            ${VIEWER_DIR}/tab_session_codec.cpp
+            ${VIEWER_DIR}/tab_session_codec.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Core
     LABELS MARKDOWN
@@ -65,10 +65,10 @@ if(TARGET Frameless)
 endif()
 
 add_unit_test(
-    NAME test_documents_panel
-    SOURCES documents_panel_test.cpp
-            ${VIEWER_DIR}/documents_panel.cpp
-            ${VIEWER_DIR}/documents_panel.h
+    NAME test_side_panel
+    SOURCES side_panel_test.cpp
+            ${VIEWER_DIR}/side_panel.cpp
+            ${VIEWER_DIR}/side_panel.h
             ${VIEWER_DIR}/document_index.cpp
             ${VIEWER_DIR}/bookmarks.cpp
     INCLUDES ${VIEWER_DIR}
@@ -83,6 +83,16 @@ add_unit_test(
     SOURCES bookmarks_test.cpp
             ${VIEWER_DIR}/bookmarks.cpp
             ${VIEWER_DIR}/document_index.cpp
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Core
+    LABELS MARKDOWN
+)
+
+add_unit_test(
+    NAME test_reading_positions
+    SOURCES reading_positions_test.cpp
+            ${VIEWER_DIR}/reading_positions.cpp
+            ${VIEWER_DIR}/reading_positions.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Core
     LABELS MARKDOWN
@@ -115,8 +125,10 @@ add_unit_test(
 add_unit_test(
     NAME test_reader_appearance
     SOURCES reader_appearance_test.cpp
-            ${VIEWER_DIR}/reader_appearance.cpp
-            ${VIEWER_DIR}/reader_appearance.h
+            ${VIEWER_DIR}/reader_preferences.cpp
+            ${VIEWER_DIR}/reader_preferences.h
+            ${VIEWER_DIR}/reader_appearance_popup.cpp
+            ${VIEWER_DIR}/reader_appearance_popup.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Widgets Test
     LABELS MARKDOWN
@@ -226,13 +238,12 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 
-# 示例里的渲染状态面板：验证 outlineChanged -> RefreshStatus 这条刷新链路。
-# 面板用了 ExWidgets 的进度环与折叠容器，Fluent 路线关闭时不编这个测试
+# 设置对话框：左侧分类列表 + 右侧分页，控件按 objectName 可达
 add_unit_test(
-    NAME test_render_settings_layout
-    SOURCES render_settings_panel_test.cpp
-            ${VIEWER_DIR}/render_settings_panel.cpp
-            ${VIEWER_DIR}/render_settings_panel.h
+    NAME test_settings_panel_layout
+    SOURCES settings_panel_test.cpp
+            ${VIEWER_DIR}/settings_panel.cpp
+            ${VIEWER_DIR}/settings_panel.h
             ${VIEWER_DIR}/settings_dialog.cpp
             ${VIEWER_DIR}/settings_dialog.h
     INCLUDES ${VIEWER_DIR}
@@ -242,9 +253,11 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 
+# 渲染状态面板：验证 outlineChanged -> RefreshStatus 这条刷新链路。
+# 面板用了 ExWidgets 的进度环与折叠容器，Fluent 路线关闭时不编这个测试
 if(TARGET ExWidgets::ExWidgets)
     add_unit_test(
-        NAME test_render_settings_panel
+        NAME test_render_status_panel
         SOURCES status_panel_test.cpp
                 ${VIEWER_DIR}/render_status_panel.cpp
         INCLUDES ${VIEWER_DIR}
@@ -254,8 +267,8 @@ if(TARGET ExWidgets::ExWidgets)
         LABELS MARKDOWN
         NO_GTEST_MAIN
     )
-    set_tests_properties(test_render_settings_panel PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_render_status_panel PROPERTIES TIMEOUT 120)
     if(WIN32)
-        target_link_libraries(test_render_settings_panel PRIVATE psapi)
+        target_link_libraries(test_render_status_panel PRIVATE psapi)
     endif()
 endif()

@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_IMAGE_LIGHTBOX_H_
-#define FILE_EXAMPLES_MD_VIEWER_IMAGE_LIGHTBOX_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_IMAGE_LIGHTBOX_H_
+#define FILE_APPS_QT_MD_VIEWER_IMAGE_LIGHTBOX_H_
 
 #include <QDialog>
 #include <QPixmap>
@@ -39,4 +39,4 @@ class ImageLightbox : public QDialog {
   bool fitted_once_ = false;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_IMAGE_LIGHTBOX_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_IMAGE_LIGHTBOX_H_

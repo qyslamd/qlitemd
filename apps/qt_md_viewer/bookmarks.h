@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_BOOKMARKS_H_
-#define FILE_EXAMPLES_MD_VIEWER_BOOKMARKS_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_BOOKMARKS_H_
+#define FILE_APPS_QT_MD_VIEWER_BOOKMARKS_H_
 
 #include <QString>
 #include <QVector>
@@ -28,29 +28,8 @@ class BookmarkStore {
   QVector<Bookmark> items_;
 };
 
-struct ReadingPosition {
-  QString path;
-  int scroll = 0;
-  qint64 touched = 0;
-};
-
-// 按绝对路径记住阅读位置，最多 capacity 条，LRU 淘汰。
-class ReadingPositionStore {
- public:
-  static ReadingPositionStore FromJson(const QString& json, int capacity = 500);
-  QString ToJson() const;
-  // 不存在返回 -1
-  int ScrollFor(const QString& path) const;
-  void Update(const QString& path, int scroll, qint64 now_seconds);
-  int size() const;
-
- private:
-  QVector<ReadingPosition> items_;
-  int capacity_ = 500;
-};
-
 // 当前根优先，其次星标时的根，最后绝对路径；分隔符统一为 '/'
 QString DisplayBookmarkPath(const Bookmark& bookmark,
                             const QString& current_root);
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_BOOKMARKS_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_BOOKMARKS_H_

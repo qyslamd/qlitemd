@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_QUICK_OPEN_H_
-#define FILE_EXAMPLES_MD_VIEWER_QUICK_OPEN_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_QUICK_OPEN_H_
+#define FILE_APPS_QT_MD_VIEWER_QUICK_OPEN_H_
 
 #include <QMetaType>
 #include <QString>
@@ -78,4 +78,4 @@ class QuickOpenPopup : public QWidget {
   bool theme_dark_ = false;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_QUICK_OPEN_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_QUICK_OPEN_H_

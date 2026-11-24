@@ -1,16 +1,16 @@
-#include "tab_model.h"
+#include "tab_session_codec.h"
 
 #include <gtest/gtest.h>
 
-TEST(TabModelTest, StartsWithWelcomeTab) {
-  TabModel model;
+TEST(TabSessionCodecTest, StartsWithWelcomeTab) {
+  TabSessionCodec model;
   EXPECT_EQ(model.count(), 1);
   EXPECT_EQ(model.active(), 0);
   EXPECT_TRUE(model.path_at(0).isEmpty());
 }
 
-TEST(TabModelTest, AddAppendsAndReturnsIndex) {
-  TabModel model;
+TEST(TabSessionCodecTest, AddAppendsAndReturnsIndex) {
+  TabSessionCodec model;
   EXPECT_EQ(model.Add(QStringLiteral("/a")), 1);
   EXPECT_EQ(model.Add(QStringLiteral("/b")), 2);
   EXPECT_EQ(model.count(), 3);
@@ -18,29 +18,29 @@ TEST(TabModelTest, AddAppendsAndReturnsIndex) {
   EXPECT_EQ(model.path_at(2), QStringLiteral("/b"));
 }
 
-TEST(TabModelTest, AddDuplicateReturnsExistingIndex) {
-  TabModel model;
+TEST(TabSessionCodecTest, AddDuplicateReturnsExistingIndex) {
+  TabSessionCodec model;
   const int first = model.Add(QStringLiteral("/a"));
   EXPECT_EQ(model.Add(QStringLiteral("/a")), first);
   EXPECT_EQ(model.count(), 2);
 }
 
-TEST(TabModelTest, AddEmptyReturnsWelcome) {
-  TabModel model;
+TEST(TabSessionCodecTest, AddEmptyReturnsWelcome) {
+  TabSessionCodec model;
   EXPECT_EQ(model.Add(QString()), 0);
   EXPECT_EQ(model.count(), 1);
 }
 
-TEST(TabModelTest, RemoveWelcomeIsNoop) {
-  TabModel model;
+TEST(TabSessionCodecTest, RemoveWelcomeIsNoop) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   EXPECT_FALSE(model.Remove(0));
   EXPECT_EQ(model.count(), 2);
   EXPECT_TRUE(model.path_at(0).isEmpty());
 }
 
-TEST(TabModelTest, RemoveActiveActivatesNextTab) {
-  TabModel model;
+TEST(TabSessionCodecTest, RemoveActiveActivatesNextTab) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   model.SetActive(1);
@@ -50,8 +50,8 @@ TEST(TabModelTest, RemoveActiveActivatesNextTab) {
   EXPECT_EQ(model.path_at(model.active()), QStringLiteral("/b"));
 }
 
-TEST(TabModelTest, RemoveLastActiveFallsBackToPrevious) {
-  TabModel model;
+TEST(TabSessionCodecTest, RemoveLastActiveFallsBackToPrevious) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   model.SetActive(2);
@@ -60,8 +60,8 @@ TEST(TabModelTest, RemoveLastActiveFallsBackToPrevious) {
   EXPECT_EQ(model.path_at(model.active()), QStringLiteral("/a"));
 }
 
-TEST(TabModelTest, RemoveBeforeActiveKeepsSameDocumentActive) {
-  TabModel model;
+TEST(TabSessionCodecTest, RemoveBeforeActiveKeepsSameDocumentActive) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   model.Add(QStringLiteral("/c"));
@@ -71,8 +71,8 @@ TEST(TabModelTest, RemoveBeforeActiveKeepsSameDocumentActive) {
   EXPECT_EQ(model.path_at(model.active()), QStringLiteral("/c"));
 }
 
-TEST(TabModelTest, MoveKeepsActiveOnSameDocument) {
-  TabModel model;
+TEST(TabSessionCodecTest, MoveKeepsActiveOnSameDocument) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   model.Add(QStringLiteral("/c"));
@@ -82,8 +82,8 @@ TEST(TabModelTest, MoveKeepsActiveOnSameDocument) {
   EXPECT_EQ(model.active(), 3);
 }
 
-TEST(TabModelTest, MoveRejectsWelcomeAndIntoWelcome) {
-  TabModel model;
+TEST(TabSessionCodecTest, MoveRejectsWelcomeAndIntoWelcome) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   EXPECT_FALSE(model.Move(0, 2));
@@ -93,14 +93,14 @@ TEST(TabModelTest, MoveRejectsWelcomeAndIntoWelcome) {
   EXPECT_EQ(model.path_at(2), QStringLiteral("/b"));
 }
 
-TEST(TabModelTest, SerializeRestoreRoundTrip) {
-  TabModel model;
+TEST(TabSessionCodecTest, SerializeRestoreRoundTrip) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   model.Add(QStringLiteral("/b"));
   model.SetActive(2);
   const QByteArray data = model.Serialize();
 
-  TabModel restored;
+  TabSessionCodec restored;
   EXPECT_TRUE(restored.Restore(data));
   EXPECT_EQ(restored.count(), 3);
   EXPECT_EQ(restored.active(), 2);
@@ -109,16 +109,16 @@ TEST(TabModelTest, SerializeRestoreRoundTrip) {
   EXPECT_EQ(restored.path_at(2), QStringLiteral("/b"));
 }
 
-TEST(TabModelTest, RestoreRejectsInvalidJson) {
-  TabModel model;
+TEST(TabSessionCodecTest, RestoreRejectsInvalidJson) {
+  TabSessionCodec model;
   model.Add(QStringLiteral("/a"));
   EXPECT_FALSE(model.Restore(QByteArrayLiteral("{not json")));
   EXPECT_EQ(model.count(), 2);
   EXPECT_EQ(model.path_at(1), QStringLiteral("/a"));
 }
 
-TEST(TabModelTest, RestoreDedupesAndClampsActive) {
-  TabModel restored;
+TEST(TabSessionCodecTest, RestoreDedupesAndClampsActive) {
+  TabSessionCodec restored;
   const QByteArray data = QByteArrayLiteral(
       "{\"tabs\":[\"\",\"/a\",\"/a\",\"\",\"/b\"],"
       "\"active\":99}");

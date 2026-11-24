@@ -8,7 +8,7 @@ class QLabel;
 class QResizeEvent;
 class QToolButton;
 
-// 欢迎标签专用的工具栏内容：欢迎标识、当前工作区名、快速跳转与设置。
+// 欢迎标签专用的工具栏内容：欢迎标识、当前工作区名与快速跳转。
 // 不放文档级控件，也不放搜索框（工作区搜索属于侧栏）。
 class WelcomeBar : public QWidget {
   Q_OBJECT

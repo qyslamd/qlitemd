@@ -7,7 +7,7 @@ class QResizeEvent;
 class QToolButton;
 class ReadingProgressBar;
 
-// 一个标签的阅读区：进度线 + 面包屑 + 正文 + 浮动回顶按钮。
+// 一个标签的阅读区：进度线 + 正文 + 浮动回顶按钮。
 // 正文由宿主创建后交给本页托管；欢迎页不是 ReaderPage。
 class ReaderPage : public QWidget {
   Q_OBJECT

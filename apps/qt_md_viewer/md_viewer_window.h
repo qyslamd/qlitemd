@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_
-#define FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_MD_VIEWER_WINDOW_H_
+#define FILE_APPS_QT_MD_VIEWER_MD_VIEWER_WINDOW_H_
 
 #include <memory>
 #include <optional>
@@ -21,6 +21,7 @@
 #include "markdown_types.h"
 #include "md_viewer_settings.h"
 #include "navigation_history.h"
+#include "reading_positions.h"
 
 class QAction;
 class QActionGroup;
@@ -42,7 +43,7 @@ class ActivityBar;
 class TopToolBar;
 class WelcomeBar;
 class QVariantAnimation;
-class DocumentsPanel;
+class SidePanel;
 class DocumentBar;
 class DocumentTabBar;
 class ReaderPage;
@@ -53,7 +54,7 @@ class MarkdownOutlineWidget;
 class MarkdownView;
 class QuickOpenPopup;
 class ReaderAppearancePopup;
-class RenderSettingsPanel;
+class SettingsPanel;
 class RenderStatusPanel;
 class TextSearch;
 struct DocumentScanResult;
@@ -68,7 +69,7 @@ class MdViewerWindow : public QMainWindow {
   Q_OBJECT
 
  public:
-  // session_owner：只有第一个窗口读写会话（open_tabs/几何/dock）
+  // session_owner：只有第一个窗口读写会话（open_tabs/几何/侧栏状态）
   explicit MdViewerWindow(MdViewerSettings* settings, bool session_owner = true,
                           QWidget* parent = nullptr);
   ~MdViewerWindow() override;
@@ -133,8 +134,6 @@ class MdViewerWindow : public QMainWindow {
   void ToggleTheme();
   // Windows：窗口材质（Mica/亚克力/关闭），调色板透明度与 backdrop 一起切
   void ApplyWindowMaterial(WindowMaterial material, bool announce);
-  // 窄宽度下按顺序隐藏缩放组、搜索框、文档名
-  void UpdateChromeVisibility();
   // 当前文档查找（Ctrl+F）与工作区搜索（Ctrl+Shift+F）是两个入口
   void FocusDocumentFind();
   void FocusWorkspaceSearch();
@@ -185,8 +184,6 @@ class MdViewerWindow : public QMainWindow {
   // 无文档时的欢迎页，与正文互斥显示
   void ShowWelcome();
   void HideWelcome();
-  // restoreState 之后采样欢迎页之前的大纲可见性与 dock 布局
-  void CaptureWelcomeState();
   // 顶部进度线、浮动回顶按钮与状态栏阅读时长
   void UpdateReadingProgress(int y);
   // 等 qlitehtml 完成重排后再按新高度重算进度
@@ -283,9 +280,9 @@ class MdViewerWindow : public QMainWindow {
   QStackedWidget* bar_stack_ = nullptr;
   WelcomeBar* welcome_bar_ = nullptr;
   MarkdownOutlineWidget* outline_ = nullptr;
-  RenderSettingsPanel* render_settings_ = nullptr;
+  SettingsPanel* settings_panel_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;
-  DocumentsPanel* documents_panel_ = nullptr;
+  SidePanel* side_panel_view_ = nullptr;
   QuickOpenPopup* quick_open_ = nullptr;
   ReaderAppearancePopup* appearance_popup_ = nullptr;
   WelcomeView* welcome_ = nullptr;
@@ -352,4 +349,4 @@ class MdViewerWindow : public QMainWindow {
   bool tab_switch_queued_ = false;
 };
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_MD_VIEWER_WINDOW_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_MD_VIEWER_WINDOW_H_

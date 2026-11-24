@@ -1,5 +1,5 @@
-#ifndef FILE_EXAMPLES_MD_VIEWER_DOCUMENT_INDEX_H_
-#define FILE_EXAMPLES_MD_VIEWER_DOCUMENT_INDEX_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_DOCUMENT_INDEX_H_
+#define FILE_APPS_QT_MD_VIEWER_DOCUMENT_INDEX_H_
 
 #include <QDateTime>
 #include <QString>
@@ -37,4 +37,4 @@ QStringList DirectoriesToWatch(const DocumentScanResult& result,
 // 标题栏用：根目录名 + 相对路径；文件在根外时退回文件名
 QString DocumentDisplayTitle(const QString& root, const QString& path);
 
-#endif  // FILE_EXAMPLES_MD_VIEWER_DOCUMENT_INDEX_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_DOCUMENT_INDEX_H_
