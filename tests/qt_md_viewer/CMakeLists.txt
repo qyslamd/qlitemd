@@ -99,6 +99,54 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_bookmark_controller
+    SOURCES bookmark_controller_test.cpp
+            ${VIEWER_DIR}/bookmark_controller.cpp
+            ${VIEWER_DIR}/bookmark_controller.h
+            ${VIEWER_DIR}/bookmarks.cpp
+            ${VIEWER_DIR}/document_index.cpp
+            ${VIEWER_DIR}/md_viewer_settings.cpp
+            ${VIEWER_DIR}/md_viewer_settings.h
+    INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
+    QT_MODULES Core Gui
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
+    NAME test_reading_position_controller
+    SOURCES reading_position_controller_test.cpp
+            ${VIEWER_DIR}/reading_position_controller.cpp
+            ${VIEWER_DIR}/reading_position_controller.h
+            ${VIEWER_DIR}/reading_positions.cpp
+            ${VIEWER_DIR}/md_viewer_settings.cpp
+            ${VIEWER_DIR}/md_viewer_settings.h
+    INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
+    QT_MODULES Core Gui
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
+    NAME test_session_controller
+    SOURCES session_controller_test.cpp
+            ${VIEWER_DIR}/session_controller.cpp
+            ${VIEWER_DIR}/session_controller.h
+            ${VIEWER_DIR}/side_view.cpp
+            ${VIEWER_DIR}/side_view.h
+            ${VIEWER_DIR}/tab_session_codec.cpp
+            ${VIEWER_DIR}/md_viewer_settings.cpp
+            ${VIEWER_DIR}/md_viewer_settings.h
+    INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
+    QT_MODULES Core Gui
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_text_search
     SOURCES text_search_test.cpp
             ${VIEWER_DIR}/text_search.cpp
@@ -110,6 +158,21 @@ add_unit_test(
     NO_GTEST_MAIN
 )
 set_tests_properties(test_text_search PROPERTIES TIMEOUT 120)
+
+add_unit_test(
+    NAME test_search_controller
+    SOURCES search_controller_test.cpp
+            ${VIEWER_DIR}/search_controller.cpp
+            ${VIEWER_DIR}/search_controller.h
+            ${VIEWER_DIR}/text_search.cpp
+            ${VIEWER_DIR}/text_search.h
+            ${VIEWER_DIR}/document_index.cpp
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Core Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+set_tests_properties(test_search_controller PROPERTIES TIMEOUT 120)
 
 add_unit_test(
     NAME test_quick_open

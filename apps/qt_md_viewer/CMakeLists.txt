@@ -4,8 +4,12 @@ set(ALL_SRCS
     main.cpp
     activity_bar.cpp
     activity_bar.h
+    bookmark_controller.cpp
+    bookmark_controller.h
     bookmarks.cpp
     bookmarks.h
+    reading_position_controller.cpp
+    reading_position_controller.h
     reading_positions.cpp
     reading_positions.h
     document_index.cpp
@@ -37,6 +41,10 @@ set(ALL_SRCS
     reader_page.h
     reading_progress.cpp
     reading_progress.h
+    search_controller.cpp
+    search_controller.h
+    session_controller.cpp
+    session_controller.h
     settings_panel.cpp
     settings_panel.h
     text_search.cpp

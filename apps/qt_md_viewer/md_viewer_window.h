@@ -17,12 +17,10 @@
 #include <QVariant>
 #include <QVector>
 
-#include "bookmarks.h"
 #include "document_tab.h"
 #include "markdown_types.h"
 #include "md_viewer_settings.h"
 #include "navigation_history.h"
-#include "reading_positions.h"
 #include "side_view.h"
 
 class QAction;
@@ -42,6 +40,9 @@ class QStackedWidget;
 class QTimer;
 class QToolButton;
 class ActivityBar;
+class BookmarkController;
+class ReadingPositionController;
+class SessionController;
 class TopToolBar;
 class WelcomeBar;
 class QVariantAnimation;
@@ -58,7 +59,7 @@ class QuickOpenPopup;
 class ReaderAppearancePopup;
 class SettingsPanel;
 class RenderStatusPanel;
-class TextSearch;
+class SearchController;
 struct DocumentScanResult;
 struct QuickOpenItem;
 struct ReaderPreferences;
@@ -148,7 +149,6 @@ class MdViewerWindow : public QMainWindow {
   void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);
   void UpdateFindControls();
-  void StartSearch();
   void OpenSearchHit(const SearchHit& hit);
   void JumpToSearchHit(int ordinal, const QString& query);
   void ExportHtml();
@@ -223,7 +223,6 @@ class MdViewerWindow : public QMainWindow {
   void OnTabMoved(int from, int to);
   void UpdateTabTitle(DocumentTab* tab);
   void SetTabLoading(DocumentTab* tab, bool loading);
-  void SyncTabSessionFields();
   void WriteTabSession();
   void SaveTabSession();
   void RefreshRecentRootsMenu();
@@ -266,14 +265,8 @@ class MdViewerWindow : public QMainWindow {
   // Fluent 标题栏自带的搜索框；控件归标题栏所有
   QLineEdit* document_find_edit_ = nullptr;
   QLineEdit* workspace_search_edit_ = nullptr;
-  // 输入防抖：连续打字只搜最后一档
-  QTimer* search_timer_ = nullptr;
-  QTimer* find_timer_ = nullptr;
-  TextSearch* search_ = nullptr;
-  // 当前展示结果对应的查询；防抖窗口内旧扫描的排队信号据此丢弃
-  std::optional<QString> active_search_query_;
-  // 同一查询重开扫描时，查询文本兜不住旧一轮的排队信号，再加请求 id
-  std::optional<quint64> active_search_id_;
+  // 两类搜索的防抖、请求 id 与结果过滤都在这里
+  SearchController* search_controller_ = nullptr;
 
   // 标签集合：tabs_[0] 恒为欢迎标签（path 为空、page 为空）
   std::vector<std::unique_ptr<DocumentTab>> tabs_;
@@ -305,8 +298,8 @@ class MdViewerWindow : public QMainWindow {
   MarkdownRendererStatus last_render_status_;
   // 当前文档集的根目录；单文件在根外时才换根
   QString root_dir_;
-  BookmarkStore bookmarks_;
-  ReadingPositionStore positions_;
+  std::unique_ptr<BookmarkController> bookmark_controller_;
+  std::unique_ptr<ReadingPositionController> position_controller_;
   QSet<QString> large_file_prompted_;
   QFileSystemWatcher* root_watcher_ = nullptr;
   QTimer* root_rescan_timer_ = nullptr;
@@ -349,9 +342,7 @@ class MdViewerWindow : public QMainWindow {
   std::unique_ptr<MdViewerSettings> owned_settings_;
   QMenu* recent_menu_ = nullptr;
   QMenu* recent_roots_menu_ = nullptr;
-  // 只有主窗口写会话；恢复期间不把半成品写回
-  bool session_owner_ = true;
-  bool restoring_session_ = false;
+  std::unique_ptr<SessionController> session_controller_;
   bool tab_switch_queued_ = false;
 };
 
