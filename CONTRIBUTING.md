@@ -40,7 +40,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure -L MARKDOWN
 ## Third-party patches
 
 Vendored dependencies live under `3rdparty/`. Do not silently edit them:
-record the change in `patches/` and document the upstream version. A
+record the change in `3rdparty/patches/` and document the upstream version. A
 dependency update needs a fresh build of the library, tests and
 `md_viewer`.
 

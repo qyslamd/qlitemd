@@ -37,4 +37,4 @@ async job API, rasterizes SVG assets with Svg.Skia and displays the HTML with
 LiteHtmlSharp.Avalonia. It is a harness, not a shipped viewer.
 
 Dependencies are pinned under `3rdparty/`; patches are recorded under
-`patches/`.
+`3rdparty/patches/`.

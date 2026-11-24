@@ -20,9 +20,10 @@ components. Their licenses remain in effect for those components.
 - resvg: Apache-2.0 OR MIT (prebuilt DLL under 3rdparty/resvg)
 - merman: MIT OR Apache-2.0 (prebuilt DLL under 3rdparty/merman)
 - RaTeX: MIT (prebuilt DLL under 3rdparty/ratex; local SVG FFI patch in
-  patches/ratex)
+  3rdparty/patches/ratex)
 - highlight.js: BSD-3-Clause; Copyright (c) 2006, Ivan Sagalaev
-  (bundled as resources/highlight.min.js; license in licenses/highlightjs)
+  (bundled as resources/highlight.min.js; license in
+  resources/licenses/highlightjs)
 - MathJax: Apache-2.0; Copyright (c) The MathJax Consortium
 - Mermaid: MIT; Copyright (c) 2014-2022 Knut Sveidqvist
 - mermaidx: MIT; Copyright (c) 2023-present Mohammad Raziei
@@ -35,8 +36,8 @@ The Microsoft Segoe Fluent Icons font is not distributed with qlitemd.
 FluentUIStyle falls back to a system-installed font when present.
 
 Full license texts are kept alongside the vendored sources under
-3rdparty/*/LICENSE or 3rdparty/*/LICENSES, under licenses/ for the
-JavaScript payloads, under 3rdparty/resvg/ for the prebuilt resvg DLL
-(Apache-2.0 OR MIT), and under 3rdparty/merman/ for the prebuilt merman
-DLL (MIT OR Apache-2.0). The merman binary's transitive notices are in
-3rdparty/merman/THIRD_PARTY_NOTICES.md.
+3rdparty/*/LICENSE or 3rdparty/*/LICENSES, under resources/licenses/
+for the JavaScript payloads, under 3rdparty/resvg/ for the prebuilt
+resvg DLL (Apache-2.0 OR MIT), and under 3rdparty/merman/ for the
+prebuilt merman DLL (MIT OR Apache-2.0). The merman binary's transitive
+notices are in 3rdparty/merman/THIRD_PARTY_NOTICES.md.

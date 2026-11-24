@@ -17,7 +17,7 @@ resources/highlight.min.js -text
 resources/mathjax-svg.min.js -text
 
 # Patch files must use LF so they apply consistently on every platform.
-patches/** text eol=lf
+3rdparty/patches/** text eol=lf
 
 # Binary assets.
 *.png binary

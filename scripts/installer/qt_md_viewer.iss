@@ -2,7 +2,7 @@
 ; Build with ISCC and define StageDir, RepoRoot, BuildVersion, BuildArch and
 ; OutputDir, for example:
 ;   ISCC.exe /DStageDir=... /DRepoRoot=... /DBuildVersion=0.0.1 ^
-;     /DBuildArch=x64 /DOutputDir=... installer\qt_md_viewer.iss
+;     /DBuildArch=x64 /DOutputDir=... scripts\installer\qt_md_viewer.iss
 
 #ifndef StageDir
   #error StageDir is required

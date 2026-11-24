@@ -301,7 +301,8 @@ SDK 仍通过独立的 install 组件发布。
 
 - `src/mdhtml/`：零 Qt 核心库（`qlitemd_mdhtml`）
 - `src/markdown_view/`：Qt 控件组件（`qlitemd::markdown_view`）
-- `resources/`：主题 CSS 与 QuickJS Mermaid/公式路径用的 JS 载荷
+- `resources/`：主题 CSS 与 QuickJS Mermaid/公式路径用的 JS 载荷，
+  载荷许可证在 `resources/licenses/`
 - `apps/qt_md_viewer/`：FluentUI Markdown 查看器应用
 - `examples/qt_widget_minimal/`：add_subdirectory 消费冒烟示例
 - `examples/minimal/`：面向已安装 SDK 的零 Qt 控制台示例
@@ -310,11 +311,10 @@ SDK 仍通过独立的 install 组件发布。
 - `tests/markdown_view/`：Qt 控件无头 GoogleTest 测试
 - `tests/qt_md_viewer/`：应用层目录树/搜索/书签模块的无头测试
 - `cmake/`：package config 模板与测试辅助
-- `scripts/`：发布打包辅助（Qt 源码 SDK）
-- `installer/`：Windows 安装包的 Inno Setup 脚本
-- `licenses/`：JS 载荷的许可证文本
-- `3rdparty/`：固定版本、已打补丁的依赖快照
-- `patches/`：补丁来源记录
+- `scripts/`：发布打包辅助（Qt 源码 SDK），Inno Setup 脚本在
+  `scripts/installer/`
+- `3rdparty/`：固定版本、已打补丁的依赖快照，补丁来源记录在
+  `3rdparty/patches/`
 - `docs/`：架构、渲染和诊断文档
 - `CHANGELOG.md`：发布说明
 

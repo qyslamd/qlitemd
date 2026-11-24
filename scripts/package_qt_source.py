@@ -57,7 +57,6 @@ def stage_package(root: Path, stage: Path) -> None:
 
     copy_tree(root / "cmake", stage / "cmake")
     copy_file(root / "docs" / "qt-widget.md", stage / "docs" / "qt-widget.md")
-    copy_tree(root / "licenses", stage / "licenses")
     copy_tree(root / "resources", stage / "resources")
     copy_tree(root / "src" / "mdhtml", stage / "src" / "mdhtml")
     copy_tree(root / "src" / "markdown_view",

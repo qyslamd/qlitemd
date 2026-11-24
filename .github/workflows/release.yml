@@ -146,7 +146,7 @@ jobs:
             "/DBuildVersion=$version" `
             "/DBuildArch=x64" `
             "/DOutputDir=$dist" `
-            "installer\qt_md_viewer.iss"
+            "scripts\installer\qt_md_viewer.iss"
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }

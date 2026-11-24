@@ -221,10 +221,10 @@ clang-format --dry-run --Werror <file>
 - `tests/qt_md_viewer/`：应用层模块与文档面板的无头测试
 - `scripts/package_qt_source.py`：生成 `qlitemd-<version>-qt-src.zip`
 - `cmake/`：`qlitemdConfig.cmake.in` 与测试辅助
-- `installer/`：Inno Setup 安装包脚本
-- `licenses/`：JS 载荷的许可证文本
-- `3rdparty/`：固定版本、已打补丁的依赖快照
-- `patches/`：补丁来源记录
+- `scripts/installer/`：Inno Setup 安装包脚本
+- `resources/licenses/`：JS 载荷的许可证文本
+- `3rdparty/`：固定版本、已打补丁的依赖快照；补丁来源记录在其下
+  `3rdparty/patches/`（本仓新增，升级依赖时保留）
 - `docs/`：架构、渲染、诊断和评估文档
 - `CHANGELOG.md`：发布说明
 
@@ -265,12 +265,12 @@ clang-format --dry-run --Werror <file>
 
 ## 第三方依赖
 
-- 不要静默修改 `3rdparty/`。改动要记录到 `patches/`，升级时同步
+- 不要静默修改 `3rdparty/`。改动要记录到 `3rdparty/patches/`，升级时同步
   `NOTICE` 和 README 的第三方库表。
 - `3rdparty/fluentui/.gitignore` 忽略了 `/cmake`；新增的
   `*Config.cmake.in` 必须用 `git add -f` 强制加入，否则干净 checkout
   会在 configure 阶段失败。
-- `3rdparty/fluentui` 有本地补丁（`patches/FluentUIStyle/`）：除 Qt5
+- `3rdparty/fluentui` 有本地补丁（`3rdparty/patches/FluentUIStyle/`）：除 Qt5
   兼容补丁外，`0002-exwidgets-trim.patch` 增加
   `EXWIDGETS_MINIMAL` 与 `EXWIDGETS_ENABLE_SPECTRUM` 两个选项。顶层
   默认只编 qt_md_viewer 用到的控件，kissfft 不再参与构建；
@@ -284,7 +284,7 @@ clang-format --dry-run --Werror <file>
   `scripts/gen_highlight_entry.mjs` 生成入口、再用 esbuild 打包（版本与
   命令见入口文件头）；它带全部 193 种语言但按需注册，改类名映射或升级
   highlight.js 时重跑这两步并更新产物。
-- `patches/**` 固定使用 LF。
+- `3rdparty/patches/**` 固定使用 LF。
 - 预编原生库（resvg / merman / ratex）按 `<平台>-<架构>` 归档：
   `3rdparty/<lib>/bin/win-x64|win-x86|linux-x64|linux-arm64/`。
   Windows 只提供 x64/x86；Linux 目前 x64，后续考虑 arm64。
@@ -329,7 +329,7 @@ clang-format --dry-run --Werror <file>
 - 推送 `v*` tag 触发 `.github/workflows/release.yml`：Qt 5.15.2 x64
   构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
   并把 exe 对应的 PDB 打成 zip。
-- 安装包脚本是 `installer/qt_md_viewer.iss`；使用 Inno Setup 6.x。
+- 安装包脚本是 `scripts/installer/qt_md_viewer.iss`；使用 Inno Setup 6.x。
 - 发布产物：`qlitemd-qt_md_viewer-<version>-x64-setup.exe`、
   `qlitemd-qt_md_viewer-<version>-x64-pdb.zip`、
   `qlitemd-<version>-core-sdk-win-x64.zip` 和

@@ -440,11 +440,11 @@ if(WIN32)
             DESTINATION lib COMPONENT Development)
     endif()
 endif()
-install(FILES licenses/mathjax/LICENSE
+install(FILES resources/licenses/mathjax/LICENSE
     DESTINATION licenses/mathjax COMPONENT Licenses)
-install(FILES licenses/mermaid/LICENSE
+install(FILES resources/licenses/mermaid/LICENSE
     DESTINATION licenses/mermaid COMPONENT Licenses)
-install(FILES licenses/mermaidx/LICENSE
+install(FILES resources/licenses/mermaidx/LICENSE
     DESTINATION licenses/mermaidx COMPONENT Licenses)
 endif()  # QLITEMD_INSTALL
 

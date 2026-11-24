@@ -14,7 +14,7 @@
 | [docs/diagnostics.md](docs/diagnostics.md) | 诊断计数、日志与产物落盘 |
 | [docs/eval/Markdown渲染qjsc预编译评估.md](docs/eval/Markdown渲染qjsc预编译评估.md) | qjsc 字节码评估数据 |
 | [CHANGELOG.md](CHANGELOG.md) | 发布说明 |
-| [installer/md_viewer.iss](installer/md_viewer.iss) | Windows 安装包脚本 |
+| [scripts/installer/qt_md_viewer.iss](scripts/installer/qt_md_viewer.iss) | Windows 安装包脚本 |
 | [NOTICE](NOTICE) | 第三方许可证 |
 
 ## 快速约束
@@ -22,6 +22,6 @@
 - 代码主要由 AI 编程助手在维护者思路与审查下生成；提交信息不加 AI
   共同作者署名。
 - 构建、测试、格式化和 Git 规则以 [CLAUDE.md](CLAUDE.md) 为准。
-- 不要静默修改 `3rdparty/`；补丁记录到 `patches/`。
+- 不要静默修改 `3rdparty/`；补丁记录到 `3rdparty/patches/`。
 - 改动 `src/markdown/` 后至少跑 `ctest -L MARKDOWN`。
 - Linux CI 覆盖库和测试，`md_viewer` 的 Linux 运行时尚未验证。

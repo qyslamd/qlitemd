@@ -333,7 +333,8 @@ integration for host-side policy such as link handling and settings.
 
 - `src/mdhtml/` — the zero-Qt core library (`qlitemd_mdhtml`)
 - `src/markdown_view/` — the Qt widget component (`qlitemd::markdown_view`)
-- `resources/` — theme CSS and JS payloads for the QuickJS Mermaid/formula paths
+- `resources/` — theme CSS and JS payloads for the QuickJS Mermaid/formula paths;
+  `resources/licenses/` holds the license texts for those payloads
 - `apps/qt_md_viewer/` — the FluentUI application
 - `examples/qt_widget_minimal/` — add_subdirectory consumer smoke example
 - `examples/minimal/` — zero-Qt console example for an installed SDK
@@ -342,11 +343,10 @@ integration for host-side policy such as link handling and settings.
 - `tests/markdown_view/` — headless widget GoogleTest suite
 - `tests/qt_md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
-- `scripts/` — release packaging helpers (Qt source SDK)
-- `installer/` — Inno Setup script for the Windows installer
-- `licenses/` — license texts for JavaScript payloads
-- `3rdparty/` — pinned, patched dependency snapshots
-- `patches/` — provenance of the patches applied to those snapshots
+- `scripts/` — release packaging helpers (Qt source SDK); the Inno Setup
+  script lives in `scripts/installer/`
+- `3rdparty/` — pinned, patched dependency snapshots; `3rdparty/patches/`
+  records the patches applied to them
 - `docs/` — architecture, rendering and diagnostics notes
 - `CHANGELOG.md` — release notes
 
