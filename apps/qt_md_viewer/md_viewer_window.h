@@ -321,7 +321,6 @@ class MdViewerWindow : public QMainWindow {
   QWidget* title_leading_widget_ = nullptr;
   DocumentBar* document_bar_ = nullptr;
   DocumentTabBar* tab_bar_ = nullptr;
-  QToolButton* add_tab_button_ = nullptr;
   QToolButton* menu_button_ = nullptr;
   QMenu* app_menu_ = nullptr;
   QMenu* view_menu_ = nullptr;

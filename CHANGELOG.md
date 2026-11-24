@@ -17,6 +17,20 @@ All notable changes to qlitemd are documented here.
   (Ctrl+Shift+F) and stays disabled until a workspace is open. Ctrl+K is
   no longer bound. The sidebar's file filter moved inside the Documents
   tab so the two inputs never share a screen.
+- The main window can now shrink to 600 px wide: the document dock's
+  minimum width dropped to 200, the outline dock to 140, and the welcome
+  card to 320. At this size the document bar keeps only history, the path,
+  a compressed find box and settings; the outline dock hides itself below
+  980 px as before.
+- Restored the reader-appearance popup: the button had kept its handler
+  but the popup itself stopped being constructed during the P5 shell
+  rework, so clicks did nothing. The toolbar's settings glyph was also a
+  sun (the theme icon); it is now a gear in both themes.
+- Document tabs are 38 px tall (was 30) with a 4 px gap above them; the
+  title bar grows to 42 px to fit, and the minimum tab height is now 30.
+- Removed the "+" button after the last tab. It always opened the file
+  dialog, and the welcome page, Ctrl+T and 文件 → 新建标签页 already cover
+  that; dropping it also frees title-bar width in narrow windows.
 
 ## 0.6.0 - 2026-11-24
 

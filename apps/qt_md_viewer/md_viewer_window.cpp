@@ -993,6 +993,7 @@ void MdViewerWindow::createActions() {
 void MdViewerWindow::initUi() {
   setObjectName(QStringLiteral("mdViewerWindow"));
   setWindowTitle(QStringLiteral("Markdown 查看器"));
+  setMinimumWidth(600);
   resize(1100, 800);
 
   // 中心区：欢迎页固定第 0 页，文档标签各占一页
@@ -1036,7 +1037,8 @@ void MdViewerWindow::initUi() {
   // 递归文档树 / 书签 / 搜索结果的侧栏
   document_dock_ = new QDockWidget(QStringLiteral("文档"), this);
   document_dock_->setObjectName(QStringLiteral("documentDock"));
-  document_dock_->setMinimumWidth(278);
+  // 最小宽度只保证栏还能用；默认值仍由 resizeDocks 给到 300
+  document_dock_->setMinimumWidth(200);
   // 侧栏是窄栏；不设上限时搜索结果会把左栏撑到 400 以上
   document_dock_->setMaximumWidth(320);
   documents_panel_ = new DocumentsPanel(document_dock_);
@@ -1046,6 +1048,7 @@ void MdViewerWindow::initUi() {
   // 大纲：标题层级 + 点击回跳；原型把它放在正文右侧整列
   outline_dock_ = new QDockWidget(QStringLiteral("大纲"), this);
   outline_dock_->setObjectName(QStringLiteral("outlineDock"));
+  outline_dock_->setMinimumWidth(140);
   outline_ = new MarkdownOutlineWidget(outline_dock_);
   outline_dock_->setWidget(outline_);
   addDockWidget(Qt::RightDockWidgetArea, outline_dock_);
@@ -1058,6 +1061,18 @@ void MdViewerWindow::initUi() {
   addDockWidget(Qt::RightDockWidgetArea, status_dock);
   // 默认收起；需要时从“视图”菜单打开。已保存的 dock 布局会覆盖这个默认值
   status_dock->hide();
+
+  // 阅读外观弹层：改的是全局阅读参数，不做成 dock，也不占正文
+  appearance_popup_ = new ReaderAppearancePopup(this);
+  connect(appearance_popup_, &ReaderAppearancePopup::preferencesChanged, this,
+          [this](const ReaderPreferences& preferences) {
+            settings_->reading_font_size = preferences.font_size;
+            settings_->reading_line_height_percent =
+                preferences.line_height_percent;
+            settings_->reading_measure_px = preferences.measure_px;
+            settings_->Save();
+            ApplyReaderAppearance();
+          });
 
   // 渲染设置：模型对话框，改动即时生效；关闭只是隐藏
   render_settings_ = new RenderSettingsPanel(CurrentView(), this);
@@ -1295,19 +1310,13 @@ void MdViewerWindow::initUi() {
   title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
   title_leading_widget_->setAutoFillBackground(true);
   auto* leading_layout = new QHBoxLayout(title_leading_widget_);
-  // 顶部至少留 8px：标签贴着窗口最上沿会很挤
-  leading_layout->setContentsMargins(0, 8, 0, 0);
+  // 标签 38px 高，顶部留 4px；标题栏整体高度见下面的 setFixedHeight
+  leading_layout->setContentsMargins(0, 4, 0, 0);
   leading_layout->setSpacing(2);
   leading_layout->addWidget(menu_button_);
   tab_bar_ = new DocumentTabBar(title_leading_widget_);
   tab_bar_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
   leading_layout->addWidget(tab_bar_);
-  add_tab_button_ = new QToolButton(title_leading_widget_);
-  add_tab_button_->setObjectName(QStringLiteral("addTabButton"));
-  add_tab_button_->setAutoRaise(true);
-  add_tab_button_->setText(QStringLiteral("+"));
-  add_tab_button_->setToolTip(QStringLiteral("新建标签页（Ctrl+T）"));
-  leading_layout->addWidget(add_tab_button_);
   leading_layout->addWidget(new WindowDragArea(title_leading_widget_), 1);
   fluent_frame_->titleBar()->setLeadingWidget(title_leading_widget_);
   // 标题由标签显示，标题栏不再单独占一行文字；把剩余宽度让给标签条
@@ -1320,6 +1329,9 @@ void MdViewerWindow::initUi() {
   tab_bar_->addTab(QStringLiteral("欢迎"));
   tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
   tab_bar_->RemoveCloseButton(0);
+  // 标签 38 + 顶部 4；标题栏高度跟着标签走，否则会被裁掉
+  fluent_frame_->titleBar()->setFixedHeight(4 +
+                                            tab_bar_->tabSizeHint(0).height());
 
   // 标题栏自带的搜索框隐藏；文档条只查当前文档，工作区搜索在侧栏
   fluent_frame_->titleBar()->searchLineEdit()->setVisible(false);
@@ -1648,10 +1660,6 @@ void MdViewerWindow::initSignals() {
             &MdViewerWindow::ReloadTab);
     connect(tab_bar_, &DocumentTabBar::reopenClosedTabRequested, this,
             &MdViewerWindow::ReopenClosedTab);
-  }
-  if (add_tab_button_ != nullptr) {
-    connect(add_tab_button_, &QToolButton::clicked, this,
-            &MdViewerWindow::OpenFileDialog);
   }
   // P2 的标签条到位前，先用键盘在标签间切换
   auto* next_tab =

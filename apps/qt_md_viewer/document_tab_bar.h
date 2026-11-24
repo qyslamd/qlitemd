@@ -60,10 +60,10 @@ class DocumentTabBar : public QTabBar {
   void ShowHideTabButtons();
   void UpdateSpinTimer();
 
-  // 偏好 220x30；大量标签时等宽压到 36 再出滚动按钮
-  static constexpr int kTabHeight = 30;
+  // 偏好 220x38；大量标签时等宽压到 36 再出滚动按钮，高度不低于 30
+  static constexpr int kTabHeight = 38;
   static constexpr int kMinTabWidth = 36;
-  static constexpr int kMinTabHeight = 26;
+  static constexpr int kMinTabHeight = 30;
   static constexpr int kMaxTabWidth = 220;
   // 标签宽度低于该值时藏掉关闭按钮，避免文字与按钮互挤
   static constexpr int kCloseButtonHideWidth = 40;

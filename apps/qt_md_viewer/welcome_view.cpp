@@ -102,7 +102,8 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
 
   auto* content = new QWidget(this);
   content->setObjectName(QStringLiteral("welcomeContent"));
-  content->setMinimumWidth(520);
+  // 窄窗下欢迎页要能跟着收，最大宽度仍然限制在大屏上的可读行宽
+  content->setMinimumWidth(320);
   content->setMaximumWidth(560);
   auto* layout = new QVBoxLayout(content);
   layout->setContentsMargins(0, 0, 0, 0);

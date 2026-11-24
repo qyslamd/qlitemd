@@ -16,8 +16,8 @@ TEST(DocumentTabBarTest, MatchesTabMetrics) {
   bar.addTab(QStringLiteral("一个很长很长的文档名字用来撑宽标签.md"));
   bar.addTab(QStringLiteral("b.md"));
   for (int i = 0; i < bar.count(); ++i) {
-    EXPECT_EQ(bar.tabSizeHint(i), QSize(220, 30));
-    EXPECT_EQ(bar.minimumTabSizeHint(i), QSize(36, 26));
+    EXPECT_EQ(bar.tabSizeHint(i), QSize(220, 38));
+    EXPECT_EQ(bar.minimumTabSizeHint(i), QSize(36, 30));
   }
 }
 
