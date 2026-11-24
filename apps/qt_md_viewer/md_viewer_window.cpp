@@ -884,9 +884,10 @@ void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
   tab_bar_->setTabToolTip(index,
                           welcome ? QStringLiteral("欢迎页")
                                   : DocumentDisplayTitle(root_dir_, tab->path));
-  if (!welcome) {
-    tab_bar_->setTabIcon(index, ThemeIcon(QStringLiteral("file"), ThemeDark()));
-  }
+  // 欢迎标签用彩色应用图标，文档标签用当前主题的单色文件图标
+  tab_bar_->setTabIcon(
+      index, welcome ? QIcon(QStringLiteral(":/resources/svg/icon.svg"))
+                     : ThemeIcon(QStringLiteral("file"), ThemeDark()));
 }
 
 void MdViewerWindow::UpdateShellForActiveTab() {
@@ -1326,7 +1327,8 @@ void MdViewerWindow::initUi() {
     title_layout->setStretchFactor(title_leading_widget_, 1);
   }
   // 欢迎标签固定第 0 位、不可关闭
-  tab_bar_->addTab(QStringLiteral("欢迎"));
+  tab_bar_->addTab(QIcon(QStringLiteral(":/resources/svg/icon.svg")),
+                   QStringLiteral("欢迎"));
   tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
   tab_bar_->RemoveCloseButton(0);
   // 标签 38 + 顶部 4；标题栏高度跟着标签走，否则会被裁掉
@@ -2499,6 +2501,9 @@ void MdViewerWindow::ShowWelcome() {
   if (outline_dock_ != nullptr && welcome_outline_was_visible_) {
     outline_dock_->hide();
   }
+  // 启动时就停在欢迎标签时 ActivateTab(0) 会提前返回，工具条不会自己
+  // 切页；这里统一补一次，保证欢迎栏与文档栏始终跟当前标签一致
+  UpdateShellForActiveTab();
 }
 
 void MdViewerWindow::CaptureWelcomeState() {

@@ -31,6 +31,11 @@ All notable changes to qlitemd are documented here.
 - Removed the "+" button after the last tab. It always opened the file
   dialog, and the welcome page, Ctrl+T and 文件 → 新建标签页 already cover
   that; dropping it also frees title-bar width in narrow windows.
+- The welcome tab now shows the colored application icon, matching the
+  title bar and the welcome page instead of a blank tab.
+- Fixed the toolbar showing the document bar on the very first welcome
+  screen: `ShowWelcome()` now refreshes the shell even when tab 0 is
+  already active, so the welcome bar appears from startup.
 
 ## 0.6.0 - 2026-11-24
 
