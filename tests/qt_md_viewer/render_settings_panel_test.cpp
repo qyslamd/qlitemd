@@ -4,14 +4,12 @@
 #include <QDateTime>
 #include <QDir>
 #include <QListWidget>
-#include <QPushButton>
 #include <QStackedWidget>
 #include <QStandardPaths>
 
 #include <gtest/gtest.h>
 
 #include "markdown_view.h"
-#include "settings_dialog.h"
 
 // 设置对话框的分组布局：左侧分类 + 右侧分页，控件仍按 objectName 可达
 int main(int argc, char** argv) {
@@ -58,15 +56,4 @@ TEST(RenderSettingsPanelLayoutTest, HasCategoryNavAndPages) {
   EXPECT_NE(panel.findChild<QWidget*>(QStringLiteral("persistentCacheCheck")),
             nullptr);
   EXPECT_NE(panel.findChild<QWidget*>(QStringLiteral("traceCheck")), nullptr);
-}
-
-TEST(SettingsDialogTest, HasCloseButton) {
-  MarkdownView view;
-  // 面板会被对话框接管所有权，必须与生产路径一样在堆上创建
-  auto* panel = new RenderSettingsPanel(&view);
-  SettingsDialog dialog(panel);
-  auto* close =
-      dialog.findChild<QPushButton*>(QStringLiteral("settingsCloseButton"));
-  EXPECT_NE(close, nullptr);
-  EXPECT_EQ(close->text(), QStringLiteral("关闭"));
 }

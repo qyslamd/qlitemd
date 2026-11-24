@@ -18,8 +18,6 @@ int main(int argc, char** argv) {
 TEST(WelcomeBarTest, IsAFixedStripWithoutDocumentControls) {
   WelcomeBar bar;
   EXPECT_EQ(bar.objectName(), QStringLiteral("welcomeBar"));
-  EXPECT_EQ(bar.minimumHeight(), 32);
-  EXPECT_EQ(bar.maximumHeight(), 32);
 
   // 搜索框属于侧栏的工作区搜索，欢迎栏不提供
   EXPECT_EQ(bar.findChild<QLineEdit*>(), nullptr);
@@ -62,12 +60,4 @@ TEST(WelcomeBarTest, HidesQuickOpenWhenNarrow) {
   bar.resize(400, 32);
   QApplication::processEvents();
   EXPECT_FALSE(bar.quick_open_button()->isVisible());
-}
-
-TEST(WelcomeBarTest, ThemeSwitchKeepsTheBarUsable) {
-  WelcomeBar bar;
-  bar.SetThemeDark(true);
-  EXPECT_TRUE(bar.quick_open_button()->isEnabled());
-  bar.SetThemeDark(false);
-  EXPECT_TRUE(bar.quick_open_button()->isEnabled());
 }

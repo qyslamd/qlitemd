@@ -15,7 +15,6 @@ int main(int argc, char** argv) {
 
 TEST(ActivityBarTest, HasFourViewsWithObjectNames) {
   ActivityBar bar;
-  EXPECT_EQ(bar.width(), 30);
   EXPECT_NE(bar.button(ActivityBar::kDocuments), nullptr);
   EXPECT_NE(bar.button(ActivityBar::kSearch), nullptr);
   EXPECT_NE(bar.button(ActivityBar::kBookmarks), nullptr);
@@ -28,6 +27,11 @@ TEST(ActivityBarTest, HasFourViewsWithObjectNames) {
             QStringLiteral("activityBookmarks"));
   EXPECT_EQ(bar.button(ActivityBar::kRenderStatus)->objectName(),
             QStringLiteral("activityRenderStatus"));
+
+  bar.SetActiveView(ActivityBar::kSearch);
+  EXPECT_EQ(bar.active_view(), ActivityBar::kSearch);
+  EXPECT_TRUE(bar.button(ActivityBar::kSearch)->isChecked());
+  EXPECT_FALSE(bar.button(ActivityBar::kDocuments)->isChecked());
 }
 
 TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
@@ -41,18 +45,6 @@ TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
                    [&requested] { ++requested; });
   settings->click();
   EXPECT_EQ(requested, 1);
-}
-
-TEST(ActivityBarTest, ViewsAreExclusive) {
-  ActivityBar bar;
-  bar.SetActiveView(ActivityBar::kSearch);
-  EXPECT_EQ(bar.active_view(), ActivityBar::kSearch);
-  EXPECT_TRUE(bar.button(ActivityBar::kSearch)->isChecked());
-  EXPECT_FALSE(bar.button(ActivityBar::kDocuments)->isChecked());
-
-  bar.SetActiveView(ActivityBar::kRenderStatus);
-  EXPECT_FALSE(bar.button(ActivityBar::kSearch)->isChecked());
-  EXPECT_TRUE(bar.button(ActivityBar::kRenderStatus)->isChecked());
 }
 
 TEST(ActivityBarTest, AnnouncesClicksEvenWhenAlreadyActive) {

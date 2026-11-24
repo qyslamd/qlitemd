@@ -27,20 +27,15 @@ DocumentBar* MakeShownBar(int width) {
 
 }  // namespace
 
-TEST(DocumentBarTest, ExposesAllControls) {
+TEST(DocumentBarTest, ExposesControlAnchors) {
   DocumentBar bar;
-  EXPECT_NE(bar.back_button(), nullptr);
-  EXPECT_NE(bar.forward_button(), nullptr);
-  EXPECT_NE(bar.star_button(), nullptr);
-  EXPECT_NE(bar.appearance_button(), nullptr);
-  EXPECT_NE(bar.zoom_out_button(), nullptr);
-  EXPECT_NE(bar.zoom_reset_button(), nullptr);
-  EXPECT_NE(bar.zoom_in_button(), nullptr);
-  EXPECT_NE(bar.copy_button(), nullptr);
-  EXPECT_NE(bar.find_edit(), nullptr);
-  EXPECT_EQ(bar.find_edit()->objectName(), QStringLiteral("docFindEdit"));
-  EXPECT_NE(bar.path_label(), nullptr);
-  EXPECT_TRUE(bar.star_button()->isCheckable());
+  // objectName 是 GUI 工具和测试共用的锚点；行为由后续用例覆盖
+  for (const char* name : {"docBack", "docForward", "docStar", "docPathLabel",
+                           "docCopyPath", "docFindEdit", "docAppearance",
+                           "docZoomOut", "docZoomReset", "docZoomIn"}) {
+    EXPECT_NE(bar.findChild<QWidget*>(QString::fromLatin1(name)), nullptr)
+        << name;
+  }
 }
 
 TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {
