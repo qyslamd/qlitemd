@@ -58,6 +58,19 @@ TEST(WelcomeBarTest, ButtonsForwardToTheWindow) {
   EXPECT_EQ(settings, 1);
 }
 
+TEST(WelcomeBarTest, HidesQuickOpenWhenNarrow) {
+  WelcomeBar bar;
+  bar.resize(600, 32);
+  bar.show();
+  QApplication::processEvents();
+  EXPECT_TRUE(bar.quick_open_button()->isVisible());
+
+  bar.resize(400, 32);
+  QApplication::processEvents();
+  EXPECT_FALSE(bar.quick_open_button()->isVisible());
+  EXPECT_TRUE(bar.settings_button()->isVisible());
+}
+
 TEST(WelcomeBarTest, ThemeSwitchKeepsTheBarUsable) {
   WelcomeBar bar;
   bar.SetThemeDark(true);

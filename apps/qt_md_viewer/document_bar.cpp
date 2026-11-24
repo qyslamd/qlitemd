@@ -120,11 +120,13 @@ void DocumentBar::resizeEvent(QResizeEvent* event) {
 }
 
 void DocumentBar::UpdateChildVisibility() {
+  // 文档条现在横跨整窗，阈值按窗口宽度定；搜索框是主入口，只压缩不隐藏
   const int width = this->width();
-  zoom_group_->setVisible(width >= 900);
-  find_edit_->setVisible(width >= 780);
-  appearance_button_->setVisible(width >= 680);
-  copy_button_->setVisible(width >= 600);
+  zoom_group_->setVisible(width >= 860);
+  appearance_button_->setVisible(width >= 720);
+  copy_button_->setVisible(width >= 620);
+  find_edit_->setVisible(true);
+  find_edit_->setFixedWidth(width >= 620 ? 240 : 160);
   UpdatePathElision();
 }
 

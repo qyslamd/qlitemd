@@ -2,6 +2,22 @@
 
 All notable changes to qlitemd are documented here.
 
+## Unreleased
+
+- The document bar now lives in a real `QToolBar` across the top of the
+  window, above both docks. The welcome tab has its own bar (app icon,
+  "欢迎", workspace name, quick open, settings) instead of a stripped-down
+  document bar; switching tabs swaps the bar page without moving the
+  strip. The bar is fixed at 32 px and cannot be moved, floated or closed;
+  dock layout state moved to a new key, so the first launch after the
+  upgrade starts from the default layout.
+- Search is split by scope: the toolbar box finds within the current
+  document (Ctrl+F, incremental, Enter/Shift+Enter, wrap hints), while
+  workspace search now lives at the top of the sidebar's Search tab
+  (Ctrl+Shift+F) and stays disabled until a workspace is open. Ctrl+K is
+  no longer bound. The sidebar's file filter moved inside the Documents
+  tab so the two inputs never share a screen.
+
 ## 0.6.0 - 2026-11-24
 
 - The viewer shell now follows the prototype's three-tier layout. The title

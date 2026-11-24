@@ -64,6 +64,17 @@ TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {
   delete bar;
 }
 
+TEST(DocumentBarTest, ShrinksFindBoxInsteadOfHidingIt) {
+  DocumentBar* wide = MakeShownBar(700);
+  EXPECT_EQ(wide->find_edit()->width(), 240);
+  delete wide;
+
+  DocumentBar* narrow = MakeShownBar(600);
+  EXPECT_TRUE(narrow->find_edit()->isVisible());
+  EXPECT_EQ(narrow->find_edit()->width(), 160);
+  delete narrow;
+}
+
 TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
   struct Case {
     int width;
@@ -72,10 +83,12 @@ TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
     bool appearance;
     bool copy;
   };
+  // 阈值按整窗宽度定：缩放 860、外观 720、复制 620；搜索始终可见
   const Case cases[] = {
-      {1000, true, true, true, true},    {850, false, true, true, true},
-      {760, false, false, true, true},   {660, false, false, false, true},
-      {580, false, false, false, false},
+      {1000, true, true, true, true},   {860, true, true, true, true},
+      {800, false, true, true, true},   {720, false, true, true, true},
+      {700, false, true, false, true},  {620, false, true, false, true},
+      {600, false, true, false, false}, {400, false, true, false, false},
   };
   for (const Case& item : cases) {
     DocumentBar* bar = MakeShownBar(item.width);
