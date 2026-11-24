@@ -671,6 +671,9 @@ void MdViewerWindow::ActivateTab(int index) {
   // 切走前保存当前标签的滚动与大纲，并把全局设置收回到 settings_
   DocumentTab* previous = CurrentTab();
   CaptureGlobalSettings(previous);
+  if (previous != nullptr && previous->view != nullptr) {
+    previous->view->ClearSelection();
+  }
   if (previous != nullptr && previous->view != nullptr &&
       previous->view->has_document() && !previous->view->is_rendering()) {
     previous->scroll_position = previous->view->ScrollPosition();
@@ -855,9 +858,10 @@ void MdViewerWindow::SetTabLoading(DocumentTab* tab, bool loading) {
   for (int i = 0; i < static_cast<int>(tabs_.size()); ++i) {
     if (tabs_[i].get() == tab) {
       tab_bar_->SetTabLoading(i, loading);
-      return;
+      break;
     }
   }
+  UpdateFindControls();
 }
 
 void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
@@ -904,6 +908,7 @@ void MdViewerWindow::UpdateShellForActiveTab() {
   if (welcome_bar_ != nullptr) {
     welcome_bar_->SetWorkspaceName(root_dir_);
   }
+  UpdateFindControls();
   if (welcome) {
     setWindowTitle(QStringLiteral("Markdown 查看器"));
     if (welcome_ != nullptr) {
@@ -971,12 +976,18 @@ void MdViewerWindow::createActions() {
   export_html_action_->setObjectName(QStringLiteral("exportHtmlAction"));
   export_pdf_action_ = new QAction(QStringLiteral("导出 PDF…"), this);
 
-  // 全局搜索入口：Ctrl+F 沿用肌肉记忆，Ctrl+K 与原型一致
-  find_action_ = new QAction(QStringLiteral("搜索文档与正文"), this);
-  find_action_->setShortcuts(
-      QList<QKeySequence>{QKeySequence(QKeySequence::Find),
-                          QKeySequence(QStringLiteral("Ctrl+K"))});
-  find_action_->setToolTip(QStringLiteral("搜索文件名与正文（Ctrl+K）"));
+  // 两个搜索入口：Ctrl+F 查当前文档，Ctrl+Shift+F 搜整个工作区。
+  // Ctrl+K 退休，不再绑定任何搜索
+  find_action_ = new QAction(QStringLiteral("在当前文档中查找"), this);
+  find_action_->setShortcut(QKeySequence(QKeySequence::Find));
+  find_action_->setToolTip(QStringLiteral("在当前文档中查找（Ctrl+F）"));
+  workspace_search_action_ = new QAction(QStringLiteral("搜索工作区"), this);
+  workspace_search_action_->setObjectName(
+      QStringLiteral("workspaceSearchAction"));
+  workspace_search_action_->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+F")));
+  workspace_search_action_->setToolTip(
+      QStringLiteral("搜索工作区文件与内容（Ctrl+Shift+F）"));
 }
 
 void MdViewerWindow::initUi() {
@@ -1258,6 +1269,7 @@ void MdViewerWindow::initUi() {
   addAction(new_window_action_);
   addAction(quit_action_);
   addAction(find_action_);
+  addAction(workspace_search_action_);
   addAction(quick_open_action_);
   addAction(back_action_);
   addAction(forward_action_);
@@ -1309,11 +1321,11 @@ void MdViewerWindow::initUi() {
   tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
   tab_bar_->RemoveCloseButton(0);
 
-  // 标题栏搜索框现在是全局搜索的唯一入口
-  // 全局搜索统一放文档条；标题栏自带的搜索框隐藏
+  // 标题栏自带的搜索框隐藏；文档条只查当前文档，工作区搜索在侧栏
   fluent_frame_->titleBar()->searchLineEdit()->setVisible(false);
-  search_edit_ = document_bar_->search_edit();
-  search_edit_->setPlaceholderText(QStringLiteral("搜索文档与正文（Ctrl+K）"));
+  document_find_edit_ = document_bar_->find_edit();
+  document_find_edit_->installEventFilter(this);
+  workspace_search_edit_ = documents_panel_->search_edit();
   document_bar_->back_button()->setDefaultAction(back_action_);
   document_bar_->forward_button()->setDefaultAction(forward_action_);
   document_bar_->zoom_out_button()->setDefaultAction(zoom_out_action_);
@@ -1345,6 +1357,9 @@ void MdViewerWindow::initUi() {
   search_timer_ = new QTimer(this);
   search_timer_->setSingleShot(true);
   search_timer_->setInterval(300);
+  find_timer_ = new QTimer(this);
+  find_timer_->setSingleShot(true);
+  find_timer_->setInterval(180);
   search_ = new TextSearch(this);
   root_watcher_ = new QFileSystemWatcher(this);
   root_rescan_timer_ = new QTimer(this);
@@ -1501,9 +1516,31 @@ void MdViewerWindow::initSignals() {
   connect(quick_open_action_, &QAction::triggered, this,
           &MdViewerWindow::ShowQuickOpen);
   connect(find_action_, &QAction::triggered, this,
-          &MdViewerWindow::FocusGlobalSearch);
-  // 新输入立即取消旧扫描并清空结果；防抖结束后才真正开扫
-  connect(search_edit_, &QLineEdit::textChanged, this,
+          &MdViewerWindow::FocusDocumentFind);
+  connect(workspace_search_action_, &QAction::triggered, this,
+          &MdViewerWindow::FocusWorkspaceSearch);
+  // 当前文档查找：输入即找，回车下一个，Shift+回车上一个
+  connect(document_find_edit_, &QLineEdit::textChanged, this,
+          [this](const QString& text) {
+            find_timer_->stop();
+            if (text.isEmpty()) {
+              if (CurrentView() != nullptr) {
+                CurrentView()->ClearSelection();
+              }
+              return;
+            }
+            if (document_find_edit_->isEnabled()) {
+              find_timer_->start();
+            }
+          });
+  connect(find_timer_, &QTimer::timeout, this,
+          [this] { FindInDocument(document_find_edit_->text(), false); });
+  connect(document_find_edit_, &QLineEdit::returnPressed, this, [this] {
+    find_timer_->stop();
+    FindInDocument(document_find_edit_->text(), false);
+  });
+  // 工作区搜索：输入即取消旧扫描并清空结果，防抖结束后才真正开扫
+  connect(documents_panel_, &DocumentsPanel::searchTextChanged, this,
           [this](const QString& text) {
             search_->Cancel();
             active_search_query_.reset();
@@ -1514,11 +1551,10 @@ void MdViewerWindow::initSignals() {
               return;
             }
             documents_panel_->BeginSearch(text);
-            documents_panel_->ShowTab(DocumentsPanel::Tab::kSearch);
             search_timer_->start();
           });
   connect(search_timer_, &QTimer::timeout, this, &MdViewerWindow::StartSearch);
-  connect(search_edit_, &QLineEdit::returnPressed, this, [this] {
+  connect(documents_panel_, &DocumentsPanel::searchSubmitted, this, [this] {
     search_timer_->stop();
     StartSearch();
   });
@@ -1528,7 +1564,7 @@ void MdViewerWindow::initSignals() {
             if (!active_search_id_.has_value() ||
                 request_id != *active_search_id_ ||
                 !active_search_query_.has_value() ||
-                search_edit_->text() != *active_search_query_) {
+                workspace_search_edit_->text() != *active_search_query_) {
               return;
             }
             documents_panel_->AppendSearchHits(hits, scanned, total);
@@ -1538,7 +1574,7 @@ void MdViewerWindow::initSignals() {
             if (!active_search_id_.has_value() ||
                 request_id != *active_search_id_ ||
                 !active_search_query_.has_value() ||
-                search_edit_->text() != *active_search_query_) {
+                workspace_search_edit_->text() != *active_search_query_) {
               return;
             }
             documents_panel_->EndSearch(truncated, canceled);
@@ -1548,7 +1584,7 @@ void MdViewerWindow::initSignals() {
             if (!active_search_id_.has_value() ||
                 request_id != *active_search_id_ ||
                 !active_search_query_.has_value() ||
-                search_edit_->text() != *active_search_query_) {
+                workspace_search_edit_->text() != *active_search_query_) {
               return;
             }
             documents_panel_->SetSearchError(error);
@@ -1565,10 +1601,11 @@ void MdViewerWindow::initSignals() {
           &MdViewerWindow::RefreshRoot);
   connect(refresh_action_, &QAction::triggered, this,
           &MdViewerWindow::RefreshRoot);
-  // Esc 把焦点还给正文；搜索框常驻
+  // Esc 把焦点还给正文；文档查找框的 Esc 在 eventFilter 里处理
   auto* escape = new QShortcut(QKeySequence(Qt::Key_Escape), this);
   connect(escape, &QShortcut::activated, this, [this] {
-    if (search_edit_->hasFocus()) {
+    if (workspace_search_edit_ != nullptr &&
+        workspace_search_edit_->hasFocus() && CurrentView() != nullptr) {
       CurrentView()->setFocus();
     }
   });
@@ -1719,6 +1756,7 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
       unload_workspace_action_->setEnabled(true);
     }
     documents_panel_->SetRoot(result);
+    documents_panel_->SetSearchAvailable(true);
     quick_open_files_.clear();
     quick_open_files_.reserve(result.markdown_file_count);
     for (const DocumentEntry& entry : result.entries) {
@@ -1731,6 +1769,7 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
     root_dir_ = QFileInfo(root).absoluteFilePath();
     documents_panel_->SetRootMissing(root_dir_,
                                      QStringLiteral("目录不存在或不可读"));
+    documents_panel_->SetSearchAvailable(false);
   }
   if (document_count_label_ != nullptr) {
     document_count_label_->setText(QStringLiteral("%1 篇").arg(
@@ -1963,6 +2002,7 @@ void MdViewerWindow::UnloadWorkspace() {
   documents_panel_->SetCurrentFile(QString());
   documents_panel_->SetRootMissing(
       QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+  documents_panel_->SetSearchAvailable(false);
 
   root_dir_.clear();
   settings_->root_dir.clear();
@@ -2535,6 +2575,28 @@ bool MdViewerWindow::eventFilter(QObject* watched, QEvent* event) {
   if (watched == pages_ && event->type() == QEvent::Resize) {
     ScheduleReadingProgressRefresh();
   }
+  if (watched == document_find_edit_ && event->type() == QEvent::KeyPress) {
+    auto* key = static_cast<QKeyEvent*>(event);
+    if (key->key() == Qt::Key_Escape) {
+      find_timer_->stop();
+      {
+        const QSignalBlocker blocker(document_find_edit_);
+        document_find_edit_->clear();
+      }
+      if (CurrentView() != nullptr) {
+        CurrentView()->ClearSelection();
+        CurrentView()->setFocus();
+      }
+      return true;
+    }
+    const bool enter =
+        key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter;
+    if (enter && key->modifiers().testFlag(Qt::ShiftModifier)) {
+      find_timer_->stop();
+      FindInDocument(document_find_edit_->text(), true);
+      return true;
+    }
+  }
   return QMainWindow::eventFilter(watched, event);
 }
 
@@ -2914,18 +2976,72 @@ void MdViewerWindow::dropEvent(QDropEvent* event) {
   }
 }
 
-void MdViewerWindow::FocusGlobalSearch() {
-  // 窄宽度下搜索框会被隐藏；快捷键要能把它请回来
-  if (!search_edit_->isVisible()) {
-    search_edit_->setVisible(true);
+void MdViewerWindow::FocusDocumentFind() {
+  if (CurrentTab() == nullptr || CurrentTab()->path.isEmpty()) {
+    statusBar()->showMessage(QStringLiteral("先打开一篇文档"), 2000);
+    return;
   }
-  search_edit_->setFocus();
-  search_edit_->selectAll();
+  UpdateFindControls();
+  document_find_edit_->setFocus();
+  document_find_edit_->selectAll();
+}
+
+void MdViewerWindow::FocusWorkspaceSearch() {
+  if (document_dock_ != nullptr) {
+    document_dock_->show();
+  }
   documents_panel_->ShowTab(DocumentsPanel::Tab::kSearch);
+  if (workspace_search_edit_ == nullptr ||
+      !workspace_search_edit_->isEnabled()) {
+    statusBar()->showMessage(QStringLiteral("先打开一个目录"), 2000);
+    return;
+  }
+  workspace_search_edit_->setFocus();
+  workspace_search_edit_->selectAll();
+}
+
+void MdViewerWindow::FindInDocument(const QString& query, bool backward) {
+  MarkdownView* view = CurrentView();
+  if (view == nullptr || query.isEmpty()) {
+    return;
+  }
+  if (!view->has_document()) {
+    statusBar()->showMessage(QStringLiteral("先打开一篇文档"), 2000);
+    return;
+  }
+  if (view->is_rendering()) {
+    statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再查找"), 2000);
+    return;
+  }
+  bool wrapped = false;
+  const MarkdownView::FindFlags flags =
+      backward ? MarkdownView::FindBackward : MarkdownView::FindNoFlag;
+  if (!view->FindText(query, flags, &wrapped, /*incremental=*/false)) {
+    statusBar()->showMessage(QStringLiteral("未找到"), 2000);
+    return;
+  }
+  if (wrapped) {
+    statusBar()->showMessage(
+        backward ? QStringLiteral("已回到结尾") : QStringLiteral("已回到开头"),
+        2000);
+  }
+}
+
+void MdViewerWindow::UpdateFindControls() {
+  if (document_find_edit_ == nullptr) {
+    return;
+  }
+  const bool has_document =
+      CurrentTab() != nullptr && !CurrentTab()->path.isEmpty() &&
+      CurrentView() != nullptr && CurrentView()->has_document();
+  const bool rendering =
+      CurrentView() != nullptr && CurrentView()->is_rendering();
+  // 查询文字保留，只禁输入：渲染中和欢迎态都不该往正文里找
+  document_find_edit_->setEnabled(has_document && !rendering);
 }
 
 void MdViewerWindow::StartSearch() {
-  const QString query = search_edit_->text();
+  const QString query = workspace_search_edit_->text();
   if (query.size() < kSearchMinQueryLength) {
     return;
   }
@@ -2943,8 +3059,9 @@ void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {
     statusBar()->showMessage(QStringLiteral("文件已不存在"), 4000);
     return;
   }
-  const QString query = active_search_query_.has_value() ? *active_search_query_
-                                                         : search_edit_->text();
+  const QString query = active_search_query_.has_value()
+                            ? *active_search_query_
+                            : workspace_search_edit_->text();
   // 文件已在别的标签里：切过去再跳，别走 NavigateTo 的去重分支（它会把
   // 目标标签滚回顶部，还会让 pending_search_hit_ 悬着）
   const int open_index =

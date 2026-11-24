@@ -364,24 +364,14 @@ void SetEntryRoles(QTreeWidgetItem* item, const DocumentEntry& entry) {
 DocumentsPanel::DocumentsPanel(QWidget* parent) : QWidget(parent) {
   initUi();
   initSignals();
+  // 默认没有工作区：搜索输入禁用，等 SetRoot 成功后由窗口打开
+  SetSearchAvailable(false);
 }
 
 void DocumentsPanel::initUi() {
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);
   outer->setSpacing(0);
-
-  // 过滤框在三个页签上方，与原型一致；它仍然只作用于文档树
-  auto* filter_wrap = new QWidget(this);
-  auto* filter_layout = new QHBoxLayout(filter_wrap);
-  filter_layout->setContentsMargins(8, 8, 8, 4);
-  filter_layout->setSpacing(0);
-  filter_edit_ = new QLineEdit(filter_wrap);
-  filter_edit_->setObjectName(QStringLiteral("documentFilterEdit"));
-  filter_edit_->setPlaceholderText(QStringLiteral("筛选文件与路径"));
-  filter_edit_->setClearButtonEnabled(true);
-  filter_layout->addWidget(filter_edit_);
-  outer->addWidget(filter_wrap);
 
   tabs_ = new QTabWidget(this);
   tabs_->setObjectName(QStringLiteral("sidebarTabs"));
@@ -398,6 +388,19 @@ void DocumentsPanel::initUi() {
   auto* documents_layout = new QVBoxLayout(documents_page);
   documents_layout->setContentsMargins(4, 4, 4, 8);
   documents_layout->setSpacing(6);
+
+  // 筛选框归“文档”页签：只筛树，不搜正文；搜索页签另有自己的工作区
+  // 搜索框，两者不同屏
+  auto* filter_wrap = new QWidget(documents_page);
+  auto* filter_layout = new QHBoxLayout(filter_wrap);
+  filter_layout->setContentsMargins(0, 0, 0, 0);
+  filter_layout->setSpacing(0);
+  filter_edit_ = new QLineEdit(filter_wrap);
+  filter_edit_->setObjectName(QStringLiteral("documentFilterEdit"));
+  filter_edit_->setPlaceholderText(QStringLiteral("筛选文件与路径"));
+  filter_edit_->setClearButtonEnabled(true);
+  filter_layout->addWidget(filter_edit_);
+  documents_layout->addWidget(filter_wrap);
 
   document_stack_ = new QStackedWidget(documents_page);
   document_stack_->setObjectName(QStringLiteral("documentStack"));
@@ -474,6 +477,13 @@ void DocumentsPanel::initUi() {
   auto* search_layout = new QVBoxLayout(search_page);
   search_layout->setContentsMargins(4, 8, 4, 8);
   search_layout->setSpacing(6);
+  search_edit_ = new QLineEdit(search_page);
+  search_edit_->setObjectName(QStringLiteral("workspaceSearchEdit"));
+  search_edit_->setPlaceholderText(QStringLiteral("搜索工作区文件与内容"));
+  search_edit_->setClearButtonEnabled(true);
+  search_edit_->setEnabled(false);
+  search_layout->addWidget(search_edit_);
+
   search_summary_ = new QLabel(search_page);
   search_summary_->setObjectName(QStringLiteral("searchSummaryLabel"));
   search_summary_->setWordWrap(true);
@@ -548,6 +558,10 @@ bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
 void DocumentsPanel::initSignals() {
   connect(filter_edit_, &QLineEdit::textChanged, this,
           &DocumentsPanel::SetFilter);
+  connect(search_edit_, &QLineEdit::textChanged, this,
+          &DocumentsPanel::searchTextChanged);
+  connect(search_edit_, &QLineEdit::returnPressed, this,
+          &DocumentsPanel::searchSubmitted);
   connect(document_tree_, &QTreeWidget::itemClicked, this,
           [this](QTreeWidgetItem* item, int) {
             if (suppress_item_click_) {
@@ -722,6 +736,19 @@ void DocumentsPanel::ApplyFilter() {
 void DocumentsPanel::SetFilter(const QString& text) {
   filter_text_ = text;
   ApplyFilter();
+}
+
+void DocumentsPanel::SetSearchAvailable(bool available) {
+  if (search_edit_ == nullptr) {
+    return;
+  }
+  search_edit_->setEnabled(available);
+  search_edit_->setPlaceholderText(available
+                                       ? QStringLiteral("搜索工作区文件与内容")
+                                       : QStringLiteral("先打开一个目录"));
+  if (!available) {
+    search_edit_->clear();
+  }
 }
 
 void DocumentsPanel::SetCurrentFile(const QString& absolute_path) {

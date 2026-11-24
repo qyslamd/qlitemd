@@ -57,12 +57,12 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   copy_button_->setToolTip(QStringLiteral("复制当前文档路径"));
   layout->addWidget(copy_button_);
 
-  search_edit_ = new QLineEdit(this);
-  search_edit_->setObjectName(QStringLiteral("globalSearchEdit"));
-  search_edit_->setPlaceholderText(QStringLiteral("搜索文档与正文（Ctrl+K）"));
-  search_edit_->setClearButtonEnabled(true);
-  search_edit_->setFixedWidth(240);
-  layout->addWidget(search_edit_);
+  find_edit_ = new QLineEdit(this);
+  find_edit_->setObjectName(QStringLiteral("docFindEdit"));
+  find_edit_->setPlaceholderText(QStringLiteral("在当前文档中查找（Ctrl+F）"));
+  find_edit_->setClearButtonEnabled(true);
+  find_edit_->setFixedWidth(240);
+  layout->addWidget(find_edit_);
 
   appearance_button_ =
       MakeIconButton(this, QStringLiteral("docAppearance"),
@@ -122,7 +122,7 @@ void DocumentBar::resizeEvent(QResizeEvent* event) {
 void DocumentBar::UpdateChildVisibility() {
   const int width = this->width();
   zoom_group_->setVisible(width >= 900);
-  search_edit_->setVisible(width >= 780);
+  find_edit_->setVisible(width >= 780);
   appearance_button_->setVisible(width >= 680);
   copy_button_->setVisible(width >= 600);
   UpdatePathElision();

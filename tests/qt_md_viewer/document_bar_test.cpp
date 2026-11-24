@@ -38,7 +38,8 @@ TEST(DocumentBarTest, ExposesAllControls) {
   EXPECT_NE(bar.zoom_in_button(), nullptr);
   EXPECT_NE(bar.settings_button(), nullptr);
   EXPECT_NE(bar.copy_button(), nullptr);
-  EXPECT_NE(bar.search_edit(), nullptr);
+  EXPECT_NE(bar.find_edit(), nullptr);
+  EXPECT_EQ(bar.find_edit()->objectName(), QStringLiteral("docFindEdit"));
   EXPECT_NE(bar.path_label(), nullptr);
   EXPECT_TRUE(bar.star_button()->isCheckable());
 }
@@ -80,7 +81,7 @@ TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
     DocumentBar* bar = MakeShownBar(item.width);
     EXPECT_EQ(bar->zoom_out_button()->isVisible(), item.zoom)
         << "width=" << item.width;
-    EXPECT_EQ(bar->search_edit()->isVisible(), item.search)
+    EXPECT_EQ(bar->find_edit()->isVisible(), item.search)
         << "width=" << item.width;
     EXPECT_EQ(bar->appearance_button()->isVisible(), item.appearance)
         << "width=" << item.width;

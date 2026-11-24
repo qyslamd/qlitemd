@@ -349,3 +349,28 @@ TEST(DocumentsPanelTest, GroupsSearchHitsByFile) {
   ASSERT_NE(summary, nullptr);
   EXPECT_TRUE(summary->text().contains(QStringLiteral("已截断")));
 }
+
+TEST(DocumentsPanelTest, SearchInputLivesInTheSearchTab) {
+  DocumentsPanel panel;
+  auto* edit = panel.search_edit();
+  ASSERT_NE(edit, nullptr);
+  EXPECT_EQ(edit->objectName(), QStringLiteral("workspaceSearchEdit"));
+  EXPECT_FALSE(edit->isEnabled());
+  EXPECT_EQ(edit->placeholderText(), QStringLiteral("先打开一个目录"));
+
+  int changes = 0;
+  int submitted = 0;
+  QObject::connect(&panel, &DocumentsPanel::searchTextChanged,
+                   [&changes](const QString&) { ++changes; });
+  QObject::connect(&panel, &DocumentsPanel::searchSubmitted,
+                   [&submitted] { ++submitted; });
+
+  panel.SetSearchAvailable(true);
+  EXPECT_TRUE(edit->isEnabled());
+  EXPECT_EQ(edit->placeholderText(), QStringLiteral("搜索工作区文件与内容"));
+
+  edit->setText(QStringLiteral("needle"));
+  EXPECT_EQ(changes, 1);
+  QTest::keyClick(edit, Qt::Key_Return);
+  EXPECT_EQ(submitted, 1);
+}

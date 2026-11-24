@@ -23,7 +23,7 @@ class DocumentBar : public QWidget {
   void SetThemeDark(bool dark);
 
   QLabel* path_label() const { return path_label_; }
-  QLineEdit* search_edit() const { return search_edit_; }
+  QLineEdit* find_edit() const { return find_edit_; }
   QToolButton* back_button() const { return back_button_; }
   QToolButton* forward_button() const { return forward_button_; }
   QToolButton* star_button() const { return star_button_; }
@@ -45,7 +45,7 @@ class DocumentBar : public QWidget {
   bool dark_ = false;
   QWidget* zoom_group_ = nullptr;
   QLabel* path_label_ = nullptr;
-  QLineEdit* search_edit_ = nullptr;
+  QLineEdit* find_edit_ = nullptr;
   QToolButton* back_button_ = nullptr;
   QToolButton* forward_button_ = nullptr;
   QToolButton* star_button_ = nullptr;

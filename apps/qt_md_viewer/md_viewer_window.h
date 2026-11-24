@@ -134,7 +134,11 @@ class MdViewerWindow : public QMainWindow {
   void ApplyWindowMaterial(WindowMaterial material, bool announce);
   // 窄宽度下按顺序隐藏缩放组、搜索框、文档名
   void UpdateChromeVisibility();
-  void FocusGlobalSearch();
+  // 当前文档查找（Ctrl+F）与工作区搜索（Ctrl+Shift+F）是两个入口
+  void FocusDocumentFind();
+  void FocusWorkspaceSearch();
+  void FindInDocument(const QString& query, bool backward);
+  void UpdateFindControls();
   void StartSearch();
   void OpenSearchHit(const SearchHit& hit);
   void JumpToSearchHit(int ordinal, const QString& query);
@@ -235,6 +239,7 @@ class MdViewerWindow : public QMainWindow {
   QAction* export_html_action_ = nullptr;
   QAction* export_pdf_action_ = nullptr;
   QAction* find_action_ = nullptr;
+  QAction* workspace_search_action_ = nullptr;
   QAction* quick_open_action_ = nullptr;
   QAction* back_action_ = nullptr;
   QAction* forward_action_ = nullptr;
@@ -248,9 +253,11 @@ class MdViewerWindow : public QMainWindow {
   QAction* material_acrylic_action_ = nullptr;
   QAction* material_none_action_ = nullptr;
   // Fluent 标题栏自带的搜索框；控件归标题栏所有
-  QLineEdit* search_edit_ = nullptr;
+  QLineEdit* document_find_edit_ = nullptr;
+  QLineEdit* workspace_search_edit_ = nullptr;
   // 输入防抖：连续打字只搜最后一档
   QTimer* search_timer_ = nullptr;
+  QTimer* find_timer_ = nullptr;
   TextSearch* search_ = nullptr;
   // 当前展示结果对应的查询；防抖窗口内旧扫描的排队信号据此丢弃
   std::optional<QString> active_search_query_;

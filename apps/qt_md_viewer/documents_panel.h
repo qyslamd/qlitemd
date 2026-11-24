@@ -44,6 +44,9 @@ class DocumentsPanel : public QWidget {
   void SetRoot(const DocumentScanResult& result);
   void SetRootMissing(const QString& root, const QString& reason);
   void SetFilter(const QString& text);
+  // 没有工作区时禁用搜索输入，占位文字改成提示
+  void SetSearchAvailable(bool available);
+  QLineEdit* search_edit() const { return search_edit_; }
   void SetCurrentFile(const QString& absolute_path);
   void SetBookmarks(const QVector<Bookmark>& bookmarks,
                     const QString& current_root);
@@ -65,6 +68,8 @@ class DocumentsPanel : public QWidget {
   void bookmarkRemoveRequested(const QString& absolute_path);
   // 文档树行内星标：切换该文件的收藏状态
   void bookmarkToggleRequested(const QString& absolute_path);
+  void searchTextChanged(const QString& text);
+  void searchSubmitted();
   void searchHitActivated(const SearchHit& hit);
   void cancelSearchRequested();
   void chooseRootRequested();
@@ -83,6 +88,7 @@ class DocumentsPanel : public QWidget {
 
   QTabWidget* tabs_ = nullptr;
   QLineEdit* filter_edit_ = nullptr;
+  QLineEdit* search_edit_ = nullptr;
   QStackedWidget* document_stack_ = nullptr;
   QTreeWidget* document_tree_ = nullptr;
   QTreeWidget* bookmark_tree_ = nullptr;
