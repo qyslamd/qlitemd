@@ -13,7 +13,8 @@ constexpr int kMaxRecentFiles = 10;
 constexpr int kMaxRecentRoots = 8;
 
 constexpr char kKeyGeometry[] = "window/geometry";
-constexpr char kKeyDockState[] = "window/dock_state";
+// 工具条也参与 QMainWindow::saveState；换新键等于忽略旧布局一次
+constexpr char kKeyDockState[] = "window/layout_state_v2";
 constexpr char kKeyDarkTheme[] = "appearance/dark_theme";
 constexpr char kKeyWindowMaterial[] = "appearance/window_material";
 constexpr char kKeyReadingStyle[] = "appearance/reading_style";

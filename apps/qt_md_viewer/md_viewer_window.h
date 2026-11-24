@@ -38,6 +38,8 @@ class QResizeEvent;
 class QStackedWidget;
 class QTimer;
 class QToolButton;
+class TopToolBar;
+class WelcomeBar;
 class QVariantAnimation;
 class DocumentsPanel;
 class DocumentBar;
@@ -93,6 +95,7 @@ class MdViewerWindow : public QMainWindow {
   void dropEvent(QDropEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
   bool eventFilter(QObject* watched, QEvent* event) override;
+  QMenu* createPopupMenu() override;
 
  private:
   void createActions();
@@ -259,6 +262,9 @@ class MdViewerWindow : public QMainWindow {
   int active_tab_ = 0;
   // 中心区：第 0 页是欢迎页，之后每页对应一个 ReaderPage
   QStackedWidget* pages_ = nullptr;
+  TopToolBar* top_tool_bar_ = nullptr;
+  QStackedWidget* bar_stack_ = nullptr;
+  WelcomeBar* welcome_bar_ = nullptr;
   MarkdownOutlineWidget* outline_ = nullptr;
   RenderSettingsPanel* render_settings_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;

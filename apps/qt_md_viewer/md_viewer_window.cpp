@@ -92,6 +92,8 @@
 #include "tab_model.h"
 #include "text_search.h"
 #include "theme_icons.h"
+#include "top_tool_bar.h"
+#include "welcome_bar.h"
 #include "welcome_view.h"
 
 namespace {
@@ -235,6 +237,10 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
   }
   if (session_owner_ && !settings_->dock_state.isEmpty()) {
     restoreState(settings_->dock_state);
+  }
+  // restoreState 也管工具条的可见性与几何，恢复后压回固定横带
+  if (top_tool_bar_ != nullptr) {
+    top_tool_bar_->ResetInvariants();
   }
   // 旧布局把大纲放在左侧；新默认是正文右侧整列，恢复后迁移一次
   if (outline_dock_ != nullptr &&
@@ -892,6 +898,12 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     UpdateTabTitle(tab);
   }
   const bool welcome = tab == nullptr || tab->path.isEmpty();
+  if (bar_stack_ != nullptr) {
+    bar_stack_->setCurrentIndex(welcome ? 1 : 0);
+  }
+  if (welcome_bar_ != nullptr) {
+    welcome_bar_->SetWorkspaceName(root_dir_);
+  }
   if (welcome) {
     setWindowTitle(QStringLiteral("Markdown 查看器"));
     if (welcome_ != nullptr) {
@@ -980,16 +992,18 @@ void MdViewerWindow::initUi() {
   welcome_->setObjectName(QStringLiteral("welcomeView"));
   pages_->addWidget(welcome_);
 
-  // 文档条是窗口级控件：放在页栈上方，作用于当前标签
+  // 文档条是窗口级控件：宿主是顶部工具条，横跨整窗，左右 dock 落在
+  // 它下面。工具条里用页栈，切标签只切页，将来欢迎栏是第 1 页
   document_bar_ = new DocumentBar(this);
-  auto* center = new QWidget(this);
-  center->setObjectName(QStringLiteral("centralColumn"));
-  auto* center_layout = new QVBoxLayout(center);
-  center_layout->setContentsMargins(0, 0, 0, 0);
-  center_layout->setSpacing(0);
-  center_layout->addWidget(document_bar_);
-  center_layout->addWidget(pages_, 1);
-  setCentralWidget(center);
+  welcome_bar_ = new WelcomeBar(this);
+  bar_stack_ = new QStackedWidget(this);
+  bar_stack_->setObjectName(QStringLiteral("barStack"));
+  bar_stack_->addWidget(document_bar_);
+  bar_stack_->addWidget(welcome_bar_);
+  top_tool_bar_ = new TopToolBar(this);
+  top_tool_bar_->addWidget(bar_stack_);
+  addToolBar(Qt::TopToolBarArea, top_tool_bar_);
+  setCentralWidget(pages_);
 
   // 欢迎标签：不是文档，但保留一个空视图给设置/状态面板做初始绑定
   auto welcome_tab = std::make_unique<DocumentTab>();
@@ -1311,6 +1325,13 @@ void MdViewerWindow::initUi() {
   connect(document_bar_->appearance_button(), &QToolButton::clicked, this,
           &MdViewerWindow::ShowReaderAppearance);
   connect(document_bar_->settings_button(), &QToolButton::clicked, this,
+          &MdViewerWindow::ShowSettings);
+  connect(welcome_bar_, &WelcomeBar::quickOpenRequested, this, [this] {
+    if (quick_open_action_ != nullptr) {
+      quick_open_action_->trigger();
+    }
+  });
+  connect(welcome_bar_, &WelcomeBar::settingsRequested, this,
           &MdViewerWindow::ShowSettings);
   connect(document_bar_->copy_button(), &QToolButton::clicked, this, [this] {
     const QString path =
@@ -2196,6 +2217,9 @@ void MdViewerWindow::RefreshThemeIcons() {
   if (document_bar_ != nullptr) {
     document_bar_->SetThemeDark(dark);
   }
+  if (welcome_bar_ != nullptr) {
+    welcome_bar_->SetThemeDark(dark);
+  }
   if (tab_bar_ != nullptr) {
     tab_bar_->SetThemeDark(dark);
     for (int i = 1; i < tab_bar_->count() && i < static_cast<int>(tabs_.size());
@@ -2832,6 +2856,20 @@ void MdViewerWindow::ReportRenderStatus() {
             .arg(loaded_engines.join(QStringLiteral("、"))),
         3000);
   }
+}
+
+QMenu* MdViewerWindow::createPopupMenu() {
+  // 工具条是固定横带，不能出现在 QMainWindow 的显示/隐藏菜单里；
+  // dock 的开关仍然保留
+  auto* menu = new QMenu(this);
+  for (QDockWidget* dock : findChildren<QDockWidget*>()) {
+    menu->addAction(dock->toggleViewAction());
+  }
+  if (menu->actions().isEmpty()) {
+    delete menu;
+    return nullptr;
+  }
+  return menu;
 }
 
 void MdViewerWindow::closeEvent(QCloseEvent* event) {

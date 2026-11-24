@@ -40,6 +40,10 @@ set(ALL_SRCS
     tab_model.cpp
     tab_model.h
     theme_icons.h
+    top_tool_bar.cpp
+    top_tool_bar.h
+    welcome_bar.cpp
+    welcome_bar.h
     welcome_view.cpp
     welcome_view.h
     qt_md_viewer.qrc
