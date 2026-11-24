@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.7.0 - 2026-11-24
 
 - The document bar now lives in a real `QToolBar` across the top of the
   window, above both docks. The welcome tab has its own bar (app icon,
