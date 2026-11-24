@@ -4,7 +4,7 @@ All notable, user-visible changes are documented here. Releases before
 0.5.0 are kept to one line each; see git history or that tag's GitHub
 Release for details.
 
-## Unreleased
+## 0.8.0 - 2026-11-24
 
 ### Added
 
