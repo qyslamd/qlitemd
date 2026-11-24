@@ -2,7 +2,7 @@
 
 All notable changes to qlitemd are documented here.
 
-## Unreleased
+## 0.6.0 - 2026-11-24
 
 - The viewer shell now follows the prototype's three-tier layout. The title
   bar keeps only the menu, tabs, "+" and window buttons; a 32 px document
