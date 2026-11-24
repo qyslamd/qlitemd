@@ -32,6 +32,7 @@ class QFileSystemWatcher;
 class QLabel;
 class QLineEdit;
 class QMenu;
+class QSplitter;
 class QProgressBar;
 class QResizeEvent;
 class QStackedWidget;
@@ -141,6 +142,7 @@ class MdViewerWindow : public QMainWindow {
   void ShowSideView(int view);
   void EnsureSideView(int view);
   void UpdateOutlineVisibility();
+  void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);
   void UpdateFindControls();
   void StartSearch();
@@ -324,6 +326,9 @@ class MdViewerWindow : public QMainWindow {
   QStackedWidget* side_stack_ = nullptr;
   QWidget* render_status_page_ = nullptr;
   QWidget* outline_column_ = nullptr;
+  QSplitter* main_splitter_ = nullptr;
+  int side_width_ = 280;
+  int outline_width_ = 212;
   QToolButton* outline_hide_button_ = nullptr;
   // 用户是否希望看到大纲；窄窗自动隐藏不改这个值
   bool outline_user_visible_ = true;

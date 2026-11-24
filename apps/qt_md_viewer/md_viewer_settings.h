@@ -46,6 +46,8 @@ struct MdViewerSettings {
   // 左侧活动栏当前视图（0 文档 / 1 搜索 / 2 收藏 / 3 渲染状态）
   int sidebar_view = 0;
   bool sidebar_visible = true;
+  int sidebar_width = 280;
+  int outline_width = 212;
   // 大纲列是否由用户打开；窄窗自动隐藏不写回这里
   bool outline_visible = true;
   bool dark_theme = false;

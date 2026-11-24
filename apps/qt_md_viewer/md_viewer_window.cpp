@@ -57,6 +57,7 @@
 #include <QSignalBlocker>
 #include <QSize>
 #include <QSizePolicy>
+#include <QSplitter>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QStyle>
@@ -262,6 +263,8 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
     top_tool_bar_->ResetInvariants();
   }
   // 活动栏、侧栏与大纲不走 dock 状态，直接按设置恢复
+  side_width_ = settings_->sidebar_width;
+  outline_width_ = settings_->outline_width;
   outline_user_visible_ = settings_->outline_visible;
   if (outline_action_ != nullptr) {
     outline_action_->setChecked(outline_user_visible_);
@@ -280,6 +283,7 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
       side_title_->setText(ActivityViewTitle(view));
     }
     side_panel_->setVisible(settings_->sidebar_visible);
+    ApplySplitterSizes();
   }
   ShowWelcome();
   // 侧栏/欢迎页/快速跳转的图标初始为亮色套；暗色启动在这里同步
@@ -1084,7 +1088,7 @@ void MdViewerWindow::initUi() {
 
   side_panel_ = new QWidget(this);
   side_panel_->setObjectName(QStringLiteral("sidePanel"));
-  side_panel_->setFixedWidth(280);
+  side_panel_->setMinimumWidth(200);
   auto* side_layout = new QVBoxLayout(side_panel_);
   side_layout->setContentsMargins(0, 0, 0, 0);
   side_layout->setSpacing(0);
@@ -1112,7 +1116,7 @@ void MdViewerWindow::initUi() {
   // 大纲固定在正文右侧；标题行留一个收起按钮
   outline_column_ = new QWidget(this);
   outline_column_->setObjectName(QStringLiteral("outlineColumn"));
-  outline_column_->setFixedWidth(212);
+  outline_column_->setMinimumWidth(140);
   auto* outline_layout = new QVBoxLayout(outline_column_);
   outline_layout->setContentsMargins(0, 0, 0, 0);
   outline_layout->setSpacing(0);
@@ -1141,9 +1145,19 @@ void MdViewerWindow::initUi() {
   columns->setContentsMargins(4, 0, 0, 0);
   columns->setSpacing(0);
   columns->addWidget(activity_bar_);
-  columns->addWidget(side_panel_);
-  columns->addWidget(pages_, 1);
-  columns->addWidget(outline_column_);
+
+  // 活动栏固定；侧栏、正文、大纲放在 splitter 里，宽度可拖动
+  main_splitter_ = new QSplitter(Qt::Horizontal, center);
+  main_splitter_->setObjectName(QStringLiteral("mainSplitter"));
+  main_splitter_->setChildrenCollapsible(false);
+  main_splitter_->setHandleWidth(4);
+  main_splitter_->addWidget(side_panel_);
+  main_splitter_->addWidget(pages_);
+  main_splitter_->addWidget(outline_column_);
+  main_splitter_->setStretchFactor(0, 0);
+  main_splitter_->setStretchFactor(1, 1);
+  main_splitter_->setStretchFactor(2, 0);
+  columns->addWidget(main_splitter_, 1);
   setCentralWidget(center);
 
   // 阅读外观弹层：改的是全局阅读参数，不做成 dock，也不占正文
@@ -1448,6 +1462,14 @@ void MdViewerWindow::initUi() {
           &MdViewerWindow::ShowSettings);
   connect(activity_bar_, &ActivityBar::viewActivated, this,
           &MdViewerWindow::ShowSideView);
+  connect(main_splitter_, &QSplitter::splitterMoved, this, [this] {
+    if (side_panel_ != nullptr && side_panel_->isVisible()) {
+      side_width_ = side_panel_->width();
+    }
+    if (outline_column_ != nullptr && outline_column_->isVisible()) {
+      outline_width_ = outline_column_->width();
+    }
+  });
   connect(outline_hide_button_, &QToolButton::clicked, this, [this] {
     outline_user_visible_ = false;
     settings_->outline_visible = false;
@@ -2933,7 +2955,15 @@ void MdViewerWindow::SaveSettings() {
   }
   if (side_panel_ != nullptr) {
     settings_->sidebar_visible = side_panel_->isVisible();
+    if (side_panel_->isVisible()) {
+      side_width_ = side_panel_->width();
+    }
   }
+  if (outline_column_ != nullptr && outline_column_->isVisible()) {
+    outline_width_ = outline_column_->width();
+  }
+  settings_->sidebar_width = side_width_;
+  settings_->outline_width = outline_width_;
   settings_->outline_visible = outline_user_visible_;
   CaptureGlobalSettings(CurrentTab());
   settings_->window_material = window_material_;
@@ -3087,6 +3117,7 @@ void MdViewerWindow::ShowSideView(int view) {
   }
   // 点当前已选中的视图 = 收起/展开侧栏
   if (activity_bar_->active_view() == view && side_panel_->isVisible()) {
+    side_width_ = side_panel_->width();
     side_panel_->hide();
     settings_->sidebar_visible = false;
     return;
@@ -3102,6 +3133,7 @@ void MdViewerWindow::EnsureSideView(int view) {
     return;
   }
   side_panel_->show();
+  ApplySplitterSizes();
   activity_bar_->SetActiveView(view);
   settings_->sidebar_view = view;
   settings_->sidebar_visible = true;
@@ -3116,13 +3148,30 @@ void MdViewerWindow::EnsureSideView(int view) {
   documents_panel_->ShowTab(DocumentsTabForActivityView(view));
 }
 
+void MdViewerWindow::ApplySplitterSizes() {
+  if (main_splitter_ == nullptr) {
+    return;
+  }
+  // 隐藏的列会被 QSplitter 忽略，中间正文吃掉剩余宽度
+  main_splitter_->setSizes({side_width_, 800, outline_width_});
+}
+
 void MdViewerWindow::UpdateOutlineVisibility() {
   if (outline_column_ == nullptr) {
     return;
   }
   const bool welcome = CurrentTab() == nullptr || CurrentTab()->path.isEmpty();
-  outline_column_->setVisible(outline_user_visible_ && !welcome &&
-                              width() >= 980);
+  const bool should_show = outline_user_visible_ && !welcome && width() >= 980;
+  if (outline_column_->isVisible() == should_show) {
+    return;
+  }
+  if (outline_column_->isVisible()) {
+    outline_width_ = outline_column_->width();
+    outline_column_->hide();
+  } else {
+    outline_column_->show();
+    ApplySplitterSizes();
+  }
 }
 
 void MdViewerWindow::FindInDocument(const QString& query, bool backward) {

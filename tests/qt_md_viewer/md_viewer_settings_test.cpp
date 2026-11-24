@@ -161,14 +161,18 @@ TEST(MdViewerSettingsTest, SidebarLayoutRoundTrips) {
   settings.Load();
   settings.sidebar_view = 2;
   settings.sidebar_visible = false;
+  settings.sidebar_width = 320;
   settings.outline_visible = false;
+  settings.outline_width = 240;
   settings.Save();
 
   MdViewerSettings reloaded;
   reloaded.Load();
   EXPECT_EQ(reloaded.sidebar_view, 2);
   EXPECT_FALSE(reloaded.sidebar_visible);
+  EXPECT_EQ(reloaded.sidebar_width, 320);
   EXPECT_FALSE(reloaded.outline_visible);
+  EXPECT_EQ(reloaded.outline_width, 240);
 }
 
 TEST(MdViewerSettingsTest, ReadOnlyCopyDoesNotWrite) {

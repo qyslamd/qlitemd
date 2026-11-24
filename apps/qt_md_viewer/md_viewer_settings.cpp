@@ -16,6 +16,8 @@ constexpr char kKeyGeometry[] = "window/geometry";
 // 工具条也参与 QMainWindow::saveState；换新键等于忽略旧布局一次
 constexpr char kKeySidebarView[] = "window/sidebar_view";
 constexpr char kKeySidebarVisible[] = "window/sidebar_visible";
+constexpr char kKeySidebarWidth[] = "window/sidebar_width";
+constexpr char kKeyOutlineWidth[] = "window/outline_width";
 constexpr char kKeyOutlineVisible[] = "window/outline_visible";
 constexpr char kKeyDarkTheme[] = "appearance/dark_theme";
 constexpr char kKeyWindowMaterial[] = "appearance/window_material";
@@ -101,6 +103,8 @@ void MdViewerSettings::Load() {
   window_geometry = settings.value(kKeyGeometry).toByteArray();
   sidebar_view = settings.value(kKeySidebarView, 0).toInt();
   sidebar_visible = settings.value(kKeySidebarVisible, true).toBool();
+  sidebar_width = settings.value(kKeySidebarWidth, 280).toInt();
+  outline_width = settings.value(kKeyOutlineWidth, 212).toInt();
   outline_visible = settings.value(kKeyOutlineVisible, true).toBool();
   dark_theme = settings.value(kKeyDarkTheme, false).toBool();
   if (settings.contains(kKeyWindowMaterial)) {
@@ -169,6 +173,8 @@ void MdViewerSettings::Save() const {
   }
   settings.setValue(kKeySidebarView, sidebar_view);
   settings.setValue(kKeySidebarVisible, sidebar_visible);
+  settings.setValue(kKeySidebarWidth, sidebar_width);
+  settings.setValue(kKeyOutlineWidth, outline_width);
   settings.setValue(kKeyOutlineVisible, outline_visible);
   settings.setValue(kKeyDarkTheme, dark_theme);
   settings.setValue(kKeyWindowMaterial, static_cast<int>(window_material));

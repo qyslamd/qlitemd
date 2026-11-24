@@ -343,5 +343,10 @@ GUI（agent-desktop，不入 CI）：
   `sidebar_visible`、`outline_visible` 三个设置项。
 - 快捷键：`Ctrl+Shift+E/F/B/R` 切四个视图，`Ctrl+Shift+O` 切换大纲；
   `Ctrl+Shift+F` 仍聚焦工作区搜索输入框。
+- 中央区改为 `QSplitter`：活动栏固定，侧栏/正文/大纲三块可拖动改宽；
+  侧栏与大纲宽度存 `sidebar_width` / `outline_width`，正文用拉伸因子吃掉
+  剩余空间，`setChildrenCollapsible(false)` 防止误拖成 0。
+- 搜索视图去掉底部 footer：进度/命中数与取消按钮并进搜索框下方那一行，
+  文档树与正文页底边对齐。
 - 设置按钮（齿轮）移到活动栏底部，文档条与欢迎栏不再各放一个；
   `Ctrl+,` 与菜单里的「设置…」保持不变。

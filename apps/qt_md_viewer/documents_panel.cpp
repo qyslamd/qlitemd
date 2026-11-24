@@ -484,11 +484,22 @@ void DocumentsPanel::initUi() {
   search_edit_->setEnabled(false);
   search_layout->addWidget(search_edit_);
 
-  search_summary_ = new QLabel(search_page);
+  // 搜索状态与取消放在同一行：进度/命中数属于这次查询，不该占面板底部
+  auto* search_header = new QWidget(search_page);
+  search_header->setObjectName(QStringLiteral("searchHeader"));
+  auto* search_header_layout = new QHBoxLayout(search_header);
+  search_header_layout->setContentsMargins(0, 0, 0, 0);
+  search_header_layout->setSpacing(6);
+  search_summary_ = new QLabel(search_header);
   search_summary_->setObjectName(QStringLiteral("searchSummaryLabel"));
   search_summary_->setWordWrap(true);
   search_summary_->setText(QStringLiteral("输入关键词开始搜索"));
-  search_layout->addWidget(search_summary_);
+  search_header_layout->addWidget(search_summary_, 1);
+  cancel_button_ = new QPushButton(QStringLiteral("取消"), search_header);
+  cancel_button_->setObjectName(QStringLiteral("sidebarCancelButton"));
+  cancel_button_->hide();
+  search_header_layout->addWidget(cancel_button_);
+  search_layout->addWidget(search_header);
   search_tree_ = new QTreeWidget(search_page);
   search_tree_->setObjectName(QStringLiteral("searchResultTree"));
   search_tree_->setColumnCount(1);
@@ -511,20 +522,6 @@ void DocumentsPanel::initUi() {
                 QStringLiteral("搜索"));
 
   outer->addWidget(tabs_, 1);
-
-  auto* footer = new QWidget(this);
-  footer->setObjectName(QStringLiteral("sidebarFooter"));
-  auto* footer_layout = new QHBoxLayout(footer);
-  footer_layout->setContentsMargins(8, 4, 8, 4);
-  footer_layout->setSpacing(6);
-  footer_label_ = new QLabel(footer);
-  footer_label_->setObjectName(QStringLiteral("sidebarFooterLabel"));
-  footer_layout->addWidget(footer_label_, 1);
-  cancel_button_ = new QPushButton(QStringLiteral("取消"), footer);
-  cancel_button_->setObjectName(QStringLiteral("sidebarCancelButton"));
-  cancel_button_->hide();
-  footer_layout->addWidget(cancel_button_);
-  outer->addWidget(footer);
 }
 
 bool DocumentsPanel::eventFilter(QObject* watched, QEvent* event) {
@@ -612,8 +609,6 @@ void DocumentsPanel::initSignals() {
           });
   connect(cancel_button_, &QPushButton::clicked, this,
           &DocumentsPanel::cancelSearchRequested);
-  connect(tabs_, &QTabWidget::currentChanged, this,
-          [this](int) { UpdateFooter(); });
 }
 
 void DocumentsPanel::SetRoot(const DocumentScanResult& result) {
@@ -636,7 +631,6 @@ void DocumentsPanel::SetRoot(const DocumentScanResult& result) {
   document_tree_->clear();
   if (result.markdown_file_count == 0) {
     ShowEmptyPage(QStringLiteral("该目录中没有 Markdown 文档"));
-    UpdateFooter();
     return;
   }
 
@@ -652,7 +646,6 @@ void DocumentsPanel::SetRoot(const DocumentScanResult& result) {
   }
   ApplyFilter();
   document_stack_->setCurrentWidget(document_tree_);
-  UpdateFooter();
 }
 
 void DocumentsPanel::SetRootMissing(const QString& root,
@@ -662,7 +655,6 @@ void DocumentsPanel::SetRootMissing(const QString& root,
   last_result_ = DocumentScanResult();
   last_result_.root = root;
   last_result_.root_exists = false;
-  UpdateFooter();
   empty_label_->setToolTip(root);
   ShowEmptyPage(reason.isEmpty() ? QStringLiteral("目录不存在或不可读")
                                  : reason);
@@ -816,7 +808,6 @@ void DocumentsPanel::BeginSearch(const QString& query) {
     search_summary_->setText(QStringLiteral("正在搜索…"));
     cancel_button_->show();
   }
-  UpdateFooter();
 }
 
 void DocumentsPanel::AppendSearchHits(const QVector<SearchHit>& hits,
@@ -842,11 +833,11 @@ void DocumentsPanel::AppendSearchHits(const QVector<SearchHit>& hits,
     child->setData(0, kQueryLengthRole, current_query_.size());
     ++search_total_hits_;
   }
-  search_summary_->setText(QStringLiteral("在 %1 篇文档中搜索 “%2” · %3 处命中")
-                               .arg(search_total_files_)
-                               .arg(current_query_)
-                               .arg(search_total_hits_));
-  UpdateFooter();
+  search_summary_->setText(
+      QStringLiteral("正在搜索… · 已扫描 %1/%2 · %3 处命中")
+          .arg(search_scanned_files_)
+          .arg(search_total_files_)
+          .arg(search_total_hits_));
 }
 
 void DocumentsPanel::EndSearch(bool truncated, bool canceled) {
@@ -868,7 +859,6 @@ void DocumentsPanel::EndSearch(bool truncated, bool canceled) {
                                     : QStringLiteral("未找到匹配"));
     search_empty_->show();
   }
-  UpdateFooter();
 }
 
 void DocumentsPanel::SetSearchError(const QString& message) {
@@ -876,35 +866,10 @@ void DocumentsPanel::SetSearchError(const QString& message) {
   search_summary_->setText(message);
   search_empty_->setText(message);
   search_empty_->show();
-  UpdateFooter();
-}
-
-void DocumentsPanel::UpdateFooter() {
-  const int index = tabs_->currentIndex();
-  if (index == static_cast<int>(Tab::kSearch)) {
-    if (cancel_button_->isVisible()) {
-      footer_label_->setText(QStringLiteral("已扫描 %1/%2")
-                                 .arg(search_scanned_files_)
-                                 .arg(search_total_files_));
-    } else if (!current_query_.isEmpty()) {
-      footer_label_->setText(
-          QStringLiteral("共 %1 处命中").arg(search_total_hits_));
-    } else {
-      footer_label_->clear();
-    }
-    return;
-  }
-  if (index == static_cast<int>(Tab::kDocuments)) {
-    footer_label_->setText(
-        QStringLiteral("共 %1 篇文档").arg(last_result_.markdown_file_count));
-  } else {
-    footer_label_->clear();
-  }
 }
 
 void DocumentsPanel::ShowTab(Tab tab) {
   tabs_->setCurrentIndex(static_cast<int>(tab));
-  UpdateFooter();
 }
 
 void DocumentsPanel::SetTabBarVisible(bool visible) {

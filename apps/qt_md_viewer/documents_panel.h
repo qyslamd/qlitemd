@@ -85,7 +85,6 @@ class DocumentsPanel : public QWidget {
   void BuildTree(const DocumentScanResult& result);
   void ApplyFilter();
   void ShowEmptyPage(const QString& message);
-  void UpdateFooter();
   void UpdateDocumentBookmarkRoles();
 
   QTabWidget* tabs_ = nullptr;
@@ -106,7 +105,6 @@ class DocumentsPanel : public QWidget {
   QWidget* empty_page_ = nullptr;
   QLabel* empty_label_ = nullptr;
   QPushButton* choose_root_button_ = nullptr;
-  QLabel* footer_label_ = nullptr;
   QPushButton* cancel_button_ = nullptr;
   QString current_file_;
   QString filter_text_;
