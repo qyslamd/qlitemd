@@ -1,6 +1,7 @@
 #include "document_bar.h"
 
 #include <QApplication>
+#include <QFontMetrics>
 #include <QLabel>
 #include <QLineEdit>
 #include <QToolButton>
@@ -44,8 +45,14 @@ TEST(DocumentBarTest, ExposesAllControls) {
 
 TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {
   DocumentBar* bar = MakeShownBar(700);
-  const QString full = QStringLiteral(
-      "docs/guide/二层/三层/四层/一个非常非常长的文档标题用来撑满路径栏.md");
+  // 不同平台的字体度量差很多，路径要撑到必然放不下才谈得上省略
+  const QString segment = QStringLiteral(
+      "docs/guide/二层/三层/四层/一个非常非常长的文档标题用来撑满路径栏");
+  QString full = segment;
+  const QFontMetrics metrics(bar->path_label()->font());
+  while (metrics.horizontalAdvance(full) <= bar->path_label()->width()) {
+    full += QLatin1Char('/') + segment;
+  }
   bar->SetPath(full,
                QStringLiteral("D:/trae_workspace/qlitemd/docs/guide/x.md"));
   QApplication::processEvents();

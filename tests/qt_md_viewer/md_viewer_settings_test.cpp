@@ -1,6 +1,7 @@
 #include "md_viewer_settings.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QStandardPaths>
 
@@ -135,13 +136,17 @@ TEST(MdViewerSettingsTest, RecentRootsDedupeAndCap) {
   ResetConfigFile();
   MdViewerSettings settings;
   settings.Load();
+  // AddRecentRoot 会把相对路径补成绝对路径，这里用根目录拼出跨平台
+  // 都保持原样的绝对路径
+  const QString base = QDir::rootPath();
   for (int i = 0; i < 10; ++i) {
-    settings.AddRecentRoot(QStringLiteral("D:/root%1").arg(i));
+    settings.AddRecentRoot(base + QStringLiteral("root%1").arg(i));
   }
-  settings.AddRecentRoot(QStringLiteral("D:/root5"));
-  EXPECT_EQ(settings.recent_roots.first(), QStringLiteral("D:/root5"));
+  const QString duplicate = base + QStringLiteral("root5");
+  settings.AddRecentRoot(duplicate);
+  EXPECT_EQ(settings.recent_roots.first(), duplicate);
   EXPECT_EQ(settings.recent_roots.size(), 8);
-  EXPECT_EQ(settings.recent_roots.count(QStringLiteral("D:/root5")), 1);
+  EXPECT_EQ(settings.recent_roots.count(duplicate), 1);
 
   settings.Save();
   MdViewerSettings reloaded;
