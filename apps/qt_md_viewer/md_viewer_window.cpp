@@ -1138,7 +1138,7 @@ void MdViewerWindow::initUi() {
   auto* center = new QWidget(this);
   center->setObjectName(QStringLiteral("mainColumns"));
   auto* columns = new QHBoxLayout(center);
-  columns->setContentsMargins(0, 0, 0, 0);
+  columns->setContentsMargins(4, 0, 0, 0);
   columns->setSpacing(0);
   columns->addWidget(activity_bar_);
   columns->addWidget(side_panel_);
@@ -1439,14 +1439,12 @@ void MdViewerWindow::initUi() {
           &MdViewerWindow::SetBookmarkChecked);
   connect(document_bar_->appearance_button(), &QToolButton::clicked, this,
           &MdViewerWindow::ShowReaderAppearance);
-  connect(document_bar_->settings_button(), &QToolButton::clicked, this,
-          &MdViewerWindow::ShowSettings);
   connect(welcome_bar_, &WelcomeBar::quickOpenRequested, this, [this] {
     if (quick_open_action_ != nullptr) {
       quick_open_action_->trigger();
     }
   });
-  connect(welcome_bar_, &WelcomeBar::settingsRequested, this,
+  connect(activity_bar_, &ActivityBar::settingsRequested, this,
           &MdViewerWindow::ShowSettings);
   connect(activity_bar_, &ActivityBar::viewActivated, this,
           &MdViewerWindow::ShowSideView);

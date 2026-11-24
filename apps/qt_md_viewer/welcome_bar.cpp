@@ -57,14 +57,10 @@ WelcomeBar::WelcomeBar(QWidget* parent) : QWidget(parent) {
   quick_open_button_ = MakeIconButton(this, QStringLiteral("welcomeQuickOpen"),
                                       QStringLiteral("快速跳转（Ctrl+P）"));
   layout->addWidget(quick_open_button_);
-  settings_button_ = MakeIconButton(this, QStringLiteral("welcomeSettings"),
-                                    QStringLiteral("设置（Ctrl+,）"));
-  layout->addWidget(settings_button_);
+  layout->addWidget(quick_open_button_);
 
   connect(quick_open_button_, &QToolButton::clicked, this,
           &WelcomeBar::quickOpenRequested);
-  connect(settings_button_, &QToolButton::clicked, this,
-          &WelcomeBar::settingsRequested);
 
   SetThemeDark(false);
   SetWorkspaceName(QString());
@@ -87,7 +83,6 @@ void WelcomeBar::SetWorkspaceName(const QString& root) {
 void WelcomeBar::SetThemeDark(bool dark) {
   dark_ = dark;
   quick_open_button_->setIcon(ThemeIcon(QStringLiteral("search"), dark_));
-  settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark_));
 }
 
 void WelcomeBar::resizeEvent(QResizeEvent* event) {

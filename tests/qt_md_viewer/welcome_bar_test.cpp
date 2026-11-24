@@ -27,7 +27,6 @@ TEST(WelcomeBarTest, IsAFixedStripWithoutDocumentControls) {
   EXPECT_NE(bar.findChild<QLabel*>(QStringLiteral("welcomeWorkspaceLabel")),
             nullptr);
   EXPECT_NE(bar.quick_open_button(), nullptr);
-  EXPECT_NE(bar.settings_button(), nullptr);
 }
 
 TEST(WelcomeBarTest, ShowsWorkspaceNameOrPlaceholder) {
@@ -46,16 +45,11 @@ TEST(WelcomeBarTest, ShowsWorkspaceNameOrPlaceholder) {
 TEST(WelcomeBarTest, ButtonsForwardToTheWindow) {
   WelcomeBar bar;
   int quick_open = 0;
-  int settings = 0;
   QObject::connect(&bar, &WelcomeBar::quickOpenRequested,
                    [&quick_open] { ++quick_open; });
-  QObject::connect(&bar, &WelcomeBar::settingsRequested,
-                   [&settings] { ++settings; });
 
   bar.quick_open_button()->click();
-  bar.settings_button()->click();
   EXPECT_EQ(quick_open, 1);
-  EXPECT_EQ(settings, 1);
 }
 
 TEST(WelcomeBarTest, HidesQuickOpenWhenNarrow) {
@@ -68,14 +62,12 @@ TEST(WelcomeBarTest, HidesQuickOpenWhenNarrow) {
   bar.resize(400, 32);
   QApplication::processEvents();
   EXPECT_FALSE(bar.quick_open_button()->isVisible());
-  EXPECT_TRUE(bar.settings_button()->isVisible());
 }
 
 TEST(WelcomeBarTest, ThemeSwitchKeepsTheBarUsable) {
   WelcomeBar bar;
   bar.SetThemeDark(true);
   EXPECT_TRUE(bar.quick_open_button()->isEnabled());
-  EXPECT_TRUE(bar.settings_button()->isEnabled());
   bar.SetThemeDark(false);
   EXPECT_TRUE(bar.quick_open_button()->isEnabled());
 }

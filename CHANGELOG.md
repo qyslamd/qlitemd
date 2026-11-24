@@ -12,6 +12,8 @@ All notable changes to qlitemd are documented here.
   outline visibility are stored in settings; `Ctrl+Shift+E/F/B/R` select a
   view and `Ctrl+Shift+O` toggles the outline. The old dock layout key and
   the dock entries in the View menu are removed.
+- The settings gear now sits at the bottom of the activity bar; the
+  document bar and the welcome bar no longer carry their own copies.
 
 ## 0.7.0 - 2026-11-24
 

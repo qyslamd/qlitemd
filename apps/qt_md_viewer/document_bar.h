@@ -32,7 +32,6 @@ class DocumentBar : public QWidget {
   QToolButton* zoom_out_button() const { return zoom_out_button_; }
   QToolButton* zoom_reset_button() const { return zoom_reset_button_; }
   QToolButton* zoom_in_button() const { return zoom_in_button_; }
-  QToolButton* settings_button() const { return settings_button_; }
 
  protected:
   void resizeEvent(QResizeEvent* event) override;
@@ -54,7 +53,6 @@ class DocumentBar : public QWidget {
   QToolButton* zoom_out_button_ = nullptr;
   QToolButton* zoom_reset_button_ = nullptr;
   QToolButton* zoom_in_button_ = nullptr;
-  QToolButton* settings_button_ = nullptr;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_DOCUMENT_BAR_H_

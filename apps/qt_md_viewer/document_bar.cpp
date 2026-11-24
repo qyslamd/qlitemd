@@ -90,10 +90,6 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   zoom_layout->addWidget(zoom_in_button_);
   layout->addWidget(zoom_group_);
 
-  settings_button_ = MakeIconButton(this, QStringLiteral("docSettings"),
-                                    QStringLiteral("设置（Ctrl+,）"));
-  layout->addWidget(settings_button_);
-
   SetThemeDark(false);
   UpdateChildVisibility();
 }
@@ -111,7 +107,6 @@ void DocumentBar::SetThemeDark(bool dark) {
   appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark_));
   zoom_out_button_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark_));
   zoom_in_button_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark_));
-  settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark_));
 }
 
 void DocumentBar::resizeEvent(QResizeEvent* event) {

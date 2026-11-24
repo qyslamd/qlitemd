@@ -36,7 +36,6 @@ TEST(DocumentBarTest, ExposesAllControls) {
   EXPECT_NE(bar.zoom_out_button(), nullptr);
   EXPECT_NE(bar.zoom_reset_button(), nullptr);
   EXPECT_NE(bar.zoom_in_button(), nullptr);
-  EXPECT_NE(bar.settings_button(), nullptr);
   EXPECT_NE(bar.copy_button(), nullptr);
   EXPECT_NE(bar.find_edit(), nullptr);
   EXPECT_EQ(bar.find_edit()->objectName(), QStringLiteral("docFindEdit"));

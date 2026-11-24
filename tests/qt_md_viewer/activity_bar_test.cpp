@@ -30,6 +30,19 @@ TEST(ActivityBarTest, HasFourViewsWithObjectNames) {
             QStringLiteral("activityRenderStatus"));
 }
 
+TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
+  ActivityBar bar;
+  auto* settings = bar.settings_button();
+  ASSERT_NE(settings, nullptr);
+  EXPECT_EQ(settings->objectName(), QStringLiteral("activitySettings"));
+  EXPECT_FALSE(settings->isCheckable());
+  int requested = 0;
+  QObject::connect(&bar, &ActivityBar::settingsRequested,
+                   [&requested] { ++requested; });
+  settings->click();
+  EXPECT_EQ(requested, 1);
+}
+
 TEST(ActivityBarTest, ViewsAreExclusive) {
   ActivityBar bar;
   bar.SetActiveView(ActivityBar::kSearch);

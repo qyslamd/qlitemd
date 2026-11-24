@@ -27,9 +27,11 @@ class ActivityBar : public QWidget {
   int active_view() const { return active_view_; }
 
   QToolButton* button(int view) const;
+  QToolButton* settings_button() const { return settings_button_; }
 
  signals:
   void viewActivated(int view);
+  void settingsRequested();
 
  protected:
   // 当前视图用左侧强调条标出来
@@ -38,6 +40,7 @@ class ActivityBar : public QWidget {
  private:
   QButtonGroup* group_ = nullptr;
   QVector<QToolButton*> buttons_;
+  QToolButton* settings_button_ = nullptr;
   int active_view_ = kDocuments;
 };
 

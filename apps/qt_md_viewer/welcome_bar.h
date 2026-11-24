@@ -22,11 +22,9 @@ class WelcomeBar : public QWidget {
 
   QLabel* workspace_label() const { return workspace_label_; }
   QToolButton* quick_open_button() const { return quick_open_button_; }
-  QToolButton* settings_button() const { return settings_button_; }
 
  signals:
   void quickOpenRequested();
-  void settingsRequested();
 
  protected:
   void resizeEvent(QResizeEvent* event) override;
@@ -36,7 +34,6 @@ class WelcomeBar : public QWidget {
 
   QLabel* workspace_label_ = nullptr;
   QToolButton* quick_open_button_ = nullptr;
-  QToolButton* settings_button_ = nullptr;
   QString workspace_display_;
   bool dark_ = false;
 };

@@ -53,6 +53,18 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
             [this, i] { emit viewActivated(i); });
   }
   layout->addStretch(1);
+  // 底部只放全局入口：设置
+  settings_button_ = new QToolButton(this);
+  settings_button_->setObjectName(QStringLiteral("activitySettings"));
+  settings_button_->setAutoRaise(true);
+  settings_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  settings_button_->setFixedSize(24, 24);
+  settings_button_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
+  settings_button_->setAccessibleName(QStringLiteral("设置"));
+  layout->addWidget(settings_button_);
+  connect(settings_button_, &QToolButton::clicked, this,
+          &ActivityBar::settingsRequested);
+
   SetActiveView(kDocuments);
   SetThemeDark(false);
 }
@@ -64,6 +76,7 @@ void ActivityBar::SetThemeDark(bool dark) {
       ThemeIcon(QStringLiteral("star-outline"), dark));
   buttons_[kRenderStatus]->setIcon(
       ThemeIcon(QStringLiteral("render-status"), dark));
+  settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark));
 }
 
 void ActivityBar::SetActiveView(int view) {
