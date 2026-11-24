@@ -8,6 +8,7 @@ class QContextMenuEvent;
 class QMouseEvent;
 class QPaintEvent;
 class QResizeEvent;
+class QTimer;
 
 // Chrome 标签条配色；选中标签用页面色，标签条本身用框架色
 struct TabStripColors {
@@ -31,6 +32,10 @@ class DocumentTabBar : public QTabBar {
 
   void RemoveCloseButton(int index);
   void SetThemeDark(bool dark);
+  // 标签正在渲染：图标位置画旋转弧
+  void SetTabLoading(int index, bool loading);
+  bool IsTabLoading(int index) const;
+  int spin_angle() const { return spin_angle_; }
 
   QSize tabSizeHint(int index) const override;
   QSize minimumTabSizeHint(int index) const override;
@@ -39,6 +44,8 @@ class DocumentTabBar : public QTabBar {
   // 中键关闭；左键关闭走 QTabBar::tabCloseRequested
   void closeTabRequested(int index);
   void newTabRequested();
+  void reloadTabRequested(int index);
+  void reopenClosedTabRequested();
 
  protected:
   void paintEvent(QPaintEvent* event) override;
@@ -51,14 +58,17 @@ class DocumentTabBar : public QTabBar {
 
  private:
   void ShowHideTabButtons();
+  void UpdateSpinTimer();
 
-  // 与 YiGuai 同口径：偏好 240x34，大量标签时等宽压到 36 再出滚动按钮
+  // 偏好 220x30；大量标签时等宽压到 36 再出滚动按钮
   static constexpr int kTabHeight = 30;
   static constexpr int kMinTabWidth = 36;
   static constexpr int kMinTabHeight = 26;
   static constexpr int kMaxTabWidth = 220;
   // 标签宽度低于该值时藏掉关闭按钮，避免文字与按钮互挤
   static constexpr int kCloseButtonHideWidth = 40;
+  QTimer* spin_timer_ = nullptr;
+  int spin_angle_ = 0;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_DOCUMENT_TAB_BAR_H_

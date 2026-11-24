@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
   return RUN_ALL_TESTS();
 }
 
-TEST(DocumentTabBarTest, MatchesYiGuaiMetrics) {
+TEST(DocumentTabBarTest, MatchesTabMetrics) {
   DocumentTabBar bar;
   bar.addTab(QStringLiteral("一个很长很长的文档名字用来撑宽标签.md"));
   bar.addTab(QStringLiteral("b.md"));
@@ -29,6 +29,25 @@ TEST(DocumentTabBarTest, ChromeColorsSeparateSelectedFromFrame) {
   EXPECT_NE(dark.selected, dark.background);
   EXPECT_NE(light.selected_text, light.normal_text);
   EXPECT_NE(dark.selected_text, dark.normal_text);
+}
+
+TEST(DocumentTabBarTest, LoadingStateRoundTrips) {
+  DocumentTabBar bar;
+  bar.addTab(QStringLiteral("a.md"));
+  EXPECT_FALSE(bar.IsTabLoading(0));
+  bar.SetTabLoading(0, true);
+  EXPECT_TRUE(bar.IsTabLoading(0));
+  bar.SetTabLoading(0, false);
+  EXPECT_FALSE(bar.IsTabLoading(0));
+}
+
+TEST(DocumentTabBarTest, CloseButtonHasMinimumHitArea) {
+  DocumentTabBar bar;
+  bar.addTab(QStringLiteral("a.md"));
+  QWidget* close = bar.tabButton(0, QTabBar::RightSide);
+  ASSERT_NE(close, nullptr);
+  EXPECT_GE(close->minimumSize().width(), 18);
+  EXPECT_GE(close->minimumSize().height(), 18);
 }
 
 TEST(DocumentTabBarTest, WelcomeTabHasNoCloseButton) {

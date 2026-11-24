@@ -486,6 +486,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
       [this, tab](quint64 request_id, int completed, int total, int in_flight) {
         Q_UNUSED(in_flight);
         tab->render_request = request_id;
+        SetTabLoading(tab, true);
         if (tab != CurrentTab()) {
           return;
         }
@@ -501,6 +502,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
   connect(view, &MarkdownView::renderFinished, this,
           [this, tab, view](quint64) {
             tab->render_request = 0;
+            SetTabLoading(tab, false);
             // 锚点与滚动恢复对后台标签也要做，否则切回来时位置丢了
             if (!tab->pending_fragment.isEmpty()) {
               const QString fragment = tab->pending_fragment;
@@ -589,6 +591,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
           });
   connect(view, &MarkdownView::loadFailed, this,
           [this, tab](const QString& path, const QString& reason) {
+            SetTabLoading(tab, false);
             if (tab != CurrentTab()) {
               return;
             }
@@ -742,6 +745,13 @@ void MdViewerWindow::CloseTab(int index) {
   }
   const bool was_active = index == active_tab_;
   DocumentTab* tab = tabs_[index].get();
+  if (!tab->path.isEmpty()) {
+    closed_tabs_.removeAll(tab->path);
+    closed_tabs_.prepend(tab->path);
+    while (closed_tabs_.size() > 10) {
+      closed_tabs_.removeLast();
+    }
+  }
   if (tab == CurrentTab()) {
     DetachPanelsFromTab(tab);
   }
@@ -773,6 +783,38 @@ void MdViewerWindow::CloseTab(int index) {
   SaveTabSession();
 }
 
+void MdViewerWindow::ReloadTab(int index) {
+  if (index <= 0 || index >= static_cast<int>(tabs_.size())) {
+    return;
+  }
+  DocumentTab* tab = tabs_[index].get();
+  if (tab == nullptr || tab->view == nullptr || tab->path.isEmpty() ||
+      tab->view->is_rendering()) {
+    return;
+  }
+  // 重新加载保留当前阅读位置，由 renderFinished 恢复
+  tab->pending_restore_path = tab->path;
+  tab->scroll_position = tab->view->ScrollPosition();
+  tab->pending_restore = true;
+  SetTabLoading(tab, true);
+  if (tab->view->LoadFile(tab->path)) {
+    tab->view->ShowPlaceholder(QStringLiteral("正在重新渲染…"));
+  } else {
+    SetTabLoading(tab, false);
+  }
+}
+
+void MdViewerWindow::ReopenClosedTab() {
+  while (!closed_tabs_.isEmpty()) {
+    const QString path = closed_tabs_.takeFirst();
+    if (QFileInfo(path).isFile()) {
+      NavigateTo(path, QString(), /*record_history=*/true, OpenIntent::kNewTab);
+      return;
+    }
+  }
+  statusBar()->showMessage(QStringLiteral("没有可重新打开的标签页"), 3000);
+}
+
 void MdViewerWindow::OnTabMoved(int from, int to) {
   if (from <= 0 || to <= 0 || from >= static_cast<int>(tabs_.size()) ||
       to >= static_cast<int>(tabs_.size())) {
@@ -797,6 +839,18 @@ void MdViewerWindow::OnTabMoved(int from, int to) {
   if (tab_bar_ != nullptr) {
     const QSignalBlocker blocker(tab_bar_);
     tab_bar_->setCurrentIndex(active_tab_);
+  }
+}
+
+void MdViewerWindow::SetTabLoading(DocumentTab* tab, bool loading) {
+  if (tab_bar_ == nullptr || tab == nullptr) {
+    return;
+  }
+  for (int i = 0; i < static_cast<int>(tabs_.size()); ++i) {
+    if (tabs_[i].get() == tab) {
+      tab_bar_->SetTabLoading(i, loading);
+      return;
+    }
   }
 }
 
@@ -887,6 +941,10 @@ void MdViewerWindow::createActions() {
   close_tab_action_ = new QAction(QStringLiteral("关闭标签页"), this);
   close_tab_action_->setObjectName(QStringLiteral("closeTabAction"));
   close_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
+  reopen_tab_action_ =
+      new QAction(QStringLiteral("重新打开关闭的标签页"), this);
+  reopen_tab_action_->setObjectName(QStringLiteral("reopenTabAction"));
+  reopen_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+T")));
   new_window_action_ = new QAction(QStringLiteral("新建窗口"), this);
   new_window_action_->setObjectName(QStringLiteral("newWindowAction"));
   new_window_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
@@ -1116,6 +1174,7 @@ void MdViewerWindow::initUi() {
   QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
   file_menu->addAction(new_tab_action_);
   file_menu->addAction(close_tab_action_);
+  file_menu->addAction(reopen_tab_action_);
   file_menu->addAction(new_window_action_);
   file_menu->addSeparator();
   file_menu->addAction(open_file_action_);
@@ -1181,6 +1240,7 @@ void MdViewerWindow::initUi() {
   addAction(open_dir_action_);
   addAction(new_tab_action_);
   addAction(close_tab_action_);
+  addAction(reopen_tab_action_);
   addAction(new_window_action_);
   addAction(quit_action_);
   addAction(find_action_);
@@ -1502,6 +1562,8 @@ void MdViewerWindow::initSignals() {
   });
   connect(close_tab_action_, &QAction::triggered, this,
           [this] { CloseTab(active_tab_); });
+  connect(reopen_tab_action_, &QAction::triggered, this,
+          &MdViewerWindow::ReopenClosedTab);
   if (tab_bar_ != nullptr) {
     connect(tab_bar_, &QTabBar::currentChanged, this, [this](int) {
       // QTabBar::moveTab 可能先改 currentIndex 再发 tabMoved；延后一拍，
@@ -1524,6 +1586,10 @@ void MdViewerWindow::initSignals() {
     connect(tab_bar_, &DocumentTabBar::newTabRequested, this,
             &MdViewerWindow::OpenFileDialog);
     connect(tab_bar_, &QTabBar::tabMoved, this, &MdViewerWindow::OnTabMoved);
+    connect(tab_bar_, &DocumentTabBar::reloadTabRequested, this,
+            &MdViewerWindow::ReloadTab);
+    connect(tab_bar_, &DocumentTabBar::reopenClosedTabRequested, this,
+            &MdViewerWindow::ReopenClosedTab);
   }
   if (add_tab_button_ != nullptr) {
     connect(add_tab_button_, &QToolButton::clicked, this,
@@ -1570,6 +1636,7 @@ void MdViewerWindow::NavigateTo(const QString& path, const QString& fragment,
       CurrentTab()->pending_fragment.clear();
       render_progress_->hide();
       CurrentTab()->render_request = 0;
+      SetTabLoading(CurrentTab(), false);
       CurrentTab()->path = CurrentView()->current_file();
       UpdateBookmarkUi();
     }
@@ -2511,6 +2578,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   target->scroll_position = positions_.ScrollFor(absolute_path);
   target->pending_restore = target->scroll_position >= 0;
   if (!target->view->LoadFile(absolute_path)) {
+    SetTabLoading(target, false);
     target->pending_restore = false;
     target->pending_restore_path.clear();
     // 视图里已经提交了错误页；欢迎页正显示时必须让位，否则用户
@@ -2519,6 +2587,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
     return false;
   }
   HideWelcome();
+  SetTabLoading(target, true);
   // 旧文档还在屏幕上，而新文档已在后台渲染；先给一个明确的等待页
   target->view->ShowPlaceholder(QStringLiteral("正在渲染…"));
   target->path = absolute_path;

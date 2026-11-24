@@ -16,14 +16,21 @@ All notable changes to qlitemd are documented here.
 - Tabs follow YiGuai's appearance: a four-corner rounded shape (radius =
   height/3) whose selected tab flares into its neighbours, frame color
   #CECECE light / #2E2F30 dark, selected tab #F9F9FB / #3B3B3B, a
-  translucent hover overlay, 0.5 px separators, and label text that fades
-  out over the last 20% of its rectangle.
+  translucent hover overlay with its own expansion geometry, 0.5 px
+  separators, and label text that fades out over the last 20% of its
+  rectangle.
 - Tab metrics and layout follow YiGuai as well: 220x30 preferred, 36x26
   minimum, equal widths that compress as tabs accumulate; the strip keeps an
   8 px gap from the window's top edge. The new-tab "+" sits immediately
   after the last tab, followed by a draggable blank area (double-click
-  maximizes); close buttons hide below 40 px; each document tab shows the
-  file icon with left-aligned text.
+  maximizes); close buttons hide below 40 px and keep an 18x18 hit area;
+  each document tab shows the file icon with left-aligned text. Tabs that
+  are still rendering replace the icon with a rotating arc (40 ms per
+  10-degree step), cleared when the tab closes or its render is cancelled.
+  Close-other/close-right are disabled when inapplicable, labels are
+  skipped once a tab is 60 px or narrower, and the tab context menu gains
+  "重新加载" plus "重新打开关闭的标签页" (Ctrl+Shift+T keeps the last ten
+  closed paths).
 
 - `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
   bar and a `QStackedWidget` whose first page is the permanent welcome page;

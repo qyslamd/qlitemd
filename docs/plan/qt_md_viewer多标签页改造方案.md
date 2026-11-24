@@ -203,15 +203,20 @@ QTabWidget。
    标签、窗口 1200px 时每个约 74px，与 YiGuai 行为一致。
 2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`；
    `ShowHideTabButtons()` 在 `resizeEvent` / `tabInserted` / `tabRemoved`
-   时统一刷新，标签宽度低于 40px 就把关闭按钮藏掉（YiGuai 的 RHideW）。
-   左侧不放状态图标，所以不设 80px 的左按钮阈值。
+   时统一刷新，标签宽度低于 40px 就把关闭按钮藏掉（YiGuai 的 RHideW），
+   按钮保留 18×18 的最小点击区。左侧不放状态图标，所以不设 80px 的
+   左按钮阈值；标签窄于 60px 时连文字也不画，只留图标/加载弧。
 3. **自绘外观**：`QProxyStyle` 覆盖 `CE_TabBarTabShape` /
    `CE_TabBarTabLabel`。形状与配色照搬 YiGuai 的
    `TabbarStyle::getSelectedShape` / `drawTabBarTabShape`：四角圆弧
-   （半径 = 高度/3）、选中标签向左右外扩并压进相邻标签、未选中只画
-   0.5px 分隔线、文字右端 20% 渐隐。FluentUI3Style 目前不给 QTabBar
-   画样式，自绘一层比给上游打补丁更可控。
-4. **拖拽重排的数据同步**：`QTabBar::tabMoved(from, to)` 是唯一信号源。
+   （半径 = 高度/3）、选中标签向左右外扩并压进相邻标签、悬停用独立的
+   外扩几何、未选中只画 0.5px 分隔线、文字右端 20% 渐隐。FluentUI3Style
+   目前不给 QTabBar 画样式，自绘一层比给上游打补丁更可控。
+4. **加载态与标签菜单**：标签在渲染时用 `tabData` 记状态，图标位置
+   画 40ms/10° 的旋转弧；标签关闭或渲染取消时停掉定时器。右键菜单含
+   重新加载、关闭当前/其他/右侧、重新打开关闭的标签页（窗口保留最近
+   10 条关闭路径，`Ctrl+Shift+T`）。
+5. **拖拽重排的数据同步**：`QTabBar::tabMoved(from, to)` 是唯一信号源。
    先 `TabModel::Move(from, to)`，再同步 `QStackedWidget`：
    ```cpp
    const QSignalBlocker blocker(stack);
@@ -221,18 +226,18 @@ QTabWidget。
    ```
    （YiGuai `MainWindow::onTabBarTabMoved` 的做法，已在其项目验证。）
    注意顺序：先拿 widget 再 remove；`to` 用 `tabMoved` 给出的目标下标。
-5. **标题栏宿主**：标签条放进 FluentTitleBar 的 leading widget，顺序是
+6. **标题栏宿主**：标签条放进 FluentTitleBar 的 leading widget，顺序是
    菜单、标签条、`+`、空白拖动区。`+` 紧跟最后一个标签，不贴到窗口右侧
    （YiGuai `TabPageToolBar` 的排布）；空白区用 `WindowDragArea` 拖窗、
    双击最大化。YiGuai 自绘窗口按钮并预留 180px，我们用 QWK 内置按钮，
    不需要这一步。
-6. **右键菜单**：YiGuai 有新建/重载/静音/关闭当前/关闭右侧/关闭其他/
-   重开已关闭/垂直标签/全部收藏。我们一期只做：新建标签、关闭标签、
-   关闭其他、关闭右侧；关闭其他/右侧沿用 YiGuai 的
-   “先把目标移到 0，再逐个关右侧”的实现思路。
-7. **DPI**：`tabSizeHint` 按 `logicalDpiX()` 分档（96/120/144/168）。
-   Qt6 的 `QScreen::logicalDotsPerInch` 语义略有差异，移植时用
-   `devicePixelRatioF()` 统一算，别照抄 switch。
+7. **右键菜单**：YiGuai 有新建/重载/静音/关闭当前/关闭右侧/关闭其他/
+   重开已关闭/垂直标签/全部收藏。我们做：新建标签、重新加载、关闭标签、
+   关闭其他、关闭右侧、重新打开关闭的标签页；没有“其它/右侧”可关时
+   对应项置灰，关闭多项从高下标往低关，避免索引失效。
+8. **DPI**：尺寸用逻辑像素写死（220×30 / 36×26），放大交给 Qt 的高
+   DPI 缩放；不照抄 YiGuai 按 `logicalDpiX()` 分档的 switch——Qt6 下
+   该值语义有差异，维护两套会更难对齐。
 
 ## 5. 状态归属表
 

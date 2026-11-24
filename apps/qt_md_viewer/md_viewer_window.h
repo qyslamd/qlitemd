@@ -204,8 +204,11 @@ class MdViewerWindow : public QMainWindow {
   // 激活下标已改好后刷新页面与外壳；关闭标签后也走这里
   void ShowActiveTab();
   void CloseTab(int index);
+  void ReloadTab(int index);
+  void ReopenClosedTab();
   void OnTabMoved(int from, int to);
   void UpdateTabTitle(DocumentTab* tab);
+  void SetTabLoading(DocumentTab* tab, bool loading);
   void SyncTabSessionFields();
   void WriteTabSession();
   void SaveTabSession();
@@ -221,6 +224,7 @@ class MdViewerWindow : public QMainWindow {
   QAction* open_dir_action_ = nullptr;
   QAction* new_tab_action_ = nullptr;
   QAction* close_tab_action_ = nullptr;
+  QAction* reopen_tab_action_ = nullptr;
   QAction* new_window_action_ = nullptr;
   QAction* unload_workspace_action_ = nullptr;
   QAction* quit_action_ = nullptr;
@@ -265,6 +269,8 @@ class MdViewerWindow : public QMainWindow {
   QVariantAnimation* scroll_animation_ = nullptr;
   // SetRootDir 时缓存的 Markdown 文件列表；快速跳转不重复扫盘
   QStringList quick_open_files_;
+  // 最近关闭的文档路径（最多 10 条），供“重新打开”使用
+  QStringList closed_tabs_;
   QLabel* status_ready_label_ = nullptr;
   QLabel* tab_count_label_ = nullptr;
   QLabel* document_count_label_ = nullptr;
