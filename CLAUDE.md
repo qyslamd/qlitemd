@@ -330,6 +330,9 @@ clang-format --dry-run --Werror <file>
   构建、跑测试、安装 `Runtime + Licenses`、用 Inno Setup 生成安装包，
   并把 exe 对应的 PDB 打成 zip。
 - 安装包脚本是 `scripts/installer/qt_md_viewer.iss`；使用 Inno Setup 6.x。
+- Release body 只取 CHANGELOG 里当前版本那一节，由
+  `scripts/extract_changelog_section.py` 在发布 job 里生成；不要把整份
+  CHANGELOG 直接贴进 Release。
 - 发布产物：`qlitemd-qt_md_viewer-<version>-x64-setup.exe`、
   `qlitemd-qt_md_viewer-<version>-x64-pdb.zip`、
   `qlitemd-<version>-core-sdk-win-x64.zip` 和

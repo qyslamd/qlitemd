@@ -1,397 +1,151 @@
 # Changelog
 
-All notable changes to qlitemd are documented here.
+All notable, user-visible changes are documented here. Releases before
+0.5.0 are kept to one line each; see git history or that tag's GitHub
+Release for details.
 
 ## Unreleased
 
-- The window no longer uses dock widgets. A 30 px activity bar on the left
-  switches one side panel between documents, workspace search, bookmarks
-  and render status; clicking the active icon collapses or reopens the
-  panel. The outline is a fixed right-hand column with a hide button, and
-  the document panel's own tab strip is gone. View, panel visibility and
-  outline visibility are stored in settings; `Ctrl+Shift+E/F/B/R` select a
-  view and `Ctrl+Shift+O` toggles the outline. The old dock layout key and
-  the dock entries in the View menu are removed.
-- The settings gear now sits at the bottom of the activity bar; the
-  document bar and the welcome bar no longer carry their own copies.
+### Added
+
+- A 30 px activity bar on the left replaces the dock layout: documents,
+  workspace search, bookmarks and render status share one side panel;
+  clicking the active icon collapses or reopens it. View, panel and
+  outline visibility are persisted (`sidebar_view`, `sidebar_visible`,
+  `outline_visible`); `Ctrl+Shift+E/F/B/R` switch views and
+  `Ctrl+Shift+O` toggles the outline.
+- The side panel, content and outline live in a `QSplitter`; the
+  activity bar stays fixed while the sidebar and outline widths can be
+  dragged and are persisted (`sidebar_width`, `outline_width`).
+
+### Changed
+
+- The settings gear moved to the bottom of the activity bar; the document
+  bar and welcome bar no longer carry their own copies.
+- Search progress, hit count and the cancel button now sit in the line
+  under the search box. The sidebar footer is gone, so the document tree
+  and the page share the same bottom edge.
+
+### Removed
+
+- `QDockWidget`-based layout, its saved state and the dock entries in the
+  View menu.
 
 ## 0.7.0 - 2026-11-24
 
-- The document bar now lives in a real `QToolBar` across the top of the
-  window, above both docks. The welcome tab has its own bar (app icon,
-  "欢迎", workspace name, quick open, settings) instead of a stripped-down
-  document bar; switching tabs swaps the bar page without moving the
-  strip. The bar is fixed at 32 px and cannot be moved, floated or closed;
-  dock layout state moved to a new key, so the first launch after the
-  upgrade starts from the default layout.
-- Search is split by scope: the toolbar box finds within the current
-  document (Ctrl+F, incremental, Enter/Shift+Enter, wrap hints), while
-  workspace search now lives at the top of the sidebar's Search tab
-  (Ctrl+Shift+F) and stays disabled until a workspace is open. Ctrl+K is
-  no longer bound. The sidebar's file filter moved inside the Documents
-  tab so the two inputs never share a screen.
-- The main window can now shrink to 600 px wide: the document dock's
-  minimum width dropped to 200, the outline dock to 140, and the welcome
-  card to 320. At this size the document bar keeps only history, the path,
-  a compressed find box and settings; the outline dock hides itself below
-  980 px as before.
-- Restored the reader-appearance popup: the button had kept its handler
-  but the popup itself stopped being constructed during the P5 shell
-  rework, so clicks did nothing. The toolbar's settings glyph was also a
-  sun (the theme icon); it is now a gear in both themes.
-- Document tabs are 38 px tall (was 30) with a 4 px gap above them; the
-  title bar grows to 42 px to fit, and the minimum tab height is now 30.
-- Removed the "+" button after the last tab. It always opened the file
-  dialog, and the welcome page, Ctrl+T and 文件 → 新建标签页 already cover
-  that; dropping it also frees title-bar width in narrow windows.
-- The welcome tab now shows the colored application icon, matching the
-  title bar and the welcome page instead of a blank tab.
-- Fixed the toolbar showing the document bar on the very first welcome
-  screen: `ShowWelcome()` now refreshes the shell even when tab 0 is
-  already active, so the welcome bar appears from startup.
+### Added
+
+- The document bar became a real `QToolBar` across the top of the window,
+  above both docks, with a dedicated welcome bar (icon, workspace name,
+  quick open).
+- Search is split by scope: `Ctrl+F` finds within the current document
+  (incremental, Enter/Shift+Enter, wrap hints); workspace search lives in
+  the sidebar Search view behind `Ctrl+Shift+F` and starts disabled
+  without a workspace.
+
+### Changed
+
+- Tabs are 38 px tall with a 4 px gap above them; the title bar grew to
+  42 px. The trailing "+" button was removed.
+- The window can shrink to 600 px (dock and welcome-card minimum widths
+  reduced).
+- The settings glyph became a gear; the welcome tab uses the colored app
+  icon.
+
+### Fixed
+
+- The reader-appearance popup was constructed again after the P5 shell
+  rework had left the button without a target.
+- The very first welcome screen showed the document bar instead of the
+  welcome bar.
 
 ## 0.6.0 - 2026-11-24
 
-- The viewer shell now follows the prototype's three-tier layout. The title
-  bar keeps only the menu, tabs, "+" and window buttons; a 32 px document
-  bar hosts back/forward/bookmark, the current path with a copy button, the
-  global search box, reader appearance, zoom and settings; the status bar
-  shrank to 26 px and keeps status plus tab count, document count, reading
-  time and backend. The per-tab breadcrumb and the status-bar path are gone,
-  so the path appears once. Search semantics are unchanged (sidebar filter
-  and full-text search remain separate). Document-bar groups hide in order
-  as the bar narrows: zoom, search, appearance, copy; the path always stays.
-- Settings moved from the dock into a modeless dialog and were relaid out
-  for that shape: a 140 px category list (外观 / 阅读 / 内容 / 缓存 / 诊断)
-  drives a stacked page area, each page scrolling and headed by a title plus
-  one-line summary. Settings are grouped into cards; every row keeps the
-  title and description on the left and its control right-aligned, so
-  switches, combos, path fields and action buttons line up across a page.
-  The dialog applies changes immediately, has a single 关闭 button, and
-  keeps the previously selected category across openings.
-- Tabs follow YiGuai's appearance: a four-corner rounded shape (radius =
-  height/3) whose selected tab flares into its neighbours, frame color
-  #CECECE light / #2E2F30 dark, selected tab #F9F9FB / #3B3B3B, a
-  translucent hover overlay with its own expansion geometry, 0.5 px
-  separators, and label text that fades out over the last 20% of its
-  rectangle.
-- Tab metrics and layout follow YiGuai as well: 220x30 preferred, 36x26
-  minimum, equal widths that compress as tabs accumulate; the strip keeps an
-  8 px gap from the window's top edge. The new-tab "+" sits immediately
-  after the last tab, followed by a draggable blank area (double-click
-  maximizes); close buttons hide below 40 px and keep an 18x18 hit area;
-  each document tab shows the file icon with left-aligned text. Tabs that
-  are still rendering replace the icon with a rotating arc (40 ms per
-  10-degree step), cleared when the tab closes or its render is cancelled.
-  Close-other/close-right are disabled when inapplicable, labels are
-  skipped once a tab is 60 px or narrower, and the tab context menu gains
-  "重新加载" plus "重新打开关闭的标签页" (Ctrl+Shift+T keeps the last ten
-  closed paths).
+### Added
 
-- `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
-  bar and a `QStackedWidget` whose first page is the permanent welcome page;
-  every document tab owns a `ReaderPage` (reading progress,
-  `MarkdownView`, back-to-top) plus its own history, scroll position,
-  outline cache, zoom and bookmark state. Tabs are equal-width up to
-  220 px, shrink to 36 px before scroll buttons appear, close with the
-  per-tab button, middle click or `Ctrl+W`, reorder by dragging, and the
-  welcome tab is fixed at index 0 and cannot be closed. `Ctrl+Tab` /
-  `Ctrl+Shift+Tab` cycle tabs.
-- Opening conventions: a plain click replaces the current tab and switches
-  to it when the file is already open; `Ctrl+click` or the middle button
-  opens a new tab; back/forward stay inside the tab. Files outside the
-  workspace no longer re-root it — only "打开目录" changes the root.
-- Session persistence stores `open_tabs + active` and skips missing files.
-  The File menu gains recent workspaces and "新建窗口"; only the primary
-  window reads or writes the session.
-- The render-settings dock is retired: the gear button, the View menu entry
-  and `Ctrl+,` open a modeless settings dialog whose changes apply
-  immediately and broadcast to every tab.
-- New pure-data `TabModel` with 13 headless tests (welcome tab semantics,
-  dedupe, close fallback, reorder keeping the active document, serialization
-  round-trip). `DocumentTabBar` and `ReaderPage` have their own widget
-  tests; `MdViewerWindow` exposes single-argument `Q_INVOKABLE` probes so an
-  injected GUI test can drive tabs without mouse input.
-- `docs/qt-widget.md` now documents multiple `MarkdownView` instances and
-  the per-view persistent cache directory requirement.
+- Multi-tab viewer: every tab owns its history, scroll position, zoom,
+  outline and bookmark state; the welcome tab is permanent at index 0;
+  tabs reorder by dragging and `Ctrl+Tab` cycles them; the session stores
+  `open_tabs + active`.
+- Opening conventions: a plain click replaces the current tab,
+  `Ctrl+click` or the middle button opens a new one; files outside the
+  workspace no longer re-root it.
+- The render-settings dock became a modeless dialog with a category list,
+  stacked pages, cards and immediate apply-to-all-tabs.
+
+### Changed
+
+- The shell follows the three-tier layout: title bar with menu, tabs and
+  window buttons; 32 px document bar; 26 px status bar; the path appears
+  once.
+- Tab appearance and metrics: 220x30 preferred / 36x26 minimum, rounded
+  corners that flare on selection, hover overlay, loading spinner,
+  hidden close buttons on narrow tabs, reload and reopen-closed-tab
+  context actions.
+
+### Fixed
+
+- Closing a tab while its panels were still attached, session restore
+  overwriting the remembered tabs, and secondary windows persisting the
+  shared session.
 
 ## 0.5.0 - 2026-11-23
 
-- Split qt_md_viewer's theme-dependent SVG icons into two sets,
-  `resources/svg/light/` (stroke #57606a) and `resources/svg/dark/`
-  (stroke #c9d1d9); the single mid-grey set read poorly on light chrome.
-  A `ThemeIcon(name, dark)` helper loads the right set, and the window,
-  sidebar, welcome page and quick-open refresh their icons on theme
-  switches. Semantic icons (gold star-filled, green status-dot, app icon)
-  stay single-set at `svg/`. New `test_theme_icons` pins the qrc wiring
-  (a missing entry renders as a silently blank button).
+### Added
 
-- Add "卸载工作区" (unload workspace) to the File menu and the quick-open
-  palette. It saves the current reading position, clears the sidebar tree,
-  search results, quick-open set, file watcher, navigation history and the
-  current document, and returns to the welcome page. A new
-  `session/workspace_closed` flag persists the intent so the next start
-  lands on the welcome page instead of restoring the last workspace; any
-  successful directory/file open clears it. Recent files, bookmarks and
-  reading positions are kept.
-- `MarkdownView::ClearDocument()` is now public so hosts can unload the
-  current document; `NavigationHistory::Clear()` clears both stacks.
+- File menu and quick-open gained "卸载工作区": it saves the reading
+  position, clears the workspace and returns to the welcome page; recent
+  files, bookmarks and positions survive and the next start does not
+  restore the old workspace.
+
+### Changed
+
+- Theme-dependent SVG icons were split into light and dark sets;
+  semantic icons stay single-set.
+- `MarkdownView::ClearDocument()` and `NavigationHistory::Clear()` are
+  public for hosts that unload a document.
 
 ## 0.4.0 - 2026-11-20
 
-- Switch syntax highlighting back to highlight.js running in QuickJS
-  (`resources/highlight.min.js`, bundled from `highlight_entry.js`) and
-  remove the vendored tree-sitter core and its 12 grammars. The bundle
-  ships all 193 upstream languages and registers them lazily on first use,
-  so the payload stays around 1 MB and only languages present in the
-  document are compiled (sql comes back; rust/go/java/batch stay). Output
-  contracts are unchanged: short CSS class names, spans closed per line,
-  unknown languages plain-escaped. The bundle entry is generated by
-  `scripts/gen_highlight_entry.mjs`, which bakes the upstream alias table.
-- Core API: `MdTreeSitterParserCache` is replaced by `MdHighlightEngine`
-  (same per-thread reuse role); `MdHighlightCode` keeps its signature.
-- Binary size (x86 RelWithDebInfo): `qt_md_viewer.exe` 24.9 MB -> 12.3 MB,
-  `qlitemd_mdhtml_c.dll` 20.7 MB -> 8.1 MB; `3rdparty/tree-sitter*`
-  (58 MB of sources) is gone.
+Syntax highlighting returned to highlight.js in QuickJS, dropping the
+vendored tree-sitter core and 12 grammars; binaries roughly halved.
 
 ## 0.3.1 - 2026-11-20
 
-- Remove qt_md_viewer's focus mode. The document and outline docks keep
-  their title bars and can be closed, floated and moved again; their
-  entries under View are enabled (Qt disables `toggleViewAction()` when a
-  dock has `NoDockWidgetFeatures`). The welcome page and quick-open no
-  longer mention the removed shortcut.
-- Embed `resources/icon.ico` into `qt_md_viewer.exe` through a new
-  `qt_md_viewer.rc`; previously the icon was only used by the installer
-  and the executable carried the default Windows icon.
+Focus mode removed; the executable embeds its application icon.
 
 ## 0.3.0 - 2026-11-19
 
-- Fix inverted caption-button icons after maximizing (or pinning) the
-  window: `FluentUI3Style` painted any checked tool button with the
-  accent text colour, so `qt_md_viewer`'s maximize/restore and pin glyphs
-  turned white in the light scheme and black in the dark one. The
-  `win_caption_*` buttons now keep the normal caption text colour
-  regardless of their checked state
-  (`patches/FluentUIStyle/0004-caption-button-label-color.patch`).
-- Stop drawing the menu chevron on icon-only tool buttons with a menu, where
-  it overlapped the icon (qt_md_viewer's title-bar menu button)
-  (`patches/FluentUIStyle/0005-menu-indicator-icon-only.patch`).
-- Promote the viewer from `examples/md_viewer` to `apps/qt_md_viewer` and
-  rename its target and executable to `qt_md_viewer`. The configure option
-  is now `QLITEMD_BUILD_QT_MD_VIEWER` (the old name is still accepted).
-  Installer and release assets follow the new name
-  (`qlitemd-qt_md_viewer-<version>-...`).
-- Allow several `qt_md_viewer` windows at once: the single-instance guard
-  (and its local-socket argument forwarding) is gone. Settings move to
-  `qt_md_viewer.ini`; the old `md_viewer.ini` is copied over on first
-  start.
-- Give the application its own `qt_md_viewer.qrc` icon set: the
-  back/forward and bookmark buttons use SVG resources instead of
-  `QStyle::standardIcon()` or text-drawn glyphs.
-- Drop `src/logging`, `src/common/single_instance.*` and the vendored
-  spdlog they required.
-- Fix the quick-open and reading-appearance popups: under the DwmBlur
-  palette `QPalette::Base` has alpha 0, so their panels showed the
-  document through them; and the Windows native shadow on the frameless
-  popup drew a second grey layer under the panel. The panels now fill
-  opaque, the windows use `Qt::NoDropShadowWindowHint`, and only the
-  in-app drop shadow (blur 20, offset 0) remains.
-- Bundle the MiSans UI font (Regular + Demibold) next to the executable
-  instead of relying on Microsoft YaHei, with its licence text and an
-  About/NOTICE attribution; the application icons now all come from
-  `qt_md_viewer.qrc` SVG resources.
+The viewer moved to `apps/qt_md_viewer` with multi-window support, its own
+qrc icon set and the bundled MiSans font; fixed inverted caption-button
+icons and the menu chevron overlap.
 
 ## 0.2.1 - 2026-10-29
 
-- Include the merman prebuilt library in the Qt source package so
-  `add_subdirectory` consumers get the full Mermaid runtime selection
-  instead of QuickJS only.
+The Qt source package ships merman so `add_subdirectory` consumers keep the
+full Mermaid engine selection.
 
 ## 0.2.0 - 2026-10-29
 
-- Switch the formula engine at runtime too: RaTeX (where its prebuilt
-  library exists) and MathJax/QuickJS both compile in, and
-  `MdRenderOptions.formula_backend` picks per render — `auto` renders with
-  RaTeX and retries a failed formula with MathJax. The C ABI gains
-  `mdhtml_render_options.formula_backend` (version 4); md_viewer exposes a
-  formula engine selector. `QLITEMD_FORMULA_BACKEND` is gone.
-- Switch the Mermaid engine at runtime instead of configure time: native
-  merman-ffi (where available) and mermaid.js in QuickJS both compile in,
-  and `MdRenderOptions.mermaid_backend` picks per render — `auto` renders
-  with merman and retries a failed diagram with mermaid.js. The C ABI gains
-  `mdhtml_render_options.mermaid_backend` (version 4); md_viewer exposes a
-  Mermaid engine selector in its render settings. The
-  `QLITEMD_MERMAID_BACKEND` configure option is gone.
-- Normalize RaTeX SVG paint colors to `#rrggbb` so QtSvg-based
-  rasterization keeps formula colors.
-- The arm64 Focal CI job is manual-only again; it no longer runs on every
-  push or pull request.
+Formula and Mermaid engines switch at runtime (native RaTeX/merman first,
+QuickJS fallback) through `MdRenderOptions`.
 
 ## 0.1.0 - 2026-10-28
 
-- Move the Qt layer to `src/markdown_view` and export
-  `qlitemd::markdown_view`. Make the build `add_subdirectory` friendly:
-  paths use `PROJECT_SOURCE_DIR`/`PROJECT_BINARY_DIR`, the MSVC runtime is
-  scoped to qlitemd, app-only modules are skipped for widget consumers, and
-  `QLITEMD_BUILD_QT_WIDGET`/`QLITEMD_INSTALL` control the new boundaries.
-  Release CI now ships `qlitemd-<version>-qt-src.zip` and a compiled core
-  SDK, with `examples/qt_widget_minimal` validating the source package.
-- Upgrade md4c to 0.6.0 and enable footnotes (`[^1]`). Add a per-render
-  admonition mode: MPE callouts are the default (inline text after the
-  marker is the title, supports `info` etc.), while GitHub admonitions
-  remain selectable. Light/dark themes style both markups. The appended
-  `mdhtml_render_options.admonition_mode` field bumps the C ABI to 2.
-- Default Mermaid rendering to mermaid.js in QuickJS for broader syntax
-  coverage; `QLITEMD_MERMAID_BACKEND=merman` remains available. Windows
-  builds now include QuickJS by default, while formulas still use RaTeX.
-- Add a shared C ABI (`qlitemd_mdhtml_c`) with exported, versioned entry
-  points, synchronous and asynchronous render jobs, progress/cancel, and
-  code-block/outline accessors. The C++ core remains available as the static
-  `qlitemd::mdhtml` target; non-C++ hosts use `qlitemd::mdhtml_c`.
-- Add `examples/avalonia_mdhtml`, a .NET 10/Avalonia validation harness that
-  calls the shared library through P/Invoke, rasterizes SVG assets with
-  Svg.Skia and displays the HTML with LiteHtmlSharp.Avalonia.
-
-- Split the rendering stack into a zero-Qt core (`qlitemd_mdhtml`) and a Qt
-  widget layer under `src/markdown_view`. The core parses and
-  assembles Markdown on a coordinator thread, runs highlight/formula/Mermaid
-  on three worker lanes, and returns HTML plus SVG assets
-  (`qlitemd-asset:<id>`); fonts are injectable and the default metrics are
-  deterministic.
-- Add a synchronous C API (`mdhtml_c.h`) for non-Qt hosts, plus
-  `QLITEMD_CORE_ONLY` and a no-Qt CI job with an installed-SDK consumer.
-- **Breaking for SDK consumers:** the installed package now exposes
-  `qlitemd::mdhtml`, not `qlitemd::markdown`; `MarkdownView` and qlitehtml
-  are example-side implementation details and are no longer installed.
-- `md_viewer` keeps its previous behaviour while rendering through the core;
-  its SVG assets are rasterized by the adapter and the existing `mj:` image
-  tokens, outline, export and status panel semantics are preserved.
+`add_subdirectory`-friendly widget layer, footnotes and selectable
+admonition modes, a shared C ABI and the Avalonia validation harness.
 
 ## 0.0.3 - 2026-10-24
 
-- Fix review findings in the reading experience: progress and the
-  back-to-top threshold use virtual pixels at every zoom, progress
-  refreshes after resize/reflow, the width row has a default option,
-  quick open caps headings so commands stay reachable, and both popups
-  shrink to small/high-DPI screens.
-- Fix the welcome page's dock-state handling (saved outline visibility
-  is respected and welcome-time hiding is not persisted), show the
-  error page when a file opened from welcome fails, scale headings with
-  the reader font size, and let the lightbox wheel zoom out of an
-  oversized fit.
-- Add a Ctrl+P quick-open palette that searches the current document's
-  headings, recent documents, document-set files and common commands,
-  with fuzzy ranking and Enter/click activation.
-- Add an opt-in reader appearance popup (`Aa`) for font size, line
-  height and measure, persisted under `reading/*` and injected through
-  the new `MarkdownView::AppendThemeStyleSheet()`. The append layer
-  keeps the base theme, `MD_MARKDOWN_CSS` and explicit host CSS intact.
-- Show a welcome page when no document is open, with open actions, the
-  five most recent files and shortcut hints. Add a reading progress
-  line, a floating back-to-top button and an estimated reading time;
-  `MarkdownView::DocumentHeight()`/`ViewportHeight()` expose the needed
-  metrics.
-- Replace the plain image preview dialog with a full-window lightbox:
-  wheel zoom, drag pan, double-click fit/100%, plus source and save
-  actions for formulas/Mermaid. `MarkdownView::GeneratedImageUrls()`
-  exposes those tokens so keyboards can reach diagrams from quick open.
-- Change the opt-in prototype reading layout from a centered 700 px
-  column to a left-aligned page: headings, body text, lists and quotes
-  cap at 760 px, while Mermaid diagrams, code blocks and tables use the
-  full reader width. Wide sequence diagrams were previously scaled down
-  to about 620 px and became unreadable; 2x sampling could not help.
-- md_viewer now targets documentation-set reading: a recursive tree that
-  only shows directories containing `.md`/`.markdown`, a filename/path
-  filter, file-level bookmarks with a Ctrl+D star, and global full-text
-  search with streamed, cancellable results and approximate hit navigation
-  through `FindText`.
-- Restore the last root, document and per-document scroll position on
-  startup (500-entry LRU), confirm documents larger than 20 MiB once per
-  session, and rebuild the tree through `QFileSystemWatcher` (300 ms
-  debounce, root-only beyond 200 directories) or F5.
-- Merge the menu, navigation, zoom and global search into a single-row
-  FluentUI title bar. The vendored FluentUI gains leading/trailing widget
-  hooks (recorded as `patches/FluentUIStyle/0003-titlebar-widgets.patch`).
-  Window material is selectable between auto (Mica on Windows 11, DWM blur
-  otherwise), acrylic and off; the markdown body keeps the theme surface.
-- Fix formula image clipping when the source SVG uses `pt`/`ex` units:
-  resvg now scales by the target/intrinsic ratio instead of the raw
-  supersampling factor. Render-cache pipeline bumped to v3 so old clipped
-  entries miss; `SvgRasterizerTest.PtUnitsFillTargetWithoutClipping` pins it.
-- Add `MarkdownView::SetThemeStyleSheet()` and `SetPageBackground()`:
-  hosts can inject per-theme CSS and choose an opaque or transparent page
-  fill. `md_viewer` gains an opt-in prototype reading style (cards,
-  transparent surface) with a breadcrumb; the library default style and
-  the existing `MD_MARKDOWN_CSS` tweak path remain unchanged.
-- Align `md_viewer` with the UI prototype: outline moved to a right-hand
-  column, segmented sidebar tabs with icons, filter above the tabs, a
-  single-column document tree with folder/file icons, per-folder counts,
-  file sizes and inline stars, two-line bookmark cards, card-style search
-  hits with a yellow match mark, a ready/count/backend status bar, focus
-  mode (Ctrl+Shift+F) and a window-material menu. The title bar shows the
-  root-relative breadcrumb. The tree keeps file sizes (the prototype used
-  only counts); reading-area typography remains the library theme.
-- Fix dark-theme switching in `md_viewer`: recreate the FluentUI style and
-  push its standard palette to the application, then explicitly refresh the
-  status bar, sidebar, outline and reader palettes. The reader now paints the
-  theme page background (`#ffffff` / `#0d1117`), so short documents no longer
-  expose a light strip below the rendered page in either theme.
-- Rework the `md_viewer` status bar to follow the prototype: a green ready
-  dot and the document's native full path on the left, with document count,
-  build backends and zoom grouped on the right. The prototype's “indexed”
-  stat is not shown because the viewer searches on demand and keeps no
-  persistent index.
-- Add headless `tests/md_viewer` coverage for navigation history, document
-  indexing, bookmarks/reading positions, text search, the sidebar panel and
-  the title-bar hooks.
+Reading experience: quick-open palette, reader-appearance popup, welcome
+page, image lightbox, document-set tree, bookmarks and full-text search.
 
 ## 0.0.2 - 2026-10-23
 
-- Formula and Mermaid backends are compile-time choices on every
-  platform: `QLITEMD_FORMULA_BACKEND=ratex|quickjs` and
-  `QLITEMD_MERMAID_BACKEND=merman|quickjs`. Missing native binaries fall
-  back to quickjs/qtsvg automatically.
-- Ship Linux x64 builds of the native backends
-  (`3rdparty/*/bin/linux-x64/lib*.so`), built from the same sources as
-  the Windows DLLs; verified on Qt 5.12.8 in WSL with both backend sets.
-- Windows: render formulas with native RaTeX instead of MathJax in
-  QuickJS; Windows builds now ship no JavaScript engine at all. Other
-  platforms keep the quickjs-ng fallback.
-- Replace the base64 `<img>` pipeline with a `RenderedImage` struct:
-  workers hand the view a decoded bitmap plus original PNG bytes, the
-  view assembles `mj:`-token tags directly (no base64/PNG decode on the
-  GUI thread), and the persistent cache stores binary entries (pipeline
-  v2; v1 text entries miss once and are pruned).
-- Remove the synchronous `FormulaToImgTag`/`MermaidToImgTag` facade and
-  the global `ClearFormulaCache`/`ClearMermaidCache`/`*RendererReady`
-  helpers; embedders render through `MarkdownView`.
-- Add a native Mermaid backend based on merman-ffi; the legacy
-  QuickJS + mermaid.js path remains selectable with
-  `QLITEMD_MERMAID_BACKEND=quickjs`.
-- Rasterize formula and Mermaid SVG with resvg by default; QtSvg remains
-  selectable with `QLITEMD_SVG_BACKEND=qtsvg`.
-- Ship prebuilt `merman_ffi.dll` and `resvg.dll` for Windows x86/x64;
-  normal builds do not require Rust.
-- Add `docs/guide/merman构建指南.md` and integrate both native DLLs into
-  the SDK and installer components.
-- Add a class-diagram render test and runtime DLL staging for tests and
-  the example application.
-- Generate `run_md_viewer.bat`/`.sh` with Qt `PATH` and `QT_PLUGIN_PATH`
-  prepared before launch.
-- Fix FluentUI glyph fallback when Segoe Fluent Icons is unavailable;
-  `md_viewer` now uses the system font (or Segoe MDL2 Assets) instead of
-  drawing placeholder boxes.
+Native prebuilt RaTeX/merman/resvg backends and the `RenderedImage`
+pipeline (no base64 on the GUI thread).
 
 ## 0.0.1 - 2026-10-21
 
-Initial public release.
-
-- `MarkdownView` widget built on qlitehtml and md4c.
-- Asynchronous syntax highlighting, MathJax formulas and Mermaid diagrams
-  executed in QuickJS.
-- Light and dark themes, outline, find, zoom and persistent render cache.
-- HTML and PDF export, image preview/save-as and formula/Mermaid source
-  inspection in `md_viewer`.
-- Qt 5.14+ and Qt 6 support; Windows MSVC and Linux CI coverage.
-- CMake package config with `qlitemd::markdown`.
+First public release: `MarkdownView`, QuickJS highlighting/formulas/Mermaid,
+light and dark themes, outline, find, zoom, render cache, HTML/PDF export.
