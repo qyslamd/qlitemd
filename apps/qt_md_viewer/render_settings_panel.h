@@ -10,7 +10,9 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QListWidget;
 class QPushButton;
+class QStackedWidget;
 class QVBoxLayout;
 class MarkdownView;
 
@@ -56,6 +58,8 @@ class RenderSettingsPanel : public QWidget {
   QCheckBox* CreateSwitch(bool checked);
 
   MarkdownView* view_ = nullptr;
+  QListWidget* category_list_ = nullptr;
+  QStackedWidget* page_stack_ = nullptr;
   QComboBox* theme_ = nullptr;
   // 仅 Windows 创建
   QComboBox* window_material_ = nullptr;

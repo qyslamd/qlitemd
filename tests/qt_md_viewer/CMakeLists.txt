@@ -195,6 +195,20 @@ add_unit_test(
 
 # 示例里的渲染状态面板：验证 outlineChanged -> RefreshStatus 这条刷新链路。
 # 面板用了 ExWidgets 的进度环与折叠容器，Fluent 路线关闭时不编这个测试
+add_unit_test(
+    NAME test_render_settings_layout
+    SOURCES render_settings_panel_test.cpp
+            ${VIEWER_DIR}/render_settings_panel.cpp
+            ${VIEWER_DIR}/render_settings_panel.h
+            ${VIEWER_DIR}/settings_dialog.cpp
+            ${VIEWER_DIR}/settings_dialog.h
+    INCLUDES ${VIEWER_DIR}
+    LIBS qlitemd::markdown_view
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
 if(TARGET ExWidgets::ExWidgets)
     add_unit_test(
         NAME test_render_settings_panel

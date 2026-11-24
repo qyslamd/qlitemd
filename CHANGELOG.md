@@ -13,6 +13,14 @@ All notable changes to qlitemd are documented here.
   so the path appears once. Search semantics are unchanged (sidebar filter
   and full-text search remain separate). Document-bar groups hide in order
   as the bar narrows: zoom, search, appearance, copy; the path always stays.
+- Settings moved from the dock into a modeless dialog and were relaid out
+  for that shape: a 140 px category list (外观 / 阅读 / 内容 / 缓存 / 诊断)
+  drives a stacked page area, each page scrolling and headed by a title plus
+  one-line summary. Settings are grouped into cards; every row keeps the
+  title and description on the left and its control right-aligned, so
+  switches, combos, path fields and action buttons line up across a page.
+  The dialog applies changes immediately, has a single 关闭 button, and
+  keeps the previously selected category across openings.
 - Tabs follow YiGuai's appearance: a four-corner rounded shape (radius =
   height/3) whose selected tab flares into its neighbours, frame color
   #CECECE light / #2E2F30 dark, selected tab #F9F9FB / #3B3B3B, a
