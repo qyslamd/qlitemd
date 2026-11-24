@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QContextMenuEvent>
 #include <QLineF>
+#include <QLinearGradient>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPaintEvent>
@@ -15,111 +16,54 @@
 
 namespace {
 
-// 每个角（左下/右下）的形态，做法来自 qt-libui 的 ChromeTabAppearance
-enum class CornerMode { kExtend, kNormal, kRetract };
-
-CornerMode LeftCorner(const QStyleOptionTab* tab, bool selected) {
-  CornerMode mode = CornerMode::kNormal;
-  switch (tab->position) {
-    case QStyleOptionTab::Middle:
-    case QStyleOptionTab::End:
-      mode = CornerMode::kExtend;
-      break;
-    default:
-      break;
-  }
-  if (!selected &&
-      tab->selectedPosition == QStyleOptionTab::PreviousIsSelected) {
-    mode = CornerMode::kRetract;
-  }
-  return mode;
-}
-
-CornerMode RightCorner(const QStyleOptionTab* tab, bool selected) {
-  CornerMode mode = CornerMode::kNormal;
+// 形状照搬 YiGuai TabbarStyle::getSelectedShape：四角圆弧，选中标签按
+// 位置向左右外扩，底部圆弧压进相邻标签，看起来更圆、更连贯
+QPainterPath YiGuaiTabPath(const QStyleOptionTab* tab) {
+  QRectF rect = tab->rect;
+  rect.adjust(0, 2, 0, 0);
+  const qreal len = rect.height() / 3.0;
   switch (tab->position) {
     case QStyleOptionTab::Beginning:
+      rect.adjust(-len / 2.0, 0, len, 0);
+      break;
     case QStyleOptionTab::Middle:
-      mode = CornerMode::kExtend;
+      rect.adjust(-len, 0, len, 0);
+      break;
+    case QStyleOptionTab::End:
+      rect.adjust(-len, 0, len / 2.0, 0);
+      break;
+    case QStyleOptionTab::OnlyOneTab:
+      rect.adjust(-len / 2.0, 0, len / 2.0, 0);
       break;
     default:
       break;
   }
-  if (!selected && tab->selectedPosition == QStyleOptionTab::NextIsSelected) {
-    mode = CornerMode::kRetract;
-  }
-  return mode;
-}
 
-QPainterPath ChromeTabPath(const QStyleOptionTab* tab) {
-  const QRectF rect = tab->rect;
-  const qreal slant = rect.height() / 5.0;
-  const bool selected = (tab->state & QStyle::State_Selected) != 0;
-
-  // 底部斜线的两个端点：left_bottom -> left_side（右侧同理）
-  qreal left_bottom = rect.left();
-  qreal left_side = rect.left() + slant;
-  switch (LeftCorner(tab, selected)) {
-    case CornerMode::kExtend:
-      left_bottom = rect.left() - slant;
-      left_side = rect.left();
-      break;
-    case CornerMode::kNormal:
-      left_bottom = rect.left();
-      left_side = rect.left() + slant;
-      break;
-    case CornerMode::kRetract:
-      left_bottom = rect.left() + slant;
-      left_side = rect.left();
-      break;
-  }
-  qreal right_bottom = rect.right();
-  qreal right_side = rect.right() - slant;
-  switch (RightCorner(tab, selected)) {
-    case CornerMode::kExtend:
-      right_bottom = rect.right() + slant;
-      right_side = rect.right();
-      break;
-    case CornerMode::kNormal:
-      right_bottom = rect.right();
-      right_side = rect.right() - slant;
-      break;
-    case CornerMode::kRetract:
-      right_bottom = rect.right() - slant;
-      right_side = rect.right();
-      break;
-  }
-
-  // 顶部圆角单独给半径，比沿用底部斜线宽度更圆
-  const qreal top = rect.top();
-  const qreal bottom = rect.bottom();
-  qreal radius = qMin<qreal>(12.0, rect.height() * 0.4);
-  radius = qMin(radius, qMax<qreal>(0.0, (right_side - left_side) / 2.0));
+  const qreal x = rect.x();
+  const qreal y = rect.y();
+  const qreal w = rect.width();
+  const qreal h = rect.height();
 
   QPainterPath path;
-  path.moveTo(left_bottom, bottom);
-  path.lineTo(left_side, bottom - slant);
-  path.lineTo(left_side, top + radius);
-  if (radius > 1.0) {
-    path.arcTo(QRectF(left_side, top, radius * 2.0, radius * 2.0), 180.0,
-               -90.0);
-  } else {
-    path.lineTo(left_side, top);
-  }
-  path.lineTo(right_side - radius, top);
-  if (radius > 1.0) {
-    path.arcTo(
-        QRectF(right_side - radius * 2.0, top, radius * 2.0, radius * 2.0),
-        90.0, -90.0);
-  }
-  path.lineTo(right_side, top + radius);
-  path.lineTo(right_side, bottom - slant);
-  path.lineTo(right_bottom, bottom);
-  path.closeSubpath();
+  const QRectF bottom_left(x, y + h - len, len, len);
+  path.moveTo(bottom_left.x() + bottom_left.width() / 2.0, y + h);
+  path.arcTo(bottom_left, 270.0, 90.0);
+  path.lineTo(path.currentPosition().x(), y + len / 2.0);
+
+  const QRectF top_left(x + len, y, len, len);
+  path.arcTo(top_left, 180.0, -90.0);
+  path.lineTo(x + w - len - len / 2.0, y);
+
+  const QRectF top_right(x + w - 2.0 * len, y, len, len);
+  path.arcTo(top_right, 90.0, -90.0);
+  path.lineTo(path.currentPosition().x(), y + h - len / 2.0);
+
+  const QRectF bottom_right(path.currentPosition().x(), y + h - len, len, len);
+  path.arcTo(bottom_right, 180.0, 90.0);
   return path;
 }
 
-// Chrome 风标签：斜线形状 + 选中/悬停底色 + 未选中分隔线
+// YiGuai 风标签：四角圆弧 + 选中/悬停底色 + 未选中分隔线
 class DocumentTabBarStyle : public QProxyStyle {
  public:
   void drawControl(ControlElement element, const QStyleOption* option,
@@ -144,9 +88,10 @@ class DocumentTabBarStyle : public QProxyStyle {
   void DrawLabel(const QStyleOptionTab* tab, QPainter* painter,
                  const QWidget* widget) const {
     painter->save();
-    painter->setPen(tab->palette.color(
+    const QColor base = tab->palette.color(
         (tab->state & QStyle::State_Selected) != 0 ? QPalette::HighlightedText
-                                                   : QPalette::Text));
+                                                   : QPalette::Text);
+    painter->setPen(base);
     QRect text_rect = subElementRect(SE_TabBarTabText, tab, widget);
     int left = tab->rect.x() + 10;
     // QStyleOptionTab 不一定带 icon；直接从所属标签条取
@@ -167,6 +112,14 @@ class DocumentTabBarStyle : public QProxyStyle {
     text_rect.setLeft(qMin(left, text_rect.right()));
     const QString text = painter->fontMetrics().elidedText(
         tab->text, Qt::ElideRight, text_rect.width());
+    // 文字右端 80% 后渐隐，和 YiGuai 的标签文字一致
+    QColor faded = base;
+    faded.setAlpha(0);
+    QLinearGradient gradient(QPointF(text_rect.left(), 0),
+                             QPointF(text_rect.right(), 0));
+    gradient.setColorAt(0.8, base);
+    gradient.setColorAt(1.0, faded);
+    painter->setPen(QPen(QBrush(gradient), 0));
     painter->drawText(text_rect,
                       Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic,
                       text);
@@ -179,24 +132,19 @@ class DocumentTabBarStyle : public QProxyStyle {
     const QPalette palette = tab->palette;
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
-    const QPainterPath path = ChromeTabPath(tab);
-    if (selected) {
-      painter->fillPath(path, palette.color(QPalette::Base));
-    } else if (hovered) {
-      painter->fillPath(path, palette.color(QPalette::AlternateBase));
-    }
-    const bool hide_separator =
-        selected || hovered ||
-        tab->selectedPosition == QStyleOptionTab::NextIsSelected;
-    const bool has_right_neighbor =
-        tab->position == QStyleOptionTab::Beginning ||
-        tab->position == QStyleOptionTab::Middle;
-    if (!hide_separator && has_right_neighbor) {
+    if (selected || hovered) {
+      painter->fillPath(
+          YiGuaiTabPath(tab),
+          palette.color(selected ? QPalette::Base : QPalette::AlternateBase));
+    } else {
       const QRectF rect = tab->rect;
-      const qreal margin = rect.height() / 4.0;
-      painter->setPen(QPen(palette.color(QPalette::Mid), 1));
-      painter->drawLine(QLineF(rect.right(), rect.top() + margin, rect.right(),
-                               rect.bottom() - margin));
+      const qreal len = rect.height() / 3.0;
+      if (tab->selectedPosition != QStyleOptionTab::NextIsSelected) {
+        painter->setPen(QPen(palette.color(QPalette::Mid), 0.5));
+        painter->drawLine(
+            QLineF(rect.right() - len / 3.0, rect.top() + len / 2.0,
+                   rect.right() - len / 3.0, rect.bottom() - len / 2.0));
+      }
     }
     painter->restore();
   }
@@ -207,19 +155,21 @@ class DocumentTabBarStyle : public QProxyStyle {
 TabStripColors TabStripColorsFor(bool dark) {
   TabStripColors colors;
   if (dark) {
-    colors.background = QColor(0x20, 0x21, 0x24);
-    colors.selected = QColor(0x35, 0x36, 0x3a);
-    colors.hover = QColor(255, 255, 255, 20);
-    colors.separator = QColor(0x3c, 0x40, 0x43);
-    colors.selected_text = QColor(0xe8, 0xea, 0xed);
-    colors.normal_text = QColor(0x9a, 0xa0, 0xa6);
+    // YiGuai 暗色：框架 #2E2F30，选中 #3B3B3B
+    colors.background = QColor(0x2e, 0x2f, 0x30);
+    colors.selected = QColor(0x3b, 0x3b, 0x3b);
+    colors.hover = QColor(0x59, 0x59, 0x59, 76);
+    colors.separator = QColor(0xd3, 0xd3, 0xd5);
+    colors.selected_text = QColor(Qt::white);
+    colors.normal_text = QColor(0xd3, 0xd3, 0xd5);
   } else {
-    colors.background = QColor(0xde, 0xe1, 0xe6);
-    colors.selected = QColor(0xff, 0xff, 0xff);
-    colors.hover = QColor(0, 0, 0, 18);
-    colors.separator = QColor(0xb8, 0xbc, 0xc2);
-    colors.selected_text = QColor(0x20, 0x21, 0x24);
-    colors.normal_text = QColor(0x4b, 0x4e, 0x54);
+    // YiGuai 浅色：框架 #CECECE，选中 #F9F9FB
+    colors.background = QColor(0xce, 0xce, 0xce);
+    colors.selected = QColor(0xf9, 0xf9, 0xfb);
+    colors.hover = QColor(255, 255, 255, 76);
+    colors.separator = QColor(0x4b, 0x4b, 0x4b);
+    colors.selected_text = QColor(Qt::black);
+    colors.normal_text = QColor(0x66, 0x66, 0x66);
   }
   return colors;
 }

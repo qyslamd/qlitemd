@@ -196,20 +196,21 @@ QTabWidget。
 
 要点（按能直接照搬的顺序）：
 
-1. **等宽与拥挤处理**：采用 YiGuai 的同一口径——`tabSizeHint()` 240×30，
-   `minimumTabSizeHint()` 36×26，`expanding = true`。标签少时等宽铺满，
-   多了按等宽压缩到 36 再出滚动按钮。标签条顶部在标题栏里留 8px，避免
-   贴住窗口最上沿；顶部圆角单独取 12px（比斜线宽度更圆）。实测 11 个
+1. **等宽与拥挤处理**：采用 YiGuai 的同一口径——`tabSizeHint()` 220×30
+   （220 为维护者定的上限），`minimumTabSizeHint()` 36×26，
+   `expanding = true`。标签少时等宽铺满，多了按等宽压缩到 36 再出滚动
+   按钮。标签条顶部在标题栏里留 8px，避免贴住窗口最上沿。实测 11 个
    标签、窗口 1200px 时每个约 74px，与 YiGuai 行为一致。
 2. **每标签按钮按宽度显隐**：关闭按钮放 `QTabBar::RightSide`；
    `ShowHideTabButtons()` 在 `resizeEvent` / `tabInserted` / `tabRemoved`
    时统一刷新，标签宽度低于 40px 就把关闭按钮藏掉（YiGuai 的 RHideW）。
    左侧不放状态图标，所以不设 80px 的左按钮阈值。
 3. **自绘外观**：`QProxyStyle` 覆盖 `CE_TabBarTabShape` /
-   `CE_TabBarTabLabel`，必要时覆盖 `SE_TabBarTabLeftButton` /
-   `SE_TabBarTabText` 的矩形。FluentUI3Style 目前不给 QTabBar 画样式，
-   自绘一层比给上游打补丁更可控（也可以先验证 FluentUI3Style 有没有
-   `CE_TabBarTab` 处理再决定）。
+   `CE_TabBarTabLabel`。形状与配色照搬 YiGuai 的
+   `TabbarStyle::getSelectedShape` / `drawTabBarTabShape`：四角圆弧
+   （半径 = 高度/3）、选中标签向左右外扩并压进相邻标签、未选中只画
+   0.5px 分隔线、文字右端 20% 渐隐。FluentUI3Style 目前不给 QTabBar
+   画样式，自绘一层比给上游打补丁更可控。
 4. **拖拽重排的数据同步**：`QTabBar::tabMoved(from, to)` 是唯一信号源。
    先 `TabModel::Move(from, to)`，再同步 `QStackedWidget`：
    ```cpp

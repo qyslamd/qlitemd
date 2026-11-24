@@ -13,26 +13,24 @@ All notable changes to qlitemd are documented here.
   so the path appears once. Search semantics are unchanged (sidebar filter
   and full-text search remain separate). Document-bar groups hide in order
   as the bar narrows: zoom, search, appearance, copy; the path always stays.
-- Tabs use Chrome's slanted tab shape. The title bar and tab strip share the
-  frame color (#dee1e6 light / #202124 dark), the selected tab uses the page
-  color (#ffffff / #35363a), unselected tabs stay transparent with 1 px
-  separators, and hover uses a translucent overlay. Labels are painted by
-  the tab style so selected/normal text colors follow the same theme. The
-  shape code follows `qt-libui`'s `ChromeTabAppearance`.
-- Tab metrics and layout now follow YiGuai: 240x30 preferred, 36x26
-  minimum, equal widths that compress as tabs accumulate; the tab strip
-  keeps an 8 px gap below the window's top edge. The new-tab "+" sits
-  immediately after the last tab, followed by a draggable blank area
-  (double-click maximizes); close buttons hide below 40 px; each document
-  tab shows the file icon with left-aligned, elided text. Top corners use a
-  12 px radius, rounder than the slant-derived corner of the first pass.
+- Tabs follow YiGuai's appearance: a four-corner rounded shape (radius =
+  height/3) whose selected tab flares into its neighbours, frame color
+  #CECECE light / #2E2F30 dark, selected tab #F9F9FB / #3B3B3B, a
+  translucent hover overlay, 0.5 px separators, and label text that fades
+  out over the last 20% of its rectangle.
+- Tab metrics and layout follow YiGuai as well: 220x30 preferred, 36x26
+  minimum, equal widths that compress as tabs accumulate; the strip keeps an
+  8 px gap from the window's top edge. The new-tab "+" sits immediately
+  after the last tab, followed by a draggable blank area (double-click
+  maximizes); close buttons hide below 40 px; each document tab shows the
+  file icon with left-aligned text.
 
 - `qt_md_viewer` is now multi-tab. The window hosts a `QTabBar` in its title
   bar and a `QStackedWidget` whose first page is the permanent welcome page;
-  every document tab owns a `ReaderPage` (reading progress, breadcrumb,
+  every document tab owns a `ReaderPage` (reading progress,
   `MarkdownView`, back-to-top) plus its own history, scroll position,
   outline cache, zoom and bookmark state. Tabs are equal-width up to
-  220 px, shrink to 120 px before scroll buttons appear, close with the
+  220 px, shrink to 36 px before scroll buttons appear, close with the
   per-tab button, middle click or `Ctrl+W`, reorder by dragging, and the
   welcome tab is fixed at index 0 and cannot be closed. `Ctrl+Tab` /
   `Ctrl+Shift+Tab` cycle tabs.

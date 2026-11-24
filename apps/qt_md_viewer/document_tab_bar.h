@@ -56,7 +56,7 @@ class DocumentTabBar : public QTabBar {
   static constexpr int kTabHeight = 30;
   static constexpr int kMinTabWidth = 36;
   static constexpr int kMinTabHeight = 26;
-  static constexpr int kMaxTabWidth = 240;
+  static constexpr int kMaxTabWidth = 220;
   // 标签宽度低于该值时藏掉关闭按钮，避免文字与按钮互挤
   static constexpr int kCloseButtonHideWidth = 40;
 };
