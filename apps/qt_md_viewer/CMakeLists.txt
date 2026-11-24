@@ -17,6 +17,8 @@ set(ALL_SRCS
     document_tab_bar.h
     side_panel.cpp
     side_panel.h
+    side_view.cpp
+    side_view.h
     image_lightbox.cpp
     image_lightbox.h
     md_viewer_settings.cpp

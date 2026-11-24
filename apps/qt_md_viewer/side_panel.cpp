@@ -866,16 +866,38 @@ void SidePanel::SetSearchError(const QString& message) {
   search_empty_->show();
 }
 
-void SidePanel::ShowTab(Tab tab) {
-  tabs_->setCurrentIndex(static_cast<int>(tab));
+bool SidePanel::ShowView(SideView view) {
+  int index = -1;
+  switch (view) {
+    case SideView::kDocuments:
+      index = 0;
+      break;
+    case SideView::kBookmarks:
+      index = 1;
+      break;
+    case SideView::kSearch:
+      index = 2;
+      break;
+    case SideView::kRenderStatus:
+      return false;
+  }
+  tabs_->setCurrentIndex(index);
+  return true;
+}
+
+SideView SidePanel::currentView() const {
+  switch (tabs_->currentIndex()) {
+    case 1:
+      return SideView::kBookmarks;
+    case 2:
+      return SideView::kSearch;
+    default:
+      return SideView::kDocuments;
+  }
 }
 
 void SidePanel::SetTabBarVisible(bool visible) {
   tabs_->tabBar()->setVisible(visible);
-}
-
-SidePanel::Tab SidePanel::currentTab() const {
-  return static_cast<Tab>(tabs_->currentIndex());
 }
 
 void SidePanel::ShowEmptyPage(const QString& message) {

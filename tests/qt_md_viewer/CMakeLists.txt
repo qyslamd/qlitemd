@@ -186,10 +186,22 @@ add_unit_test(
     SOURCES activity_bar_test.cpp
             ${VIEWER_DIR}/activity_bar.cpp
             ${VIEWER_DIR}/activity_bar.h
+            ${VIEWER_DIR}/side_view.cpp
+            ${VIEWER_DIR}/side_view.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
+)
+
+add_unit_test(
+    NAME test_side_view
+    SOURCES side_view_test.cpp
+            ${VIEWER_DIR}/side_view.cpp
+            ${VIEWER_DIR}/side_view.h
+    INCLUDES ${VIEWER_DIR}
+    QT_MODULES Core
+    LABELS MARKDOWN
 )
 
 add_unit_test(

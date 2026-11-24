@@ -1,6 +1,7 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_MD_VIEWER_WINDOW_H_
 #define FILE_APPS_QT_MD_VIEWER_MD_VIEWER_WINDOW_H_
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -22,6 +23,7 @@
 #include "md_viewer_settings.h"
 #include "navigation_history.h"
 #include "reading_positions.h"
+#include "side_view.h"
 
 class QAction;
 class QActionGroup;
@@ -138,8 +140,10 @@ class MdViewerWindow : public QMainWindow {
   void FocusDocumentFind();
   void FocusWorkspaceSearch();
   // 活动栏切换侧栏视图；点已选中的项则收起/展开侧栏
-  void ShowSideView(int view);
-  void EnsureSideView(int view);
+  void ShowSideView(SideView view);
+  void EnsureSideView(SideView view);
+  // 只切活动栏状态、标题与侧栏页，不碰可见性和持久化
+  void ApplySideView(SideView view);
   void UpdateOutlineVisibility();
   void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);
@@ -322,6 +326,8 @@ class MdViewerWindow : public QMainWindow {
   QLabel* side_title_ = nullptr;
   QStackedWidget* side_stack_ = nullptr;
   QWidget* render_status_page_ = nullptr;
+  // 活动栏视图到侧栏页的映射：新增视图只改这张表，不在切换逻辑里加分支
+  std::array<QWidget*, kSideViewCount> side_view_pages_{};
   QWidget* outline_column_ = nullptr;
   QSplitter* main_splitter_ = nullptr;
   int side_width_ = 280;

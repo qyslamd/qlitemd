@@ -33,6 +33,7 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   layout->setContentsMargins(3, 6, 3, 6);
   layout->setSpacing(4);
 
+  // 顺序必须与 SideView 的数值一致：下标即持久化 id
   buttons_ = {
       MakeActivityButton(this, QStringLiteral("activityDocuments"),
                          QStringLiteral("文档（Ctrl+Shift+E）")),
@@ -49,8 +50,9 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
     group_->addButton(buttons_[i], i);
     layout->addWidget(buttons_[i]);
     // 已选中的按钮点击也要上报，宿主用它在展开/收起侧栏之间切换
+    const auto view = static_cast<SideView>(i);
     connect(buttons_[i], &QToolButton::clicked, this,
-            [this, i] { emit viewActivated(i); });
+            [this, view] { emit viewActivated(view); });
   }
   layout->addStretch(1);
   // 底部只放全局入口：设置
@@ -65,43 +67,47 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   connect(settings_button_, &QToolButton::clicked, this,
           &ActivityBar::settingsRequested);
 
-  SetActiveView(kDocuments);
+  SetActiveView(SideView::kDocuments);
   SetThemeDark(false);
 }
 
 void ActivityBar::SetThemeDark(bool dark) {
-  buttons_[kDocuments]->setIcon(ThemeIcon(QStringLiteral("folder"), dark));
-  buttons_[kSearch]->setIcon(ThemeIcon(QStringLiteral("search"), dark));
-  buttons_[kBookmarks]->setIcon(
-      ThemeIcon(QStringLiteral("star-outline"), dark));
-  buttons_[kRenderStatus]->setIcon(
-      ThemeIcon(QStringLiteral("render-status"), dark));
+  button(SideView::kDocuments)
+      ->setIcon(ThemeIcon(QStringLiteral("folder"), dark));
+  button(SideView::kSearch)->setIcon(ThemeIcon(QStringLiteral("search"), dark));
+  button(SideView::kBookmarks)
+      ->setIcon(ThemeIcon(QStringLiteral("star-outline"), dark));
+  button(SideView::kRenderStatus)
+      ->setIcon(ThemeIcon(QStringLiteral("render-status"), dark));
   settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark));
 }
 
-void ActivityBar::SetActiveView(int view) {
-  if (view < 0 || view >= buttons_.size()) {
+void ActivityBar::SetActiveView(SideView view) {
+  QToolButton* target = button(view);
+  if (target == nullptr) {
     return;
   }
   active_view_ = view;
-  buttons_[view]->setChecked(true);
+  target->setChecked(true);
   update();
 }
 
 void ActivityBar::paintEvent(QPaintEvent* event) {
   QWidget::paintEvent(event);
-  if (active_view_ < 0 || active_view_ >= buttons_.size()) {
+  const QToolButton* active = button(active_view_);
+  if (active == nullptr) {
     return;
   }
-  const QRect button = buttons_[active_view_]->geometry();
+  const QRect button_rect = active->geometry();
   QPainter painter(this);
-  painter.fillRect(QRect(0, button.top() + 3, 2, button.height() - 6),
+  painter.fillRect(QRect(0, button_rect.top() + 3, 2, button_rect.height() - 6),
                    palette().color(QPalette::Highlight));
 }
 
-QToolButton* ActivityBar::button(int view) const {
-  if (view < 0 || view >= buttons_.size()) {
+QToolButton* ActivityBar::button(SideView view) const {
+  const int index = static_cast<int>(view);
+  if (index < 0 || index >= buttons_.size()) {
     return nullptr;
   }
-  return buttons_[view];
+  return buttons_[index];
 }

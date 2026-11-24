@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-// 活动栏：固定 30px、四个互斥视图、点已选中项也会上报
+// 活动栏：固定 30px、四个共享 SideView 的互斥视图、点已选中项也会上报
 int main(int argc, char** argv) {
   qputenv("QT_QPA_PLATFORM", "offscreen");
   QApplication app(argc, argv);
@@ -15,23 +15,23 @@ int main(int argc, char** argv) {
 
 TEST(ActivityBarTest, HasFourViewsWithObjectNames) {
   ActivityBar bar;
-  EXPECT_NE(bar.button(ActivityBar::kDocuments), nullptr);
-  EXPECT_NE(bar.button(ActivityBar::kSearch), nullptr);
-  EXPECT_NE(bar.button(ActivityBar::kBookmarks), nullptr);
-  EXPECT_NE(bar.button(ActivityBar::kRenderStatus), nullptr);
-  EXPECT_EQ(bar.button(ActivityBar::kDocuments)->objectName(),
+  EXPECT_NE(bar.button(SideView::kDocuments), nullptr);
+  EXPECT_NE(bar.button(SideView::kSearch), nullptr);
+  EXPECT_NE(bar.button(SideView::kBookmarks), nullptr);
+  EXPECT_NE(bar.button(SideView::kRenderStatus), nullptr);
+  EXPECT_EQ(bar.button(SideView::kDocuments)->objectName(),
             QStringLiteral("activityDocuments"));
-  EXPECT_EQ(bar.button(ActivityBar::kSearch)->objectName(),
+  EXPECT_EQ(bar.button(SideView::kSearch)->objectName(),
             QStringLiteral("activitySearch"));
-  EXPECT_EQ(bar.button(ActivityBar::kBookmarks)->objectName(),
+  EXPECT_EQ(bar.button(SideView::kBookmarks)->objectName(),
             QStringLiteral("activityBookmarks"));
-  EXPECT_EQ(bar.button(ActivityBar::kRenderStatus)->objectName(),
+  EXPECT_EQ(bar.button(SideView::kRenderStatus)->objectName(),
             QStringLiteral("activityRenderStatus"));
 
-  bar.SetActiveView(ActivityBar::kSearch);
-  EXPECT_EQ(bar.active_view(), ActivityBar::kSearch);
-  EXPECT_TRUE(bar.button(ActivityBar::kSearch)->isChecked());
-  EXPECT_FALSE(bar.button(ActivityBar::kDocuments)->isChecked());
+  bar.SetActiveView(SideView::kSearch);
+  EXPECT_EQ(bar.active_view(), SideView::kSearch);
+  EXPECT_TRUE(bar.button(SideView::kSearch)->isChecked());
+  EXPECT_FALSE(bar.button(SideView::kDocuments)->isChecked());
 }
 
 TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
@@ -49,15 +49,15 @@ TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
 
 TEST(ActivityBarTest, AnnouncesClicksEvenWhenAlreadyActive) {
   ActivityBar bar;
-  int last = -1;
+  SideView last = SideView::kDocuments;
   QObject::connect(&bar, &ActivityBar::viewActivated,
-                   [&last](int view) { last = view; });
+                   [&last](SideView view) { last = view; });
 
-  bar.button(ActivityBar::kBookmarks)->click();
-  EXPECT_EQ(last, ActivityBar::kBookmarks);
+  bar.button(SideView::kBookmarks)->click();
+  EXPECT_EQ(last, SideView::kBookmarks);
 
   // 已选中的项再次点击也要发出去：宿主用它在展开/收起侧栏之间切换
-  bar.SetActiveView(ActivityBar::kBookmarks);
-  bar.button(ActivityBar::kBookmarks)->click();
-  EXPECT_EQ(last, ActivityBar::kBookmarks);
+  bar.SetActiveView(SideView::kBookmarks);
+  bar.button(SideView::kBookmarks)->click();
+  EXPECT_EQ(last, SideView::kBookmarks);
 }

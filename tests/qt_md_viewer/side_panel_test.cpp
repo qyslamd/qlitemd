@@ -274,7 +274,7 @@ TEST(SidePanelTest, ContextMenuSurvivesBookmarkRefresh) {
   BookmarkStore store;
   store.Toggle(existing, temp.path());
   panel.SetBookmarks(store.items(), temp.path());
-  panel.ShowTab(SidePanel::Tab::kBookmarks);
+  panel.ShowView(SideView::kBookmarks);
   panel.resize(420, 360);
   panel.show();
   QApplication::processEvents();
@@ -373,4 +373,18 @@ TEST(SidePanelTest, SearchInputLivesInTheSearchTab) {
   EXPECT_EQ(changes, 1);
   QTest::keyClick(edit, Qt::Key_Return);
   EXPECT_EQ(submitted, 1);
+}
+
+TEST(SidePanelTest, ShowViewMapsSideViewPages) {
+  SidePanel panel;
+  EXPECT_TRUE(panel.ShowView(SideView::kSearch));
+  EXPECT_EQ(panel.currentView(), SideView::kSearch);
+  EXPECT_TRUE(panel.ShowView(SideView::kBookmarks));
+  EXPECT_EQ(panel.currentView(), SideView::kBookmarks);
+  EXPECT_TRUE(panel.ShowView(SideView::kDocuments));
+  EXPECT_EQ(panel.currentView(), SideView::kDocuments);
+
+  // 渲染状态不是侧栏的页：忽略，且保持当前页
+  EXPECT_FALSE(panel.ShowView(SideView::kRenderStatus));
+  EXPECT_EQ(panel.currentView(), SideView::kDocuments);
 }

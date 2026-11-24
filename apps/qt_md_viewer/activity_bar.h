@@ -4,6 +4,8 @@
 #include <QVector>
 #include <QWidget>
 
+#include "side_view.h"
+
 class QButtonGroup;
 class QToolButton;
 
@@ -13,24 +15,17 @@ class ActivityBar : public QWidget {
   Q_OBJECT
 
  public:
-  enum View {
-    kDocuments = 0,
-    kSearch = 1,
-    kBookmarks = 2,
-    kRenderStatus = 3,
-  };
-
   explicit ActivityBar(QWidget* parent = nullptr);
 
   void SetThemeDark(bool dark);
-  void SetActiveView(int view);
-  int active_view() const { return active_view_; }
+  void SetActiveView(SideView view);
+  SideView active_view() const { return active_view_; }
 
-  QToolButton* button(int view) const;
+  QToolButton* button(SideView view) const;
   QToolButton* settings_button() const { return settings_button_; }
 
  signals:
-  void viewActivated(int view);
+  void viewActivated(SideView view);
   void settingsRequested();
 
  protected:
@@ -41,7 +36,7 @@ class ActivityBar : public QWidget {
   QButtonGroup* group_ = nullptr;
   QVector<QToolButton*> buttons_;
   QToolButton* settings_button_ = nullptr;
-  int active_view_ = kDocuments;
+  SideView active_view_ = SideView::kDocuments;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_ACTIVITY_BAR_H_

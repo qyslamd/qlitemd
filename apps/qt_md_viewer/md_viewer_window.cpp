@@ -214,29 +214,6 @@ class SourceDialog final : public QDialog {
   }
 };
 
-QString ActivityViewTitle(int view) {
-  switch (view) {
-    case ActivityBar::kSearch:
-      return QStringLiteral("搜索");
-    case ActivityBar::kBookmarks:
-      return QStringLiteral("收藏");
-    case ActivityBar::kRenderStatus:
-      return QStringLiteral("渲染状态");
-    default:
-      return QStringLiteral("文档");
-  }
-}
-
-SidePanel::Tab SideTabForActivityView(int view) {
-  if (view == ActivityBar::kSearch) {
-    return SidePanel::Tab::kSearch;
-  }
-  if (view == ActivityBar::kBookmarks) {
-    return SidePanel::Tab::kBookmarks;
-  }
-  return SidePanel::Tab::kDocuments;
-}
-
 }  // namespace
 
 MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
@@ -270,18 +247,7 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
     outline_action_->setChecked(outline_user_visible_);
   }
   if (activity_bar_ != nullptr && side_panel_ != nullptr) {
-    const int view = qBound(0, settings_->sidebar_view,
-                            static_cast<int>(ActivityBar::kRenderStatus));
-    if (view == ActivityBar::kRenderStatus) {
-      side_stack_->setCurrentWidget(render_status_page_);
-    } else {
-      side_stack_->setCurrentWidget(side_panel_view_);
-      side_panel_view_->ShowTab(SideTabForActivityView(view));
-    }
-    activity_bar_->SetActiveView(view);
-    if (side_title_ != nullptr) {
-      side_title_->setText(ActivityViewTitle(view));
-    }
+    ApplySideView(SideViewFromInt(settings_->sidebar_view));
     side_panel_->setVisible(settings_->sidebar_visible);
     ApplySplitterSizes();
   }
@@ -1111,6 +1077,12 @@ void MdViewerWindow::initUi() {
   render_status_ = new RenderStatusPanel(CurrentView(), render_status_page_);
   status_layout->addWidget(render_status_, 1);
   side_stack_->addWidget(render_status_page_);
+  // 文档/搜索/收藏共用 SidePanel；渲染状态是栈里的独立页
+  side_view_pages_[static_cast<int>(SideView::kDocuments)] = side_panel_view_;
+  side_view_pages_[static_cast<int>(SideView::kSearch)] = side_panel_view_;
+  side_view_pages_[static_cast<int>(SideView::kBookmarks)] = side_panel_view_;
+  side_view_pages_[static_cast<int>(SideView::kRenderStatus)] =
+      render_status_page_;
   side_layout->addWidget(side_stack_, 1);
 
   // 大纲固定在正文右侧；标题行留一个收起按钮
@@ -1479,11 +1451,11 @@ void MdViewerWindow::initUi() {
     UpdateOutlineVisibility();
   });
   connect(view_documents_action_, &QAction::triggered, this,
-          [this] { EnsureSideView(ActivityBar::kDocuments); });
+          [this] { EnsureSideView(SideView::kDocuments); });
   connect(view_bookmarks_action_, &QAction::triggered, this,
-          [this] { EnsureSideView(ActivityBar::kBookmarks); });
+          [this] { EnsureSideView(SideView::kBookmarks); });
   connect(view_render_status_action_, &QAction::triggered, this,
-          [this] { EnsureSideView(ActivityBar::kRenderStatus); });
+          [this] { EnsureSideView(SideView::kRenderStatus); });
   connect(outline_action_, &QAction::toggled, this, [this](bool on) {
     outline_user_visible_ = on;
     settings_->outline_visible = on;
@@ -2943,7 +2915,7 @@ void MdViewerWindow::SaveSettings() {
   SyncTabSessionFields();
   settings_->window_geometry = saveGeometry();
   if (activity_bar_ != nullptr) {
-    settings_->sidebar_view = activity_bar_->active_view();
+    settings_->sidebar_view = static_cast<int>(activity_bar_->active_view());
   }
   if (side_panel_ != nullptr) {
     settings_->sidebar_visible = side_panel_->isVisible();
@@ -3093,7 +3065,7 @@ void MdViewerWindow::FocusDocumentFind() {
 }
 
 void MdViewerWindow::FocusWorkspaceSearch() {
-  EnsureSideView(ActivityBar::kSearch);
+  EnsureSideView(SideView::kSearch);
   if (workspace_search_edit_ == nullptr ||
       !workspace_search_edit_->isEnabled()) {
     statusBar()->showMessage(QStringLiteral("先打开一个目录"), 2000);
@@ -3103,7 +3075,7 @@ void MdViewerWindow::FocusWorkspaceSearch() {
   workspace_search_edit_->selectAll();
 }
 
-void MdViewerWindow::ShowSideView(int view) {
+void MdViewerWindow::ShowSideView(SideView view) {
   if (side_panel_ == nullptr || activity_bar_ == nullptr) {
     return;
   }
@@ -3117,27 +3089,37 @@ void MdViewerWindow::ShowSideView(int view) {
   EnsureSideView(view);
 }
 
-void MdViewerWindow::EnsureSideView(int view) {
+void MdViewerWindow::EnsureSideView(SideView view) {
   if (side_panel_ == nullptr || activity_bar_ == nullptr) {
-    return;
-  }
-  if (view < ActivityBar::kDocuments || view > ActivityBar::kRenderStatus) {
     return;
   }
   side_panel_->show();
   ApplySplitterSizes();
-  activity_bar_->SetActiveView(view);
-  settings_->sidebar_view = view;
+  ApplySideView(view);
+  settings_->sidebar_view = static_cast<int>(view);
   settings_->sidebar_visible = true;
-  if (side_title_ != nullptr) {
-    side_title_->setText(ActivityViewTitle(view));
-  }
-  if (view == ActivityBar::kRenderStatus) {
-    side_stack_->setCurrentWidget(render_status_page_);
+}
+
+void MdViewerWindow::ApplySideView(SideView view) {
+  if (!IsValidSideView(static_cast<int>(view))) {
     return;
   }
-  side_stack_->setCurrentWidget(side_panel_view_);
-  side_panel_view_->ShowTab(SideTabForActivityView(view));
+  if (activity_bar_ != nullptr) {
+    activity_bar_->SetActiveView(view);
+  }
+  if (side_title_ != nullptr) {
+    side_title_->setText(SideViewTitle(view));
+  }
+  // SidePanel 只认自己的三页；渲染状态由下面的映射换成独立页
+  if (side_panel_view_ != nullptr) {
+    side_panel_view_->ShowView(view);
+  }
+  if (side_stack_ != nullptr) {
+    QWidget* page = side_view_pages_[static_cast<int>(view)];
+    if (page != nullptr) {
+      side_stack_->setCurrentWidget(page);
+    }
+  }
 }
 
 void MdViewerWindow::ApplySplitterSizes() {

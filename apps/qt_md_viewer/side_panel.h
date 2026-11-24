@@ -8,6 +8,7 @@
 
 #include "bookmarks.h"
 #include "document_index.h"
+#include "side_view.h"
 #include "text_search.h"
 
 class QLabel;
@@ -37,8 +38,6 @@ class SidePanel : public QWidget {
   Q_OBJECT
 
  public:
-  enum class Tab { kDocuments = 0, kBookmarks = 1, kSearch = 2 };
-
   explicit SidePanel(QWidget* parent = nullptr);
 
   void SetRoot(const DocumentScanResult& result);
@@ -55,8 +54,9 @@ class SidePanel : public QWidget {
                         int total_files);
   void EndSearch(bool truncated, bool canceled);
   void SetSearchError(const QString& message);
-  void ShowTab(Tab tab);
-  Tab currentTab() const;
+  // 渲染状态不是侧栏的页，这类视图返回 false 且不切换
+  bool ShowView(SideView view);
+  SideView currentView() const;
   // 活动栏模式下页签条由外部取代，内部只负责切页
   void SetTabBarVisible(bool visible);
   // 暗色/亮色两套 SVG 图标：切主题后由窗口调用，delegate 与页签图标
