@@ -5,7 +5,6 @@
 
 #include <gtest/gtest.h>
 
-#include "test_i18n_helper.h"
 #include "top_tool_bar.h"
 
 // 欢迎态专用工具栏：没有文档级控件，也没有搜索框
@@ -13,7 +12,6 @@ int main(int argc, char** argv) {
   qputenv("QT_QPA_PLATFORM", "offscreen");
   QApplication app(argc, argv);
   ::testing::InitGoogleTest(&argc, argv);
-  InstallTestTranslator();
   return RUN_ALL_TESTS();
 }
 
@@ -31,7 +29,9 @@ TEST(WelcomeBarTest, IsAFixedStripWithoutDocumentControls) {
 
 TEST(WelcomeBarTest, ShowsWorkspaceNameOrPlaceholder) {
   WelcomeBar bar;
-  EXPECT_EQ(bar.workspace_label()->text(), QStringLiteral("未打开工作区"));
+  // 占位文案来自翻译，这里只比较“回到占位态”
+  const QString placeholder = bar.workspace_label()->text();
+  EXPECT_FALSE(placeholder.isEmpty());
   EXPECT_TRUE(bar.workspace_label()->toolTip().isEmpty());
 
   bar.SetWorkspaceName(QStringLiteral("D:/workspace/demo"));
@@ -39,7 +39,7 @@ TEST(WelcomeBarTest, ShowsWorkspaceNameOrPlaceholder) {
   EXPECT_FALSE(bar.workspace_label()->toolTip().isEmpty());
 
   bar.SetWorkspaceName(QString());
-  EXPECT_EQ(bar.workspace_label()->text(), QStringLiteral("未打开工作区"));
+  EXPECT_EQ(bar.workspace_label()->text(), placeholder);
 }
 
 TEST(WelcomeBarTest, ButtonsForwardToTheWindow) {

@@ -64,7 +64,6 @@ add_unit_test(
             ${VIEWER_DIR}/md_viewer_settings.cpp
             ${VIEWER_DIR}/md_viewer_settings.h
     INCLUDES ${VIEWER_DIR}
-             ${PROJECT_SOURCE_DIR}/tests/support
              ${PROJECT_SOURCE_DIR}/src/markdown_view
              ${PROJECT_SOURCE_DIR}/3rdparty/fluentui/fluentui3style
     QT_MODULES Widgets Gui Test
@@ -138,7 +137,6 @@ add_unit_test(
             ${VIEWER_DIR}/text_search.h
             ${VIEWER_DIR}/document_index.cpp
     INCLUDES ${VIEWER_DIR}
-             ${PROJECT_SOURCE_DIR}/tests/support
     QT_MODULES Core Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
@@ -212,10 +210,8 @@ add_unit_test(
             ${VIEWER_DIR}/side_view.cpp
             ${VIEWER_DIR}/side_view.h
     INCLUDES ${VIEWER_DIR}
-             ${PROJECT_SOURCE_DIR}/tests/support
     QT_MODULES Core
     LABELS MARKDOWN
-    NO_GTEST_MAIN
 )
 
 add_unit_test(
@@ -224,7 +220,6 @@ add_unit_test(
             ${VIEWER_DIR}/top_tool_bar.cpp
             ${VIEWER_DIR}/top_tool_bar.h
     INCLUDES ${VIEWER_DIR}
-             ${PROJECT_SOURCE_DIR}/tests/support
     QT_MODULES Widgets Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
