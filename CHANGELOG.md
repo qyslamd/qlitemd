@@ -4,6 +4,20 @@ All notable, user-visible changes are documented here. Releases before
 0.5.0 are kept to one line each; see git history or that tag's GitHub
 Release for details.
 
+## Unreleased
+
+### Added
+
+- The document bar carries an export menu (HTML, PDF). Both actions stay in
+  the File menu and the command palette; the button shares the same
+  `QAction`s and yields first on narrow windows (hidden below 900 px).
+
+### Removed
+
+- The standalone "New Tab" command: the File menu entry, the `Ctrl+T`
+  shortcut and the tab strip context menu item are gone. Opening a file
+  still creates a tab, and `Ctrl+O` remains the entry point.
+
 ## 0.8.0 - 2026-11-24
 
 ### Added

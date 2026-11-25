@@ -10,8 +10,8 @@
 namespace {
 
 constexpr const char* kThemeIcons[] = {
-    "appearance", "back",         "file",    "folder",   "forward",    "menu",
-    "search",     "star-outline", "zoom-in", "zoom-out", "zoom-reset",
+    "appearance", "back",   "export",       "file",    "folder",   "forward",
+    "menu",       "search", "star-outline", "zoom-in", "zoom-out", "zoom-reset",
 };
 
 }  // namespace

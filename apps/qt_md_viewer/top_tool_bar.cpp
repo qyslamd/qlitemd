@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPalette>
@@ -125,6 +126,19 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   zoom_layout->addWidget(zoom_in_button_);
   layout->addWidget(zoom_group_);
 
+  // 导出放最右、最先让位：低频动作，窄窗下交给 File 菜单与命令面板兜底
+  export_button_ = new QToolButton(this);
+  export_button_->setObjectName(QStringLiteral("docExport"));
+  export_button_->setAutoRaise(true);
+  export_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  export_button_->setFixedSize(24, 24);
+  export_button_->setPopupMode(QToolButton::InstantPopup);
+  export_button_->setToolTip(tr("Export… (HTML, PDF)"));
+  export_menu_ = new QMenu(export_button_);
+  export_menu_->setObjectName(QStringLiteral("docExportMenu"));
+  export_button_->setMenu(export_menu_);
+  layout->addWidget(export_button_);
+
   SetThemeDark(false);
   UpdateChildVisibility();
 }
@@ -143,6 +157,7 @@ void DocumentBar::SetThemeDark(bool dark) {
   appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark_));
   zoom_out_button_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark_));
   zoom_in_button_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark_));
+  export_button_->setIcon(ThemeIcon(QStringLiteral("export"), dark_));
 }
 
 void DocumentBar::resizeEvent(QResizeEvent* event) {
@@ -156,6 +171,8 @@ void DocumentBar::UpdateChildVisibility() {
   zoom_group_->setVisible(width >= 860);
   appearance_button_->setVisible(width >= 720);
   copy_button_->setVisible(width >= 620);
+  // 导出频率最低，最先隐藏；入口仍在 File 菜单与命令面板
+  export_button_->setVisible(width >= 900);
   find_edit_->setVisible(true);
   find_edit_->setFixedWidth(width >= 620 ? 240 : 160);
   UpdatePathElision();

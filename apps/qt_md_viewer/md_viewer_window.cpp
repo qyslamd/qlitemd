@@ -912,9 +912,6 @@ void MdViewerWindow::createActions() {
   actions_.open_file = new QAction(tr("Open File…"), this);
   actions_.open_file->setShortcut(QKeySequence::Open);
   actions_.open_dir = new QAction(tr("Open Folder…"), this);
-  actions_.new_tab = new QAction(tr("New Tab"), this);
-  actions_.new_tab->setObjectName(QStringLiteral("newTabAction"));
-  actions_.new_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+T")));
   actions_.close_tab = new QAction(tr("Close Tab"), this);
   actions_.close_tab->setObjectName(QStringLiteral("closeTabAction"));
   actions_.close_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
@@ -1246,7 +1243,6 @@ void MdViewerWindow::initUi() {
   // 汉堡菜单：文件/视图/帮助三组动作
   app_menu_ = new QMenu(this);
   QMenu* file_menu = app_menu_->addMenu(tr("&File"));
-  file_menu->addAction(actions_.new_tab);
   file_menu->addAction(actions_.close_tab);
   file_menu->addAction(actions_.reopen_tab);
   file_menu->addAction(actions_.new_window);
@@ -1313,7 +1309,6 @@ void MdViewerWindow::initUi() {
   // 菜单挂到标题栏按钮后不再是 QMenuBar；关键动作仍挂到窗口，快捷键才稳
   addAction(actions_.open_file);
   addAction(actions_.open_dir);
-  addAction(actions_.new_tab);
   addAction(actions_.close_tab);
   addAction(actions_.reopen_tab);
   addAction(actions_.new_window);
@@ -1382,6 +1377,10 @@ void MdViewerWindow::initUi() {
   document_bar_->forward_button()->setDefaultAction(actions_.forward);
   document_bar_->zoom_out_button()->setDefaultAction(actions_.zoom_out);
   document_bar_->zoom_in_button()->setDefaultAction(actions_.zoom_in);
+  // 导出按钮的菜单项与 File 菜单共用同一批 QAction：启用态、翻译和
+  // 触发逻辑只有一份
+  document_bar_->export_menu()->addAction(actions_.export_html);
+  document_bar_->export_menu()->addAction(actions_.export_pdf);
   connect(document_bar_->zoom_reset_button(), &QToolButton::clicked, this,
           [this] { actions_.zoom_reset->trigger(); });
   connect(document_bar_->star_button(), &QToolButton::clicked, this,
@@ -1656,8 +1655,6 @@ void MdViewerWindow::initSignals() {
       CurrentView()->setFocus();
     }
   });
-  connect(actions_.new_tab, &QAction::triggered, this,
-          &MdViewerWindow::OpenFileDialog);
   connect(actions_.new_window, &QAction::triggered, this, [this] {
     // 次窗口不读写会话：停在自己的欢迎页，多工作区靠它实现
     auto* window = new MdViewerWindow(settings_, /*session_owner=*/false);
@@ -1688,8 +1685,6 @@ void MdViewerWindow::initSignals() {
             &MdViewerWindow::CloseTab);
     connect(tab_bar_, &DocumentTabBar::closeTabRequested, this,
             &MdViewerWindow::CloseTab);
-    connect(tab_bar_, &DocumentTabBar::newTabRequested, this,
-            &MdViewerWindow::OpenFileDialog);
     connect(tab_bar_, &QTabBar::tabMoved, this, &MdViewerWindow::OnTabMoved);
     connect(tab_bar_, &DocumentTabBar::reloadTabRequested, this,
             &MdViewerWindow::ReloadTab);
