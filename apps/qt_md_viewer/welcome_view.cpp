@@ -119,7 +119,7 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   layout->addWidget(icon);
   layout->addSpacing(18);
 
-  auto* title = new QLabel(QStringLiteral("Markdown 阅读器"), content);
+  auto* title = new QLabel(tr("Markdown Reader"), content);
   title->setObjectName(QStringLiteral("welcomeTitle"));
   QFont title_font = font();
   if (title_font.pointSizeF() > 0.0) {
@@ -131,7 +131,8 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   layout->addSpacing(6);
 
   auto* subtitle = new QLabel(
-      QStringLiteral("专注阅读，原生渲染，不依赖浏览器核心。"), content);
+      tr("Focused reading with native rendering, no browser engine required."),
+      content);
   subtitle->setObjectName(QStringLiteral("welcomeSubtitle"));
   subtitle->setForegroundRole(QPalette::PlaceholderText);
   QFont subtitle_font = font();
@@ -145,16 +146,16 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   auto* actions = new QHBoxLayout;
   actions->setContentsMargins(0, 0, 0, 0);
   actions->setSpacing(10);
-  auto* open_dir = new QPushButton(QStringLiteral("打开目录"), content);
+  auto* open_dir = new QPushButton(tr("Open Folder"), content);
   open_dir->setObjectName(QStringLiteral("welcomeOpenDirectory"));
   open_dir->setDefault(true);
   open_dir->setMinimumHeight(34);
   open_dir->setMinimumWidth(116);
-  auto* open_file = new QPushButton(QStringLiteral("打开文件…"), content);
+  auto* open_file = new QPushButton(tr("Open File…"), content);
   open_file->setObjectName(QStringLiteral("welcomeOpenFile"));
   open_file->setMinimumHeight(34);
   open_file->setMinimumWidth(116);
-  auto* quick_open = new QPushButton(QStringLiteral("快速跳转…"), content);
+  auto* quick_open = new QPushButton(tr("Quick Open…"), content);
   quick_open->setObjectName(QStringLiteral("welcomeQuickOpen"));
   quick_open->setFlat(true);
   quick_open->setMinimumHeight(34);
@@ -165,7 +166,7 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   layout->addLayout(actions);
 
   layout->addSpacing(30);
-  recent_title_ = new QLabel(QStringLiteral("最近打开"), content);
+  recent_title_ = new QLabel(tr("Recent Files"), content);
   recent_title_->setObjectName(QStringLiteral("welcomeRecentTitle"));
   QFont section_font = font();
   section_font.setWeight(QFont::DemiBold);
@@ -188,7 +189,7 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
   layout->addWidget(recent_list_);
 
   empty_hint_ = new QLabel(
-      QStringLiteral("还没有最近文档，打开一个目录开始阅读。"), content);
+      tr("No recent documents yet; open a folder to start reading."), content);
   empty_hint_->setObjectName(QStringLiteral("welcomeEmptyHint"));
   empty_hint_->setForegroundRole(QPalette::PlaceholderText);
   empty_hint_->setFont(subtitle_font);
@@ -197,7 +198,7 @@ WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
 
   layout->addSpacing(26);
   auto* shortcuts = new QLabel(
-      QStringLiteral("Ctrl+Shift+F 工作区搜索 · Ctrl+P 快速跳转"), content);
+      tr("Ctrl+Shift+F workspace search · Ctrl+P quick open"), content);
   shortcuts->setObjectName(QStringLiteral("welcomeShortcuts"));
   shortcuts->setForegroundRole(QPalette::PlaceholderText);
   QFont hint_font = font();

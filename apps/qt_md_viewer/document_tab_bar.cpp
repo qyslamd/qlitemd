@@ -381,7 +381,7 @@ void DocumentTabBar::mouseReleaseEvent(QMouseEvent* event) {
 void DocumentTabBar::contextMenuEvent(QContextMenuEvent* event) {
   const int index = tabAt(event->pos());
   QMenu menu(this);
-  QAction* new_action = menu.addAction(QStringLiteral("新建标签页"));
+  QAction* new_action = menu.addAction(tr("New Tab"));
   QAction* close_action = nullptr;
   QAction* close_others_action = nullptr;
   QAction* close_right_action = nullptr;
@@ -389,9 +389,9 @@ void DocumentTabBar::contextMenuEvent(QContextMenuEvent* event) {
   QAction* reopen_action = nullptr;
   if (index >= 0) {
     menu.addSeparator();
-    close_action = menu.addAction(QStringLiteral("关闭标签页"));
-    close_others_action = menu.addAction(QStringLiteral("关闭其他标签页"));
-    close_right_action = menu.addAction(QStringLiteral("关闭右侧标签页"));
+    close_action = menu.addAction(tr("Close Tab"));
+    close_others_action = menu.addAction(tr("Close Other Tabs"));
+    close_right_action = menu.addAction(tr("Close Tabs to the Right"));
     // 欢迎标签不可关闭；没有其它/右侧标签时对应项禁用
     if (index == 0) {
       close_action->setEnabled(false);
@@ -399,8 +399,8 @@ void DocumentTabBar::contextMenuEvent(QContextMenuEvent* event) {
     close_others_action->setEnabled(count() > 2);
     close_right_action->setEnabled(index < count() - 1);
     menu.addSeparator();
-    reload_action = menu.addAction(QStringLiteral("重新加载"));
-    reopen_action = menu.addAction(QStringLiteral("重新打开关闭的标签页"));
+    reload_action = menu.addAction(tr("Reload"));
+    reopen_action = menu.addAction(tr("Reopen Closed Tab"));
   }
   QAction* chosen = menu.exec(event->globalPos());
   if (chosen == nullptr) {

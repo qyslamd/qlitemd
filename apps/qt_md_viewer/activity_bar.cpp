@@ -22,7 +22,7 @@ QToolButton* MakeActivityButton(QWidget* parent, const QString& name,
   button->setAutoRaise(true);
   button->setCheckable(true);
   button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  //button->setFixedSize(kButtonSize, kButtonSize);
+  // button->setFixedSize(kButtonSize, kButtonSize);
   button->setIconSize(QSize(kIconSize, kIconSize));
   button->setToolTip(tooltip);
   button->setAccessibleName(tooltip);
@@ -35,7 +35,7 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("activityBar"));
   // 宽度与标题栏高度（4 + 标签 38）一致，左上角上下两条带等宽
   setFixedWidth(42);
-  //setAutoFillBackground(true); // I need blur effect.
+  // setAutoFillBackground(true); // I need blur effect.
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(3, 6, 3, 6);
   layout->setSpacing(4);
@@ -43,13 +43,13 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   // 顺序必须与 SideView 的数值一致：下标即持久化 id
   buttons_ = {
       MakeActivityButton(this, QStringLiteral("activityDocuments"),
-                         QStringLiteral("文档（Ctrl+Shift+E）")),
+                         tr("Documents (Ctrl+Shift+E)")),
       MakeActivityButton(this, QStringLiteral("activitySearch"),
-                         QStringLiteral("搜索（Ctrl+Shift+F）")),
+                         tr("Search (Ctrl+Shift+F)")),
       MakeActivityButton(this, QStringLiteral("activityBookmarks"),
-                         QStringLiteral("收藏（Ctrl+Shift+B）")),
+                         tr("Bookmarks (Ctrl+Shift+B)")),
       MakeActivityButton(this, QStringLiteral("activityRenderStatus"),
-                         QStringLiteral("渲染状态（Ctrl+Shift+R）")),
+                         tr("Render Status (Ctrl+Shift+R)")),
   };
   group_ = new QButtonGroup(this);
   group_->setExclusive(true);
@@ -69,8 +69,8 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   settings_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
   settings_button_->setFixedSize(kButtonSize, kButtonSize);
   settings_button_->setIconSize(QSize(kIconSize, kIconSize));
-  settings_button_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
-  settings_button_->setAccessibleName(QStringLiteral("设置"));
+  settings_button_->setToolTip(tr("Settings (Ctrl+,)"));
+  settings_button_->setAccessibleName(tr("Settings"));
   layout->addWidget(settings_button_);
   connect(settings_button_, &QToolButton::clicked, this,
           &ActivityBar::settingsRequested);

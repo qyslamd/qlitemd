@@ -123,13 +123,11 @@ SettingsPanel::SettingsPanel(MarkdownView* view, QWidget* parent)
 }
 
 QCheckBox* SettingsPanel::CreateSwitch(bool checked) {
-  auto* box = new QCheckBox(
-      checked ? QStringLiteral("开") : QStringLiteral("关"), this);
+  auto* box = new QCheckBox(checked ? tr("On") : tr("Off"), this);
   box->setProperty("isSwitchButton", true);
   box->setChecked(checked);
-  connect(box, &QCheckBox::toggled, box, [box](bool on) {
-    box->setText(on ? QStringLiteral("开") : QStringLiteral("关"));
-  });
+  connect(box, &QCheckBox::toggled, box,
+          [box](bool on) { box->setText(on ? tr("On") : tr("Off")); });
   return box;
 }
 
@@ -151,76 +149,76 @@ void SettingsPanel::initUi() {
       NewPage(page_stack_, QStringLiteral("settingsPageAppearance"));
   auto* appearance_layout =
       qobject_cast<QVBoxLayout*>(appearance_page->layout());
-  AddPageHeader(appearance_layout, appearance_page, QStringLiteral("外观"),
-                QStringLiteral("主题与窗口材质，修改后立即生效"));
+  AddPageHeader(appearance_layout, appearance_page, tr("Appearance"),
+                tr("Theme and window material; changes apply instantly"));
   QVBoxLayout* appearance_card_layout = nullptr;
   QWidget* appearance_card =
-      NewCard(appearance_page, QStringLiteral("显示"), &appearance_card_layout);
+      NewCard(appearance_page, tr("Display"), &appearance_card_layout);
   {
-    QHBoxLayout* right = AddSettingRow(
-        appearance_card_layout, appearance_card, QStringLiteral("主题"),
-        QStringLiteral("浅色 / 暗色，应用到所有标签"));
+    QHBoxLayout* right =
+        AddSettingRow(appearance_card_layout, appearance_card, tr("Theme"),
+                      tr("Light / dark, applied to all tabs"));
     theme_ = new QComboBox(appearance_card);
     theme_->setObjectName(QStringLiteral("themeCombo"));
     theme_->setFixedWidth(200);
-    theme_->addItem(QStringLiteral("浅色"),
-                    static_cast<int>(MarkdownTheme::Light));
-    theme_->addItem(QStringLiteral("暗色"),
-                    static_cast<int>(MarkdownTheme::Dark));
+    theme_->addItem(tr("Light"), static_cast<int>(MarkdownTheme::Light));
+    theme_->addItem(tr("Dark"), static_cast<int>(MarkdownTheme::Dark));
     const int theme_index = theme_->findData(static_cast<int>(view_->theme()));
     theme_->setCurrentIndex(theme_index >= 0 ? theme_index : 0);
     right->addWidget(theme_);
   }
 #ifdef Q_OS_WIN
   {
-    const QString description = QStringLiteral(
-        "自动：Windows 11 用 Mica，旧系统回退 DWM 模糊；关闭后背景不透明");
+    const QString description =
+        tr("Auto: Mica on Windows 11, DWM blur fallback elsewhere; off makes "
+           "the background opaque");
     QHBoxLayout* right = AddSettingRow(appearance_card_layout, appearance_card,
-                                       QStringLiteral("窗口材质"), description);
+                                       tr("Window Material"), description);
     window_material_ = new QComboBox(appearance_card);
     window_material_->setObjectName(QStringLiteral("windowMaterialCombo"));
     window_material_->setFixedWidth(200);
     window_material_->setToolTip(description);
-    window_material_->addItem(QStringLiteral("自动（Mica）"),
+    window_material_->addItem(tr("Auto (Mica)"),
                               static_cast<int>(WindowMaterial::kAuto));
-    window_material_->addItem(QStringLiteral("亚克力"),
+    window_material_->addItem(tr("Acrylic"),
                               static_cast<int>(WindowMaterial::kAcrylic));
-    window_material_->addItem(QStringLiteral("关闭"),
+    window_material_->addItem(tr("Close"),
                               static_cast<int>(WindowMaterial::kNone));
     right->addWidget(window_material_);
   }
 #endif
   appearance_layout->addWidget(appearance_card);
   appearance_layout->addStretch(1);
-  AddPage(category_list_, page_stack_, QStringLiteral("外观"), appearance_page);
+  AddPage(category_list_, page_stack_, tr("Appearance"), appearance_page);
 
   // 阅读
   QWidget* reading_page =
       NewPage(page_stack_, QStringLiteral("settingsPageReading"));
   auto* reading_layout = qobject_cast<QVBoxLayout*>(reading_page->layout());
-  AddPageHeader(reading_layout, reading_page, QStringLiteral("阅读"),
-                QStringLiteral("阅读区样式与透明页面，修改后立即生效"));
+  AddPageHeader(
+      reading_layout, reading_page, tr("Reading"),
+      tr("Reading area style and transparent page; changes apply instantly"));
   QVBoxLayout* reading_card_layout = nullptr;
   QWidget* reading_card =
-      NewCard(reading_page, QStringLiteral("阅读区"), &reading_card_layout);
+      NewCard(reading_page, tr("Reading Area"), &reading_card_layout);
   {
     QHBoxLayout* right = AddSettingRow(
-        reading_card_layout, reading_card, QStringLiteral("样式"),
-        QStringLiteral("原型：左对齐 + 卡片；库默认：保持库样式"));
+        reading_card_layout, reading_card, tr("Style"),
+        tr("Prototype: left-aligned + cards; library default keeps the style"));
     reading_style_ = new QComboBox(reading_card);
     reading_style_->setObjectName(QStringLiteral("readingStyleCombo"));
     reading_style_->setFixedWidth(220);
-    reading_style_->addItem(QStringLiteral("库默认"),
+    reading_style_->addItem(tr("Library Default"),
                             static_cast<int>(ReadingStyle::kLibraryDefault));
-    reading_style_->addItem(QStringLiteral("原型（左对齐 + 卡片）"),
+    reading_style_->addItem(tr("Prototype (left-aligned + cards)"),
                             static_cast<int>(ReadingStyle::kPrototype));
     right->addWidget(reading_style_);
   }
   {
     QHBoxLayout* right = AddSettingRow(
-        reading_card_layout, reading_card, QStringLiteral("透明阅读区"),
-        QStringLiteral("仅原型样式生效；透出 Mica/窗口底色，"
-                       "关闭后使用主题页面色"));
+        reading_card_layout, reading_card, tr("Transparent reading area"),
+        tr("Only the prototype style uses it; shows Mica/window background, "
+           "or the theme page color when off"));
     transparent_reading_ = CreateSwitch(true);
     transparent_reading_->setObjectName(
         QStringLiteral("transparentReadingCheck"));
@@ -228,38 +226,39 @@ void SettingsPanel::initUi() {
   }
   reading_layout->addWidget(reading_card);
   reading_layout->addStretch(1);
-  AddPage(category_list_, page_stack_, QStringLiteral("阅读"), reading_page);
+  AddPage(category_list_, page_stack_, tr("Reading"), reading_page);
 
   // 内容
   QWidget* content_page =
       NewPage(page_stack_, QStringLiteral("settingsPageContent"));
   auto* content_layout = qobject_cast<QVBoxLayout*>(content_page->layout());
-  AddPageHeader(content_layout, content_page, QStringLiteral("内容"),
-                QStringLiteral("渲染开关与引擎选择，修改后重新渲染当前文档"));
+  AddPageHeader(content_layout, content_page, tr("Content"),
+                tr("Render switches and engine selection; changes re-render "
+                   "the current document"));
 
   QVBoxLayout* switches_layout = nullptr;
   QWidget* switches_card =
-      NewCard(content_page, QStringLiteral("渲染开关"), &switches_layout);
+      NewCard(content_page, tr("Render Switches"), &switches_layout);
   {
-    QHBoxLayout* right = AddSettingRow(
-        switches_layout, switches_card, QStringLiteral("代码块行号"),
-        QStringLiteral("切换后重渲染并保留滚动位置"));
+    QHBoxLayout* right =
+        AddSettingRow(switches_layout, switches_card, tr("Code line numbers"),
+                      tr("Toggling re-renders and keeps the scroll position"));
     code_line_numbers_ = CreateSwitch(view_->code_line_numbers());
     code_line_numbers_->setObjectName(QStringLiteral("codeLineNumbersCheck"));
     right->addWidget(code_line_numbers_);
   }
   {
     QHBoxLayout* right = AddSettingRow(
-        switches_layout, switches_card, QStringLiteral("公式渲染"),
-        QStringLiteral("关闭后 $…$ 原样显示，不加载 MathJax"));
+        switches_layout, switches_card, tr("Formula Rendering"),
+        tr("When off, $…$ is shown verbatim and MathJax is not loaded"));
     formula_rendering_ = CreateSwitch(view_->formula_rendering_enabled());
     formula_rendering_->setObjectName(QStringLiteral("formulaRenderingCheck"));
     right->addWidget(formula_rendering_);
   }
   {
-    QHBoxLayout* right = AddSettingRow(
-        switches_layout, switches_card, QStringLiteral("Mermaid 渲染"),
-        QStringLiteral("关闭后 mermaid 围栏退回代码块"));
+    QHBoxLayout* right =
+        AddSettingRow(switches_layout, switches_card, tr("Mermaid Rendering"),
+                      tr("When off, mermaid fences fall back to code blocks"));
     mermaid_rendering_ = CreateSwitch(view_->mermaid_rendering_enabled());
     mermaid_rendering_->setObjectName(QStringLiteral("mermaidRenderingCheck"));
     right->addWidget(mermaid_rendering_);
@@ -268,24 +267,24 @@ void SettingsPanel::initUi() {
 
   QVBoxLayout* engines_layout = nullptr;
   QWidget* engines_card =
-      NewCard(content_page, QStringLiteral("引擎与语法"), &engines_layout);
+      NewCard(content_page, tr("Engines & Syntax"), &engines_layout);
   {
     const QString description = QStringLiteral(
         "自动：RaTeX 优先，单条公式失败自动用 MathJax 重试；"
         "RaTeX 快，MathJax 兼容性更强但需要加载 QuickJS");
     QHBoxLayout* right = AddSettingRow(engines_layout, engines_card,
-                                       QStringLiteral("公式引擎"), description);
+                                       tr("Formula Engine"), description);
     formula_backend_ = new QComboBox(engines_card);
     formula_backend_->setObjectName(QStringLiteral("formulaBackendCombo"));
     formula_backend_->setFixedWidth(220);
     formula_backend_->setToolTip(description);
-    formula_backend_->addItem(QStringLiteral("自动（RaTeX 优先）"),
+    formula_backend_->addItem(tr("Auto (RaTeX first)"),
                               static_cast<int>(MarkdownFormulaBackend::kAuto));
     formula_backend_->addItem(
-        QStringLiteral("RaTeX（原生）"),
+        tr("RaTeX (native)"),
         static_cast<int>(MarkdownFormulaBackend::kNative));
     formula_backend_->addItem(
-        QStringLiteral("QuickJS（MathJax）"),
+        tr("QuickJS (MathJax)"),
         static_cast<int>(MarkdownFormulaBackend::kQuickjs));
     const int index =
         formula_backend_->findData(static_cast<int>(view_->formula_backend()));
@@ -296,20 +295,19 @@ void SettingsPanel::initUi() {
     const QString description = QStringLiteral(
         "自动：merman 优先，单图失败自动用 mermaid.js 重试；"
         "merman 快但语法子集小，QuickJS 慢但兼容性最好");
-    QHBoxLayout* right =
-        AddSettingRow(engines_layout, engines_card,
-                      QStringLiteral("Mermaid 引擎"), description);
+    QHBoxLayout* right = AddSettingRow(engines_layout, engines_card,
+                                       tr("Mermaid Engine"), description);
     mermaid_backend_ = new QComboBox(engines_card);
     mermaid_backend_->setObjectName(QStringLiteral("mermaidBackendCombo"));
     mermaid_backend_->setFixedWidth(220);
     mermaid_backend_->setToolTip(description);
-    mermaid_backend_->addItem(QStringLiteral("自动（merman 优先）"),
+    mermaid_backend_->addItem(tr("Auto (merman first)"),
                               static_cast<int>(MarkdownMermaidBackend::kAuto));
     mermaid_backend_->addItem(
-        QStringLiteral("merman（原生）"),
+        tr("merman (native)"),
         static_cast<int>(MarkdownMermaidBackend::kNative));
     mermaid_backend_->addItem(
-        QStringLiteral("QuickJS（mermaid.js）"),
+        tr("QuickJS (mermaid.js)"),
         static_cast<int>(MarkdownMermaidBackend::kQuickjs));
     const int index =
         mermaid_backend_->findData(static_cast<int>(view_->mermaid_backend()));
@@ -320,14 +318,13 @@ void SettingsPanel::initUi() {
     const QString description = QStringLiteral(
         "MPE：标记后同一行文字作为标题，支持 info 等更多类型；"
         "GitHub：标记须单独成行，仅支持五种类型");
-    QHBoxLayout* right =
-        AddSettingRow(engines_layout, engines_card,
-                      QStringLiteral("Admonition 样式"), description);
+    QHBoxLayout* right = AddSettingRow(engines_layout, engines_card,
+                                       tr("Admonition Style"), description);
     admonition_mode_ = new QComboBox(engines_card);
     admonition_mode_->setObjectName(QStringLiteral("admonitionModeCombo"));
     admonition_mode_->setFixedWidth(220);
     admonition_mode_->setToolTip(description);
-    admonition_mode_->addItem(QStringLiteral("MPE Callout（默认）"),
+    admonition_mode_->addItem(tr("MPE Callout (default)"),
                               static_cast<int>(MarkdownAdmonitionMode::kMpe));
     admonition_mode_->addItem(
         QStringLiteral("GitHub Admonition"),
@@ -339,92 +336,92 @@ void SettingsPanel::initUi() {
   }
   content_layout->addWidget(engines_card);
   content_layout->addStretch(1);
-  AddPage(category_list_, page_stack_, QStringLiteral("内容"), content_page);
+  AddPage(category_list_, page_stack_, tr("Content"), content_page);
 
   // 缓存
   QWidget* cache_page =
       NewPage(page_stack_, QStringLiteral("settingsPageCache"));
   auto* cache_layout = qobject_cast<QVBoxLayout*>(cache_page->layout());
-  AddPageHeader(cache_layout, cache_page, QStringLiteral("缓存"),
-                QStringLiteral("持久缓存目录与清理操作"));
+  AddPageHeader(cache_layout, cache_page, tr("Cache"),
+                tr("Persistent cache directory and cleanup actions"));
   QVBoxLayout* cache_card_layout = nullptr;
   QWidget* cache_card =
-      NewCard(cache_page, QStringLiteral("持久缓存"), &cache_card_layout);
+      NewCard(cache_page, tr("Persistent Cache"), &cache_card_layout);
   {
     QHBoxLayout* right = AddSettingRow(
-        cache_card_layout, cache_card, QStringLiteral("启用持久缓存"),
-        QStringLiteral("关闭只跳过磁盘缓存读写，内存缓存照常"));
+        cache_card_layout, cache_card, tr("Enable persistent cache"),
+        tr("Turning off skips disk cache reads/writes; the memory cache still "
+           "works"));
     persistent_cache_ = CreateSwitch(view_->persistent_render_cache_enabled());
     persistent_cache_->setObjectName(QStringLiteral("persistentCacheCheck"));
     right->addWidget(persistent_cache_);
   }
   {
-    QHBoxLayout* right =
-        AddSettingRow(cache_card_layout, cache_card, QStringLiteral("缓存目录"),
-                      QStringLiteral("留空使用默认位置；所有标签共用同一目录"));
+    QHBoxLayout* right = AddSettingRow(
+        cache_card_layout, cache_card, tr("Cache Directory"),
+        tr("Leave empty for the default location; all tabs share one folder"));
     cache_directory_ = new QLineEdit(cache_card);
     cache_directory_->setText(
         view_->render_context().options().cache_directory);
-    cache_directory_->setPlaceholderText(QStringLiteral("默认位置"));
+    cache_directory_->setPlaceholderText(tr("Default location"));
     cache_directory_->setReadOnly(true);
     cache_directory_->setMinimumWidth(220);
     right->addWidget(cache_directory_, 1);
-    choose_cache_ = new QPushButton(QStringLiteral("选择…"), cache_card);
-    reset_cache_ = new QPushButton(QStringLiteral("默认"), cache_card);
+    choose_cache_ = new QPushButton(tr("Browse…"), cache_card);
+    reset_cache_ = new QPushButton(tr("Default"), cache_card);
     right->addWidget(choose_cache_);
     right->addWidget(reset_cache_);
   }
   {
     QHBoxLayout* right =
-        AddSettingRow(cache_card_layout, cache_card, QStringLiteral("缓存操作"),
-                      QStringLiteral("清空只影响缓存，不改文档"));
-    clear_memory_cache_ =
-        new QPushButton(QStringLiteral("清空内存缓存"), cache_card);
-    clear_cache_ = new QPushButton(QStringLiteral("清除持久缓存"), cache_card);
+        AddSettingRow(cache_card_layout, cache_card, tr("Cache Actions"),
+                      tr("Clearing affects the cache only, never documents"));
+    clear_memory_cache_ = new QPushButton(tr("Clear Memory Cache"), cache_card);
+    clear_cache_ = new QPushButton(tr("Clear Persistent Cache"), cache_card);
     right->addWidget(clear_memory_cache_);
     right->addWidget(clear_cache_);
   }
   cache_layout->addWidget(cache_card);
   cache_layout->addStretch(1);
-  AddPage(category_list_, page_stack_, QStringLiteral("缓存"), cache_page);
+  AddPage(category_list_, page_stack_, tr("Cache"), cache_page);
 
   // 诊断
   QWidget* diagnostics_page =
       NewPage(page_stack_, QStringLiteral("settingsPageDiagnostics"));
   auto* diagnostics_layout =
       qobject_cast<QVBoxLayout*>(diagnostics_page->layout());
-  AddPageHeader(diagnostics_layout, diagnostics_page, QStringLiteral("诊断"),
-                QStringLiteral("渲染日志与中间产物，仅供排查问题"));
+  AddPageHeader(diagnostics_layout, diagnostics_page, tr("Diagnostics"),
+                tr("Render logs and artifacts, for troubleshooting only"));
   QVBoxLayout* diagnostics_card_layout = nullptr;
-  QWidget* diagnostics_card = NewCard(
-      diagnostics_page, QStringLiteral("日志与产物"), &diagnostics_card_layout);
+  QWidget* diagnostics_card = NewCard(diagnostics_page, tr("Logs & Artifacts"),
+                                      &diagnostics_card_layout);
   {
     QHBoxLayout* right = AddSettingRow(
-        diagnostics_card_layout, diagnostics_card, QStringLiteral("trace 日志"),
-        QStringLiteral("输出 qt.markdown.render，日志量可能较大"));
+        diagnostics_card_layout, diagnostics_card, tr("trace log"),
+        tr("Enables qt.markdown.render output; can be verbose"));
     trace_ = CreateSwitch(view_->diagnostics().trace);
     trace_->setObjectName(QStringLiteral("traceCheck"));
     right->addWidget(trace_);
   }
   {
     QHBoxLayout* right = AddSettingRow(
-        diagnostics_card_layout, diagnostics_card, QStringLiteral("dump 目录"),
-        QStringLiteral("dump 文件可能包含文档正文，仅排查问题时开启"));
+        diagnostics_card_layout, diagnostics_card, tr("dump folder"),
+        tr("dump files may contain document text; enable only when "
+           "troubleshooting"));
     dump_directory_ = new QLineEdit(diagnostics_card);
     dump_directory_->setText(view_->diagnostics().dump_directory);
-    dump_directory_->setPlaceholderText(QStringLiteral("未开启"));
+    dump_directory_->setPlaceholderText(tr("Off"));
     dump_directory_->setReadOnly(true);
     dump_directory_->setMinimumWidth(220);
     right->addWidget(dump_directory_, 1);
-    choose_dump_ = new QPushButton(QStringLiteral("选择…"), diagnostics_card);
-    reset_dump_ = new QPushButton(QStringLiteral("关闭"), diagnostics_card);
+    choose_dump_ = new QPushButton(tr("Browse…"), diagnostics_card);
+    reset_dump_ = new QPushButton(tr("Close"), diagnostics_card);
     right->addWidget(choose_dump_);
     right->addWidget(reset_dump_);
   }
   diagnostics_layout->addWidget(diagnostics_card);
   diagnostics_layout->addStretch(1);
-  AddPage(category_list_, page_stack_, QStringLiteral("诊断"),
-          diagnostics_page);
+  AddPage(category_list_, page_stack_, tr("Diagnostics"), diagnostics_page);
 
   category_list_->setCurrentRow(0);
   UpdateReadingControls();
@@ -480,8 +477,7 @@ void SettingsPanel::SetTransparentReading(bool enabled) {
   }
   const QSignalBlocker blocker(transparent_reading_);
   transparent_reading_->setChecked(enabled);
-  transparent_reading_->setText(enabled ? QStringLiteral("开")
-                                        : QStringLiteral("关"));
+  transparent_reading_->setText(enabled ? tr("On") : tr("Off"));
 }
 
 void SettingsPanel::UpdateReadingControls() {
@@ -583,21 +579,21 @@ void SettingsPanel::initSignals() {
     cache_directory_->clear();
     view_->SetRenderCacheDirectory(QString());
     emit settingsChanged();
-    emit statusMessage(QStringLiteral("持久缓存目录恢复默认"));
+    emit statusMessage(tr("Persistent cache directory reset to default"));
   });
   connect(clear_memory_cache_, &QPushButton::clicked, this, [this] {
     if (view_ == nullptr) {
       return;
     }
     view_->ClearRenderCaches();
-    emit statusMessage(QStringLiteral("已清空内存缓存"));
+    emit statusMessage(tr("Memory cache cleared"));
   });
   connect(clear_cache_, &QPushButton::clicked, this, [this] {
     if (view_ == nullptr) {
       return;
     }
     view_->ClearPersistentRenderCache();
-    emit statusMessage(QStringLiteral("已清除持久渲染缓存"));
+    emit statusMessage(tr("Persistent render cache cleared"));
   });
   connect(choose_dump_, &QPushButton::clicked, this,
           &SettingsPanel::BrowseDumpDirectory);
@@ -623,7 +619,7 @@ void SettingsPanel::BrowseCacheDirectory() {
     return;
   }
   const QString dir = QFileDialog::getExistingDirectory(
-      this, QStringLiteral("选择持久缓存目录"),
+      this, tr("Select Persistent Cache Directory"),
       cache_directory_->text().isEmpty() ? QDir::homePath()
                                          : cache_directory_->text());
   if (dir.isEmpty()) {
@@ -639,7 +635,7 @@ void SettingsPanel::BrowseDumpDirectory() {
     return;
   }
   const QString dir = QFileDialog::getExistingDirectory(
-      this, QStringLiteral("选择 dump 目录"),
+      this, tr("Select dump Folder"),
       dump_directory_->text().isEmpty() ? QDir::homePath()
                                         : dump_directory_->text());
   if (dir.isEmpty()) {
@@ -652,7 +648,7 @@ void SettingsPanel::BrowseDumpDirectory() {
 SettingsDialog::SettingsDialog(QWidget* content, QWidget* parent)
     : QDialog(parent) {
   setObjectName(QStringLiteral("settingsDialog"));
-  setWindowTitle(QStringLiteral("设置"));
+  setWindowTitle(tr("Settings"));
   setModal(false);
   resize(780, 560);
   setMinimumSize(640, 420);
@@ -668,7 +664,7 @@ SettingsDialog::SettingsDialog(QWidget* content, QWidget* parent)
   auto* bottom = new QHBoxLayout();
   bottom->setContentsMargins(16, 8, 16, 12);
   bottom->addStretch();
-  auto* close_button = new QPushButton(QStringLiteral("关闭"), this);
+  auto* close_button = new QPushButton(tr("Close"), this);
   close_button->setObjectName(QStringLiteral("settingsCloseButton"));
   connect(close_button, &QPushButton::clicked, this, &QDialog::hide);
   bottom->addWidget(close_button);

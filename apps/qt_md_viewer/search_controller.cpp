@@ -100,7 +100,7 @@ void SearchController::StartWorkspaceScan() {
     return;
   }
   if (pending_root_.isEmpty() || !QFileInfo(pending_root_).isDir()) {
-    emit workspaceSearchFailed(QStringLiteral("先打开一个目录"));
+    emit workspaceSearchFailed(tr("Open a folder first"));
     return;
   }
   active_query_ = pending_query_;

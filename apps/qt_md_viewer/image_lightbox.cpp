@@ -148,15 +148,15 @@ ImageLightbox::ImageLightbox(const QPixmap& pixmap, const QString& title,
   top->addWidget(title_label_);
   top->addStretch(1);
 
-  auto* fit = AddActionButton(top, QStringLiteral("适应窗口"),
+  auto* fit = AddActionButton(top, tr("Fit to Window"),
                               QStringLiteral("imageLightboxFit"), this);
   auto* actual = AddActionButton(top, QStringLiteral("100%"),
                                  QStringLiteral("imageLightboxActual"), this);
-  auto* source = AddActionButton(top, QStringLiteral("源码"),
+  auto* source = AddActionButton(top, tr("Source"),
                                  QStringLiteral("imageLightboxSource"), this);
-  auto* save = AddActionButton(top, QStringLiteral("另存为"),
+  auto* save = AddActionButton(top, tr("Save As"),
                                QStringLiteral("imageLightboxSave"), this);
-  auto* close = AddActionButton(top, QStringLiteral("关闭"),
+  auto* close = AddActionButton(top, tr("Close"),
                                 QStringLiteral("imageLightboxClose"), this);
   source->setVisible(has_source);
   outer->addLayout(top);
@@ -173,9 +173,9 @@ ImageLightbox::ImageLightbox(const QPixmap& pixmap, const QString& title,
   view->setScene(scene);
   outer->addWidget(view_, 1);
 
-  auto* hint = new QLabel(
-      QStringLiteral("滚轮缩放 · 拖动平移 · 双击切换适应/100% · Esc 关闭"),
-      this);
+  auto* hint = new QLabel(tr("Wheel to zoom · drag to pan · double-click "
+                             "toggles fit/100% · Esc closes"),
+                          this);
   hint->setObjectName(QStringLiteral("imageLightboxHint"));
   hint->setAlignment(Qt::AlignCenter);
   hint->setForegroundRole(QPalette::PlaceholderText);
