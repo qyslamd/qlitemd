@@ -91,14 +91,14 @@
         <source>Zoom In (Ctrl+=)</source>
         <translation>放大（Ctrl+=）</translation>
     </message>
+    <message>
+        <location filename="../top_tool_bar.cpp" line="136"/>
+        <source>Export… (HTML, PDF)</source>
+        <translation>导出（HTML、PDF）</translation>
+    </message>
 </context>
 <context>
     <name>DocumentTabBar</name>
-    <message>
-        <location filename="../document_tab_bar.cpp" line="384"/>
-        <source>New Tab</source>
-        <translation>新标签页</translation>
-    </message>
     <message>
         <location filename="../document_tab_bar.cpp" line="392"/>
         <source>Close Tab</source>
@@ -166,7 +166,6 @@
     <message>
         <location filename="../md_viewer_window.cpp" line="390"/>
         <location filename="../md_viewer_window.cpp" line="395"/>
-        <location filename="../md_viewer_window.cpp" line="915"/>
         <source>New Tab</source>
         <translation>新建标签页</translation>
     </message>

@@ -43,7 +43,6 @@ class DocumentTabBar : public QTabBar {
  signals:
   // 中键关闭；左键关闭走 QTabBar::tabCloseRequested
   void closeTabRequested(int index);
-  void newTabRequested();
   void reloadTabRequested(int index);
   void reopenClosedTabRequested();
 

@@ -33,7 +33,7 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
   for (const char* name :
        {"docBack", "docForward", "docStar", "docPathLabel", "docCopyPath",
         "docFindEdit", "docOutlineToggle", "docAppearance", "docZoomOut",
-        "docZoomReset", "docZoomIn"}) {
+        "docZoomReset", "docZoomIn", "docExport", "docExportMenu"}) {
     EXPECT_NE(bar.findChild<QWidget*>(QString::fromLatin1(name)), nullptr)
         << name;
   }
@@ -77,13 +77,19 @@ TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
     bool search;
     bool appearance;
     bool copy;
+    bool export_menu;
   };
-  // 阈值按整窗宽度定：缩放 860、外观 720、复制 620；搜索始终可见
+  // 阈值按整窗宽度定：导出 900、缩放 860、外观 720、复制 620；搜索始终可见
   const Case cases[] = {
-      {1000, true, true, true, true},   {860, true, true, true, true},
-      {800, false, true, true, true},   {720, false, true, true, true},
-      {700, false, true, false, true},  {620, false, true, false, true},
-      {600, false, true, false, false}, {400, false, true, false, false},
+      {1000, true, true, true, true, true},
+      {900, true, true, true, true, true},
+      {860, true, true, true, true, false},
+      {800, false, true, true, true, false},
+      {720, false, true, true, true, false},
+      {700, false, true, false, true, false},
+      {620, false, true, false, true, false},
+      {600, false, true, false, false, false},
+      {400, false, true, false, false, false},
   };
   for (const Case& item : cases) {
     DocumentBar* bar = MakeShownBar(item.width);
@@ -94,6 +100,8 @@ TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
     EXPECT_EQ(bar->appearance_button()->isVisible(), item.appearance)
         << "width=" << item.width;
     EXPECT_EQ(bar->copy_button()->isVisible(), item.copy)
+        << "width=" << item.width;
+    EXPECT_EQ(bar->export_button()->isVisible(), item.export_menu)
         << "width=" << item.width;
     EXPECT_TRUE(bar->path_label()->isVisible()) << "width=" << item.width;
     // 大纲开关是主控入口，和查找框一样任何宽度都保留

@@ -234,7 +234,6 @@ class MdViewerWindow : public QMainWindow {
   struct WindowActions {
     QAction* open_file = nullptr;
     QAction* open_dir = nullptr;
-    QAction* new_tab = nullptr;
     QAction* close_tab = nullptr;
     QAction* reopen_tab = nullptr;
     QAction* new_window = nullptr;

@@ -380,35 +380,28 @@ void DocumentTabBar::mouseReleaseEvent(QMouseEvent* event) {
 
 void DocumentTabBar::contextMenuEvent(QContextMenuEvent* event) {
   const int index = tabAt(event->pos());
-  QMenu menu(this);
-  QAction* new_action = menu.addAction(tr("New Tab"));
-  QAction* close_action = nullptr;
-  QAction* close_others_action = nullptr;
-  QAction* close_right_action = nullptr;
-  QAction* reload_action = nullptr;
-  QAction* reopen_action = nullptr;
-  if (index >= 0) {
-    menu.addSeparator();
-    close_action = menu.addAction(tr("Close Tab"));
-    close_others_action = menu.addAction(tr("Close Other Tabs"));
-    close_right_action = menu.addAction(tr("Close Tabs to the Right"));
-    // 欢迎标签不可关闭；没有其它/右侧标签时对应项禁用
-    if (index == 0) {
-      close_action->setEnabled(false);
-    }
-    close_others_action->setEnabled(count() > 2);
-    close_right_action->setEnabled(index < count() - 1);
-    menu.addSeparator();
-    reload_action = menu.addAction(tr("Reload"));
-    reopen_action = menu.addAction(tr("Reopen Closed Tab"));
+  // 标签条空白区没有可操作项，不弹空菜单
+  if (index < 0) {
+    return;
   }
+  QMenu menu(this);
+  QAction* close_action = menu.addAction(tr("Close Tab"));
+  QAction* close_others_action = menu.addAction(tr("Close Other Tabs"));
+  QAction* close_right_action = menu.addAction(tr("Close Tabs to the Right"));
+  // 欢迎标签不可关闭；没有其它/右侧标签时对应项禁用
+  if (index == 0) {
+    close_action->setEnabled(false);
+  }
+  close_others_action->setEnabled(count() > 2);
+  close_right_action->setEnabled(index < count() - 1);
+  menu.addSeparator();
+  QAction* reload_action = menu.addAction(tr("Reload"));
+  QAction* reopen_action = menu.addAction(tr("Reopen Closed Tab"));
   QAction* chosen = menu.exec(event->globalPos());
   if (chosen == nullptr) {
     return;
   }
-  if (chosen == new_action) {
-    emit newTabRequested();
-  } else if (chosen == close_action) {
+  if (chosen == close_action) {
     emit closeTabRequested(index);
   } else if (chosen == close_others_action) {
     for (int i = count() - 1; i >= 0; --i) {

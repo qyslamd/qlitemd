@@ -7,6 +7,7 @@
 
 class QLabel;
 class QLineEdit;
+class QMenu;
 class QResizeEvent;
 class QToolButton;
 
@@ -24,7 +25,7 @@ class TopToolBar : public QToolBar {
   void ResetInvariants();
 };
 
-// 横带在文档态的页：导航、路径、复制、查找、大纲、阅读外观、缩放。
+// 横带在文档态的页：导航、路径、复制、查找、大纲、阅读外观、缩放、导出。
 // 是窗口级控件（作用于当前标签），不属于任何 ReaderPage。
 class DocumentBar : public QWidget {
   Q_OBJECT
@@ -43,6 +44,10 @@ class DocumentBar : public QWidget {
   QToolButton* forward_button() const { return forward_button_; }
   QToolButton* star_button() const { return star_button_; }
   QToolButton* copy_button() const { return copy_button_; }
+  // 导出是下拉按钮：菜单项由窗口在 createActions 之后挂上去（共用
+  // File 菜单那两条 QAction），本类只负责按钮与图标
+  QToolButton* export_button() const { return export_button_; }
+  QMenu* export_menu() const { return export_menu_; }
   QToolButton* outline_button() const { return outline_button_; }
   QToolButton* appearance_button() const { return appearance_button_; }
   QToolButton* zoom_out_button() const { return zoom_out_button_; }
@@ -65,6 +70,8 @@ class DocumentBar : public QWidget {
   QToolButton* forward_button_ = nullptr;
   QToolButton* star_button_ = nullptr;
   QToolButton* copy_button_ = nullptr;
+  QToolButton* export_button_ = nullptr;
+  QMenu* export_menu_ = nullptr;
   QToolButton* outline_button_ = nullptr;
   QToolButton* appearance_button_ = nullptr;
   QToolButton* zoom_out_button_ = nullptr;
