@@ -1,5 +1,7 @@
 #include "side_view.h"
 
+#include <QCoreApplication>
+
 bool IsValidSideView(int value) { return value >= 0 && value < kSideViewCount; }
 
 SideView SideViewFromInt(int value, SideView fallback) {
@@ -7,15 +9,16 @@ SideView SideViewFromInt(int value, SideView fallback) {
 }
 
 QString SideViewTitle(SideView view) {
+  // 自由函数没有 tr() 上下文，走全局 translate；context 与类名一致
   switch (view) {
     case SideView::kDocuments:
-      return QStringLiteral("文档");
+      return QCoreApplication::translate("SideView", "Documents");
     case SideView::kSearch:
-      return QStringLiteral("搜索");
+      return QCoreApplication::translate("SideView", "Search");
     case SideView::kBookmarks:
-      return QStringLiteral("收藏");
+      return QCoreApplication::translate("SideView", "Bookmarks");
     case SideView::kRenderStatus:
-      return QStringLiteral("渲染状态");
+      return QCoreApplication::translate("SideView", "Render Status");
   }
-  return QStringLiteral("文档");
+  return QCoreApplication::translate("SideView", "Documents");
 }

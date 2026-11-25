@@ -11,6 +11,7 @@
 
 #include "markdown_test_wait.h"
 #include "markdown_view.h"
+#include "test_i18n_helper.h"
 
 // 渲染状态面板的刷新链路：文档重建后 outlineChanged 触发 RefreshStatus，
 // Mermaid 的计数必须已经落进上下文。独立进程方便控制环境
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
           .arg(QDateTime::currentMSecsSinceEpoch()));
   QApplication app(argc, argv);
   ::testing::InitGoogleTest(&argc, argv);
+  InstallTestTranslator();
   const int result = RUN_ALL_TESTS();
   QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
        QStringLiteral("/markdown-render"))

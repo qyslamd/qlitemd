@@ -61,12 +61,12 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   layout->setContentsMargins(8, 0, 8, 0);
   layout->setSpacing(4);
 
-  back_button_ = MakeIconButton(this, QStringLiteral("docBack"),
-                                QStringLiteral("后退（Ctrl+Alt+←）"));
+  back_button_ =
+      MakeIconButton(this, QStringLiteral("docBack"), tr("Back (Ctrl+Alt+←)"));
   forward_button_ = MakeIconButton(this, QStringLiteral("docForward"),
-                                   QStringLiteral("前进（Ctrl+Alt+→）"));
+                                   tr("Forward (Ctrl+Alt+→)"));
   star_button_ = MakeIconButton(this, QStringLiteral("docStar"),
-                                QStringLiteral("收藏当前文档（Ctrl+D）"));
+                                tr("Bookmark Current Document (Ctrl+D)"));
   star_button_->setCheckable(true);
   layout->addWidget(back_button_);
   layout->addWidget(forward_button_);
@@ -82,21 +82,21 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   copy_button_ = new QToolButton(this);
   copy_button_->setObjectName(QStringLiteral("docCopyPath"));
   copy_button_->setAutoRaise(true);
-  copy_button_->setText(QStringLiteral("复制"));
+  copy_button_->setText(tr("Copy"));
   copy_button_->setToolButtonStyle(Qt::ToolButtonTextOnly);
-  copy_button_->setToolTip(QStringLiteral("复制当前文档路径"));
+  copy_button_->setToolTip(tr("Copy current document path"));
   layout->addWidget(copy_button_);
 
   find_edit_ = new QLineEdit(this);
   find_edit_->setObjectName(QStringLiteral("docFindEdit"));
-  find_edit_->setPlaceholderText(QStringLiteral("在当前文档中查找（Ctrl+F）"));
+  find_edit_->setPlaceholderText(tr("Find in Current Document (Ctrl+F)"));
   find_edit_->setClearButtonEnabled(true);
   find_edit_->setFixedWidth(240);
   layout->addWidget(find_edit_);
 
-  appearance_button_ =
-      MakeIconButton(this, QStringLiteral("docAppearance"),
-                     QStringLiteral("阅读外观（字号、行距、栏宽）"));
+  appearance_button_ = MakeIconButton(
+      this, QStringLiteral("docAppearance"),
+      tr("Reading appearance (font size, line height, measure)"));
   layout->addWidget(appearance_button_);
 
   zoom_group_ = new QWidget(this);
@@ -105,16 +105,16 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   zoom_layout->setContentsMargins(0, 0, 0, 0);
   zoom_layout->setSpacing(2);
   zoom_out_button_ = MakeIconButton(zoom_group_, QStringLiteral("docZoomOut"),
-                                    QStringLiteral("缩小（Ctrl+-）"));
+                                    tr("Zoom Out (Ctrl+-)"));
   zoom_reset_button_ = new QToolButton(zoom_group_);
   zoom_reset_button_->setObjectName(QStringLiteral("docZoomReset"));
   zoom_reset_button_->setAutoRaise(true);
   zoom_reset_button_->setText(QStringLiteral("100%"));
   zoom_reset_button_->setToolButtonStyle(Qt::ToolButtonTextOnly);
-  zoom_reset_button_->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
+  zoom_reset_button_->setToolTip(tr("Reset Zoom (Ctrl+0)"));
   zoom_reset_button_->setMinimumWidth(46);
   zoom_in_button_ = MakeIconButton(zoom_group_, QStringLiteral("docZoomIn"),
-                                   QStringLiteral("放大（Ctrl+=）"));
+                                   tr("Zoom In (Ctrl+=)"));
   zoom_layout->addWidget(zoom_out_button_);
   zoom_layout->addWidget(zoom_reset_button_);
   zoom_layout->addWidget(zoom_in_button_);
@@ -179,7 +179,7 @@ WelcomeBar::WelcomeBar(QWidget* parent) : QWidget(parent) {
   mark->setFixedSize(16, 16);
   layout->addWidget(mark);
 
-  auto* title = new QLabel(QStringLiteral("欢迎"), this);
+  auto* title = new QLabel(tr("Welcome"), this);
   title->setObjectName(QStringLiteral("welcomeTitle"));
   layout->addWidget(title);
 
@@ -192,7 +192,7 @@ WelcomeBar::WelcomeBar(QWidget* parent) : QWidget(parent) {
   layout->addWidget(workspace_label_, 1);
 
   quick_open_button_ = MakeIconButton(this, QStringLiteral("welcomeQuickOpen"),
-                                      QStringLiteral("快速跳转（Ctrl+P）"));
+                                      tr("Quick open (Ctrl+P)"));
   layout->addWidget(quick_open_button_);
 
   connect(quick_open_button_, &QToolButton::clicked, this,
@@ -204,7 +204,7 @@ WelcomeBar::WelcomeBar(QWidget* parent) : QWidget(parent) {
 
 void WelcomeBar::SetWorkspaceName(const QString& root) {
   if (root.isEmpty()) {
-    workspace_display_ = QStringLiteral("未打开工作区");
+    workspace_display_ = tr("No workspace open");
     workspace_label_->setToolTip(QString());
   } else {
     workspace_display_ = QFileInfo(root).fileName();

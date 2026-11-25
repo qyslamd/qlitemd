@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QEvent>
 #include <QFontMetrics>
 #include <QFrame>
@@ -37,13 +38,13 @@ enum ItemRole {
 QString KindText(QuickOpenKind kind) {
   switch (kind) {
     case QuickOpenKind::kHeading:
-      return QStringLiteral("标题");
+      return QCoreApplication::translate("QuickOpen", "Headings");
     case QuickOpenKind::kFile:
-      return QStringLiteral("文件");
+      return QCoreApplication::translate("QuickOpen", "File");
     case QuickOpenKind::kRecent:
-      return QStringLiteral("最近");
+      return QCoreApplication::translate("QuickOpen", "Recent");
     case QuickOpenKind::kCommand:
-      return QStringLiteral("命令");
+      return QCoreApplication::translate("QuickOpen", "Commands");
   }
   return QString();
 }
@@ -308,7 +309,7 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   search_row->addWidget(icon);
   query_edit_ = new QLineEdit(panel);
   query_edit_->setObjectName(QStringLiteral("quickOpenQuery"));
-  query_edit_->setPlaceholderText(QStringLiteral("跳转到文件、标题或命令…"));
+  query_edit_->setPlaceholderText(tr("Jump to file, heading or command…"));
   query_edit_->setFrame(false);
   query_edit_->setClearButtonEnabled(false);
   QFont query_font = font();
@@ -354,7 +355,7 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   connect(list_, &QListWidget::itemActivated, this, activate_item);
   layout->addWidget(list_, 1);
 
-  empty_label_ = new QLabel(QStringLiteral("没有匹配项"), panel);
+  empty_label_ = new QLabel(tr("No matches"), panel);
   empty_label_->setObjectName(QStringLiteral("quickOpenEmpty"));
   empty_label_->setAlignment(Qt::AlignCenter);
   empty_label_->setForegroundRole(QPalette::PlaceholderText);
@@ -366,7 +367,7 @@ QuickOpenPopup::QuickOpenPopup(QWidget* parent) : QWidget(parent) {
   count_label_ = new QLabel(panel);
   count_label_->setObjectName(QStringLiteral("quickOpenCount"));
   count_label_->setForegroundRole(QPalette::PlaceholderText);
-  auto* hint = new QLabel(QStringLiteral("↑↓ 选择 · Enter 打开"), panel);
+  auto* hint = new QLabel(tr("↑↓ select · Enter opens"), panel);
   hint->setObjectName(QStringLiteral("quickOpenHint"));
   hint->setForegroundRole(QPalette::PlaceholderText);
   QFont footer_font = font();
@@ -453,7 +454,7 @@ void QuickOpenPopup::ApplyFilter() {
   const bool empty = shown_items_.isEmpty();
   list_->setVisible(!empty);
   empty_label_->setVisible(empty);
-  count_label_->setText(QStringLiteral("%1 项").arg(shown_items_.size()));
+  count_label_->setText(tr("%1 items").arg(shown_items_.size()));
   if (!empty) {
     list_->setCurrentRow(0);
   }

@@ -107,7 +107,7 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
   layout->setContentsMargins(16, 14, 16, 12);
   layout->setSpacing(10);
 
-  auto* title = new QLabel(QStringLiteral("阅读外观"), panel);
+  auto* title = new QLabel(tr("Reading Appearance"), panel);
   title->setObjectName(QStringLiteral("readerAppearanceTitle"));
   QFont title_font = font();
   if (title_font.pointSizeF() > 0.0) {
@@ -117,8 +117,8 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
   title->setFont(title_font);
   layout->addWidget(title);
 
-  auto* subtitle =
-      new QLabel(QStringLiteral("字号、行距与栏宽实时生效"), panel);
+  auto* subtitle = new QLabel(
+      tr("Font size, line height and measure apply instantly"), panel);
   subtitle->setForegroundRole(QPalette::PlaceholderText);
   QFont subtitle_font = font();
   if (subtitle_font.pointSizeF() > 0.0) {
@@ -155,11 +155,11 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
   };
 
   add_choice_row(
-      QStringLiteral("字号"), QStringLiteral("appearanceFont"),
-      {{QStringLiteral("小"), 13},
-       {QStringLiteral("标准"), 15},
-       {QStringLiteral("大"), 17},
-       {QStringLiteral("特大"), 19}},
+      tr("Font Size"), QStringLiteral("appearanceFont"),
+      {{tr("Small"), 13},
+       {tr("Standard"), 15},
+       {tr("Large"), 17},
+       {tr("Extra Large"), 19}},
       [this](int value) {
         if (preferences_.font_size == value) {
           return;
@@ -171,10 +171,8 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
       &font_group_);
 
   add_choice_row(
-      QStringLiteral("行距"), QStringLiteral("appearanceLine"),
-      {{QStringLiteral("紧凑"), 160},
-       {QStringLiteral("标准"), 178},
-       {QStringLiteral("宽松"), 200}},
+      tr("Line Height"), QStringLiteral("appearanceLine"),
+      {{tr("Compact"), 160}, {tr("Standard"), 178}, {tr("Relaxed"), 200}},
       [this](int value) {
         if (preferences_.line_height_percent == value) {
           return;
@@ -186,12 +184,12 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
       &line_group_);
 
   add_choice_row(
-      QStringLiteral("栏宽"), QStringLiteral("appearanceMeasure"),
-      {{QStringLiteral("默认"), -1},
-       {QStringLiteral("窄"), 680},
-       {QStringLiteral("舒适"), 760},
-       {QStringLiteral("宽"), 900},
-       {QStringLiteral("全宽"), 0}},
+      tr("Measure"), QStringLiteral("appearanceMeasure"),
+      {{tr("Default"), -1},
+       {tr("Narrow"), 680},
+       {tr("Comfortable"), 760},
+       {tr("Wide"), 900},
+       {tr("Full Width"), 0}},
       [this](int value) {
         if (preferences_.measure_px == value) {
           return;
@@ -204,12 +202,12 @@ ReaderAppearancePopup::ReaderAppearancePopup(QWidget* parent)
 
   auto* footer = new QHBoxLayout;
   footer->setContentsMargins(0, 2, 0, 0);
-  auto* reset = new QPushButton(QStringLiteral("恢复默认"), panel);
+  auto* reset = new QPushButton(tr("Reset to Defaults"), panel);
   reset->setObjectName(QStringLiteral("readerAppearanceReset"));
   reset->setFlat(true);
   footer->addWidget(reset);
   footer->addStretch(1);
-  auto* hint = new QLabel(QStringLiteral("Esc 关闭"), panel);
+  auto* hint = new QLabel(tr("Esc closes"), panel);
   hint->setForegroundRole(QPalette::PlaceholderText);
   hint->setFont(subtitle_font);
   footer->addWidget(hint);

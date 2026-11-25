@@ -9,7 +9,7 @@ ReadingProgressBar::ReadingProgressBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("readingProgressBar"));
   setFixedHeight(3);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  setAccessibleName(QStringLiteral("阅读进度"));
+  setAccessibleName(tr("Reading Progress"));
 }
 
 void ReadingProgressBar::SetProgress(qreal progress) {
@@ -50,7 +50,7 @@ ReaderPage::ReaderPage(QWidget* content, QWidget* parent) : QWidget(parent) {
   back_to_top_ = new QToolButton(this);
   back_to_top_->setObjectName(QStringLiteral("backToTopButton"));
   back_to_top_->setText(QStringLiteral("↑"));
-  back_to_top_->setToolTip(QStringLiteral("回到顶部"));
+  back_to_top_->setToolTip(tr("Back to Top"));
   back_to_top_->setCursor(Qt::PointingHandCursor);
   back_to_top_->setFixedSize(38, 38);
   back_to_top_->hide();

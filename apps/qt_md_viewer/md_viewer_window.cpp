@@ -197,9 +197,9 @@ class SourceDialog final : public QDialog {
     layout->addWidget(text, 1);
 
     auto* buttons = new QHBoxLayout;
-    auto* copy = new QPushButton(QStringLiteral("复制"), this);
+    auto* copy = new QPushButton(tr("Copy"), this);
     copy->setObjectName(QStringLiteral("imageSourceCopy"));
-    auto* close = new QPushButton(QStringLiteral("关闭"), this);
+    auto* close = new QPushButton(tr("Close"), this);
     close->setObjectName(QStringLiteral("imageSourceClose"));
     buttons->addStretch(1);
     buttons->addWidget(copy);
@@ -387,12 +387,12 @@ DocumentTab* MdViewerWindow::CreateDocumentTab() {
   if (tab_bar_ != nullptr) {
     // path 在 ShowFile 里才赋值；图标由 UpdateTabTitle 拿到路径后补
     tab_bar_->addTab(created->path.isEmpty()
-                         ? QStringLiteral("新标签页")
+                         ? tr("New Tab")
                          : QFileInfo(created->path).fileName());
     tab_bar_->setTabToolTip(
         tab_bar_->count() - 1,
         created->path.isEmpty()
-            ? QStringLiteral("新标签页")
+            ? tr("New Tab")
             : DocumentDisplayTitle(root_dir_, created->path));
   }
   return created;
@@ -468,7 +468,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
   });
   connect(view, &MarkdownView::documentReloaded, this, [this, tab] {
     if (tab == CurrentTab()) {
-      statusBar()->showMessage(QStringLiteral("文件已更新，已重新加载"), 3000);
+      statusBar()->showMessage(tr("File updated, reloaded"), 3000);
     }
   });
   connect(
@@ -483,7 +483,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
         if (total > 0) {
           render_progress_->setRange(0, total);
           render_progress_->setValue(completed);
-          render_progress_->setFormat(QStringLiteral("渲染 %v/%m"));
+          render_progress_->setFormat(tr("Render %v/%m"));
           render_progress_->show();
         } else {
           render_progress_->hide();
@@ -533,7 +533,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
           });
   connect(view, &MarkdownView::codeCopied, this, [this, tab] {
     if (tab == CurrentTab()) {
-      statusBar()->showMessage(QStringLiteral("已复制代码块"), 2000);
+      statusBar()->showMessage(tr("Code block copied"), 2000);
     }
   });
   connect(view, &MarkdownView::imageClicked, this,
@@ -556,8 +556,8 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
             const QString label = url.isLocalFile()
                                       ? QFileInfo(url.toLocalFile()).fileName()
                                       : url.toString();
-            statusBar()->showMessage(
-                QStringLiteral("图片加载失败：%1").arg(label), 5000);
+            statusBar()->showMessage(tr("Image failed to load: %1").arg(label),
+                                     5000);
           });
   connect(view, &MarkdownView::viewportScrolled, this,
           [this, tab, view](int y) {
@@ -586,7 +586,7 @@ void MdViewerWindow::ConnectTabSignals(DocumentTab* tab) {
               return;
             }
             statusBar()->showMessage(
-                QStringLiteral("打开失败：%1（%2）")
+                tr("Failed to open: %1 (%2)")
                     .arg(QFileInfo(path).fileName(), reason),
                 5000);
           });
@@ -771,7 +771,7 @@ void MdViewerWindow::ReloadTab(int index) {
   tab->pending_restore = true;
   SetTabLoading(tab, true);
   if (tab->view->LoadFile(tab->path)) {
-    tab->view->ShowPlaceholder(QStringLiteral("正在重新渲染…"));
+    tab->view->ShowPlaceholder(tr("Re-rendering…"));
   } else {
     SetTabLoading(tab, false);
   }
@@ -785,7 +785,7 @@ void MdViewerWindow::ReopenClosedTab() {
       return;
     }
   }
-  statusBar()->showMessage(QStringLiteral("没有可重新打开的标签页"), 3000);
+  statusBar()->showMessage(tr("No closed tab to reopen"), 3000);
 }
 
 void MdViewerWindow::OnTabMoved(int from, int to) {
@@ -843,10 +843,10 @@ void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
     return;
   }
   const bool welcome = tab->path.isEmpty();
-  tab_bar_->setTabText(index, welcome ? QStringLiteral("欢迎")
-                                      : QFileInfo(tab->path).fileName());
+  tab_bar_->setTabText(
+      index, welcome ? tr("Welcome") : QFileInfo(tab->path).fileName());
   tab_bar_->setTabToolTip(index,
-                          welcome ? QStringLiteral("欢迎页")
+                          welcome ? tr("Welcome Page")
                                   : DocumentDisplayTitle(root_dir_, tab->path));
   // 欢迎标签用彩色应用图标，文档标签用当前主题的单色文件图标
   tab_bar_->setTabIcon(
@@ -876,7 +876,7 @@ void MdViewerWindow::UpdateShellForActiveTab() {
   UpdateFindControls();
   UpdateOutlineVisibility();
   if (welcome) {
-    setWindowTitle(QStringLiteral("Markdown 查看器"));
+    setWindowTitle(tr("Markdown Viewer"));
     if (welcome_ != nullptr) {
       welcome_->SetRecentFiles(settings_->recent_files, root_dir_);
     }
@@ -898,7 +898,7 @@ void MdViewerWindow::UpdateShellForActiveTab() {
   }
   if (tab_count_label_ != nullptr) {
     tab_count_label_->setText(
-        QStringLiteral("%1 个标签页").arg(static_cast<int>(tabs_.size())));
+        tr("%1 tabs").arg(static_cast<int>(tabs_.size())));
   }
   UpdateBookmarkUi();
   UpdateHistoryActions();
@@ -909,60 +909,58 @@ void MdViewerWindow::UpdateShellForActiveTab() {
 }
 
 void MdViewerWindow::createActions() {
-  actions_.open_file = new QAction(QStringLiteral("打开文件…"), this);
+  actions_.open_file = new QAction(tr("Open File…"), this);
   actions_.open_file->setShortcut(QKeySequence::Open);
-  actions_.open_dir = new QAction(QStringLiteral("打开目录…"), this);
-  actions_.new_tab = new QAction(QStringLiteral("新建标签页"), this);
+  actions_.open_dir = new QAction(tr("Open Folder…"), this);
+  actions_.new_tab = new QAction(tr("New Tab"), this);
   actions_.new_tab->setObjectName(QStringLiteral("newTabAction"));
   actions_.new_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+T")));
-  actions_.close_tab = new QAction(QStringLiteral("关闭标签页"), this);
+  actions_.close_tab = new QAction(tr("Close Tab"), this);
   actions_.close_tab->setObjectName(QStringLiteral("closeTabAction"));
   actions_.close_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
-  actions_.reopen_tab =
-      new QAction(QStringLiteral("重新打开关闭的标签页"), this);
+  actions_.reopen_tab = new QAction(tr("Reopen Closed Tab"), this);
   actions_.reopen_tab->setObjectName(QStringLiteral("reopenTabAction"));
   actions_.reopen_tab->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+T")));
-  actions_.new_window = new QAction(QStringLiteral("新建窗口"), this);
+  actions_.new_window = new QAction(tr("New Window"), this);
   actions_.new_window->setObjectName(QStringLiteral("newWindowAction"));
   actions_.new_window->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+N")));
-  actions_.unload_workspace = new QAction(QStringLiteral("卸载工作区"), this);
+  actions_.unload_workspace = new QAction(tr("Unload Workspace"), this);
   actions_.unload_workspace->setObjectName(
       QStringLiteral("unloadWorkspaceAction"));
   actions_.unload_workspace->setEnabled(false);
-  actions_.quit = new QAction(QStringLiteral("退出"), this);
+  actions_.quit = new QAction(tr("Quit"), this);
   actions_.quit->setShortcut(QKeySequence::Quit);
-  actions_.about = new QAction(QStringLiteral("关于"), this);
-  actions_.export_html = new QAction(QStringLiteral("导出 HTML…"), this);
+  actions_.about = new QAction(tr("About"), this);
+  actions_.export_html = new QAction(tr("Export HTML…"), this);
   actions_.export_html->setObjectName(QStringLiteral("exportHtmlAction"));
-  actions_.export_pdf = new QAction(QStringLiteral("导出 PDF…"), this);
+  actions_.export_pdf = new QAction(tr("Export PDF…"), this);
 
   // 两个搜索入口：Ctrl+F 查当前文档，Ctrl+Shift+F 搜整个工作区。
   // Ctrl+K 退休，不再绑定任何搜索
-  actions_.find = new QAction(QStringLiteral("在当前文档中查找"), this);
+  actions_.find = new QAction(tr("Find in Current Document"), this);
   actions_.find->setShortcut(QKeySequence(QKeySequence::Find));
-  actions_.find->setToolTip(QStringLiteral("在当前文档中查找（Ctrl+F）"));
-  actions_.workspace_search = new QAction(QStringLiteral("搜索工作区"), this);
+  actions_.find->setToolTip(tr("Find in Current Document (Ctrl+F)"));
+  actions_.workspace_search = new QAction(tr("Search Workspace"), this);
   actions_.workspace_search->setObjectName(
       QStringLiteral("workspaceSearchAction"));
   actions_.workspace_search->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+F")));
   actions_.workspace_search->setToolTip(
-      QStringLiteral("搜索工作区文件与内容（Ctrl+Shift+F）"));
+      tr("Search workspace files and content (Ctrl+Shift+F)"));
 
   // 活动栏的四个视图与大纲开关
-  actions_.view_documents = new QAction(QStringLiteral("文档视图"), this);
+  actions_.view_documents = new QAction(tr("Documents View"), this);
   actions_.view_documents->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+E")));
-  actions_.view_bookmarks = new QAction(QStringLiteral("收藏视图"), this);
+  actions_.view_bookmarks = new QAction(tr("Bookmarks View"), this);
   actions_.view_bookmarks->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+B")));
-  actions_.view_render_status =
-      new QAction(QStringLiteral("渲染状态视图"), this);
+  actions_.view_render_status = new QAction(tr("Render Status View"), this);
   actions_.view_render_status->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+R")));
-  actions_.outline = new QAction(QStringLiteral("大纲"), this);
+  actions_.outline = new QAction(tr("Outline"), this);
   actions_.outline->setObjectName(QStringLiteral("outlineAction"));
   actions_.outline->setCheckable(true);
   actions_.outline->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+O")));
@@ -970,7 +968,7 @@ void MdViewerWindow::createActions() {
 
 void MdViewerWindow::initUi() {
   setObjectName(QStringLiteral("mdViewerWindow"));
-  setWindowTitle(QStringLiteral("Markdown 查看器"));
+  setWindowTitle(tr("Markdown Viewer"));
   setMinimumWidth(600);
   resize(1100, 800);
 
@@ -1023,7 +1021,7 @@ void MdViewerWindow::initUi() {
   auto* side_layout = new QVBoxLayout(side_panel_);
   side_layout->setContentsMargins(0, 0, 0, 0);
   side_layout->setSpacing(0);
-  side_title_ = new QLabel(QStringLiteral("文档"), side_panel_);
+  side_title_ = new QLabel(tr("Documents"), side_panel_);
   side_title_->setObjectName(QStringLiteral("sidePanelTitle"));
   side_title_->setContentsMargins(10, 8, 10, 4);
   QFont side_title_font = side_title_->font();
@@ -1062,7 +1060,7 @@ void MdViewerWindow::initUi() {
   auto* outline_header_layout = new QHBoxLayout(outline_header);
   outline_header_layout->setContentsMargins(10, 6, 6, 6);
   outline_header_layout->setSpacing(6);
-  auto* outline_title = new QLabel(QStringLiteral("大纲"), outline_header);
+  auto* outline_title = new QLabel(tr("Outline"), outline_header);
   outline_title->setObjectName(QStringLiteral("outlineTitle"));
   outline_header_layout->addWidget(outline_title);
   outline_header_layout->addStretch(1);
@@ -1070,7 +1068,7 @@ void MdViewerWindow::initUi() {
   outline_hide_button_->setObjectName(QStringLiteral("outlineHideButton"));
   outline_hide_button_->setAutoRaise(true);
   outline_hide_button_->setText(QStringLiteral("×"));
-  outline_hide_button_->setToolTip(QStringLiteral("隐藏大纲（Ctrl+Shift+O）"));
+  outline_hide_button_->setToolTip(tr("Hide Outline (Ctrl+Shift+O)"));
   outline_header_layout->addWidget(outline_hide_button_);
   outline_ = new MarkdownOutlineWidget(outline_column_);
   outline_layout->addWidget(outline_header);
@@ -1137,7 +1135,7 @@ void MdViewerWindow::initUi() {
       QIcon(QStringLiteral(":/resources/svg/status-dot.svg")).pixmap(8, 8));
   status_dot->setFixedSize(8, 8);
   ready_layout->addWidget(status_dot);
-  status_ready_label_ = new QLabel(QStringLiteral("就绪"), ready_widget);
+  status_ready_label_ = new QLabel(tr("Ready"), ready_widget);
   status_ready_label_->setObjectName(QStringLiteral("statusReadyLabel"));
   ready_layout->addWidget(status_ready_label_);
   left_layout->addWidget(ready_widget);
@@ -1147,27 +1145,28 @@ void MdViewerWindow::initUi() {
   render_progress_ = new QProgressBar(this);
   render_progress_->setObjectName(QStringLiteral("renderProgressBar"));
   render_progress_->setTextVisible(true);
-  render_progress_->setFormat(QStringLiteral("渲染 %v/%m"));
+  render_progress_->setFormat(tr("Render %v/%m"));
   render_progress_->setFixedWidth(160);
-  render_progress_->setToolTip(QStringLiteral("当前文档的渲染任务进度"));
+  render_progress_->setToolTip(
+      tr("Render task progress of the current document"));
   render_progress_->hide();
-  tab_count_label_ = new QLabel(QStringLiteral("1 个标签页"), this);
+  tab_count_label_ = new QLabel(tr("1 tab"), this);
   tab_count_label_->setObjectName(QStringLiteral("tabCountLabel"));
-  tab_count_label_->setToolTip(QStringLiteral("打开的标签页数量"));
-  document_count_label_ = new QLabel(QStringLiteral("0 篇"), this);
+  tab_count_label_->setToolTip(tr("Number of open tabs"));
+  document_count_label_ = new QLabel(tr("0 documents"), this);
   document_count_label_->setObjectName(QStringLiteral("documentCountLabel"));
   document_count_label_->setToolTip(
-      QStringLiteral("当前目录中的 Markdown 文档数"));
+      tr("Markdown documents in the current folder"));
   reading_time_label_ = new QLabel(this);
   reading_time_label_->setObjectName(QStringLiteral("readingTimeLabel"));
   reading_time_label_->setToolTip(
-      QStringLiteral("按源字符数估算，约 500 字/分钟"));
+      tr("Estimated from source characters, about 500 chars/min"));
   backend_label_ =
       new QLabel(QStringLiteral(QLITEMD_BACKEND_LABEL)
                      .replace(QStringLiteral(" / "), QStringLiteral(" · ")),
                  this);
   backend_label_->setObjectName(QStringLiteral("backendLabel"));
-  backend_label_->setToolTip(QStringLiteral("当前构建的渲染后端"));
+  backend_label_->setToolTip(tr("Render backends of this build"));
   auto* stats_widget = new QWidget(this);
   stats_widget->setObjectName(QStringLiteral("statusStatsWidget"));
   auto* stats_layout = new QHBoxLayout(stats_widget);
@@ -1194,59 +1193,59 @@ void MdViewerWindow::initUi() {
 
   // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
   const bool initial_dark = settings_->dark_theme;
-  actions_.quick_open = new QAction(QStringLiteral("快速跳转…"), this);
+  actions_.quick_open = new QAction(tr("Quick Open…"), this);
   actions_.quick_open->setObjectName(QStringLiteral("quickOpenAction"));
   actions_.quick_open->setIcon(
       ThemeIcon(QStringLiteral("search"), initial_dark));
   actions_.quick_open->setShortcut(QKeySequence(QStringLiteral("Ctrl+P")));
   actions_.quick_open->setToolTip(
-      QStringLiteral("跳转到文件、标题或命令（Ctrl+P）"));
+      tr("Jump to file, heading or command (Ctrl+P)"));
 
   // 导航与缩放从工具条搬进标题栏；文件跳转和锚点跳转共用一个历史栈
-  actions_.back = new QAction(QStringLiteral("后退"), this);
+  actions_.back = new QAction(tr("Back"), this);
   actions_.back->setObjectName(QStringLiteral("navBackAction"));
   actions_.back->setIcon(ThemeIcon(QStringLiteral("back"), initial_dark));
   actions_.back->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Left")));
-  actions_.back->setToolTip(QStringLiteral("后退（Ctrl+Alt+←）"));
+  actions_.back->setToolTip(tr("Back (Ctrl+Alt+←)"));
 
-  actions_.forward = new QAction(QStringLiteral("前进"), this);
+  actions_.forward = new QAction(tr("Forward"), this);
   actions_.forward->setObjectName(QStringLiteral("navForwardAction"));
   actions_.forward->setIcon(ThemeIcon(QStringLiteral("forward"), initial_dark));
   actions_.forward->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Right")));
-  actions_.forward->setToolTip(QStringLiteral("前进（Ctrl+Alt+→）"));
+  actions_.forward->setToolTip(tr("Forward (Ctrl+Alt+→)"));
 
   // 缩放快捷键由 MarkdownView 内部持有，这里的按钮不再重复注册快捷键
   actions_.zoom_out = new QAction(QStringLiteral("−"), this);
   actions_.zoom_out->setObjectName(QStringLiteral("zoomOutAction"));
   actions_.zoom_out->setIcon(
       ThemeIcon(QStringLiteral("zoom-out"), initial_dark));
-  actions_.zoom_out->setToolTip(QStringLiteral("缩小（Ctrl+-）"));
+  actions_.zoom_out->setToolTip(tr("Zoom Out (Ctrl+-)"));
 
   actions_.zoom_reset = new QAction(QStringLiteral("100%"), this);
   actions_.zoom_reset->setObjectName(QStringLiteral("zoomResetAction"));
   actions_.zoom_reset->setIcon(
       ThemeIcon(QStringLiteral("zoom-reset"), initial_dark));
-  actions_.zoom_reset->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
+  actions_.zoom_reset->setToolTip(tr("Reset Zoom (Ctrl+0)"));
 
-  actions_.settings = new QAction(QStringLiteral("设置…"), this);
+  actions_.settings = new QAction(tr("Settings…"), this);
   actions_.settings->setObjectName(QStringLiteral("settingsAction"));
   actions_.settings->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
-  actions_.settings->setToolTip(QStringLiteral("设置（Ctrl+,）"));
+  actions_.settings->setToolTip(tr("Settings (Ctrl+,)"));
 
   actions_.zoom_in = new QAction(QStringLiteral("+"), this);
   actions_.zoom_in->setObjectName(QStringLiteral("zoomInAction"));
   actions_.zoom_in->setIcon(ThemeIcon(QStringLiteral("zoom-in"), initial_dark));
-  actions_.zoom_in->setToolTip(QStringLiteral("放大（Ctrl+=）"));
+  actions_.zoom_in->setToolTip(tr("Zoom In (Ctrl+=)"));
 
-  actions_.bookmark = new QAction(QStringLiteral("收藏当前文档"), this);
+  actions_.bookmark = new QAction(tr("Bookmark Current Document"), this);
   actions_.bookmark->setObjectName(QStringLiteral("bookmarkAction"));
   actions_.bookmark->setShortcut(QKeySequence(QStringLiteral("Ctrl+D")));
-  actions_.bookmark->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
+  actions_.bookmark->setToolTip(tr("Bookmark Current Document (Ctrl+D)"));
   UpdateHistoryActions();
 
   // 汉堡菜单：文件/视图/帮助三组动作
   app_menu_ = new QMenu(this);
-  QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
+  QMenu* file_menu = app_menu_->addMenu(tr("&File"));
   file_menu->addAction(actions_.new_tab);
   file_menu->addAction(actions_.close_tab);
   file_menu->addAction(actions_.reopen_tab);
@@ -1255,15 +1254,15 @@ void MdViewerWindow::initUi() {
   file_menu->addAction(actions_.open_file);
   file_menu->addAction(actions_.open_dir);
   file_menu->addAction(actions_.unload_workspace);
-  recent_menu_ = file_menu->addMenu(QStringLiteral("最近打开"));
-  recent_roots_menu_ = file_menu->addMenu(QStringLiteral("最近打开的工作区"));
+  recent_menu_ = file_menu->addMenu(tr("Recent Files"));
+  recent_roots_menu_ = file_menu->addMenu(tr("Recent Workspaces"));
   file_menu->addSeparator();
   file_menu->addAction(actions_.export_html);
   file_menu->addAction(actions_.export_pdf);
   file_menu->addSeparator();
   file_menu->addAction(actions_.quit);
 
-  view_menu_ = app_menu_->addMenu(QStringLiteral("视图(&V)"));
+  view_menu_ = app_menu_->addMenu(tr("&View"));
   view_menu_->addAction(actions_.quick_open);
   view_menu_->addAction(actions_.workspace_search);
   view_menu_->addSeparator();
@@ -1274,7 +1273,7 @@ void MdViewerWindow::initUi() {
   view_menu_->addSeparator();
   view_menu_->addAction(actions_.back);
   view_menu_->addAction(actions_.forward);
-  actions_.refresh = new QAction(QStringLiteral("刷新"), this);
+  actions_.refresh = new QAction(tr("Refresh"), this);
   actions_.refresh->setObjectName(QStringLiteral("refreshAction"));
   actions_.refresh->setShortcut(QKeySequence(Qt::Key_F5));
   view_menu_->addAction(actions_.refresh);
@@ -1285,16 +1284,14 @@ void MdViewerWindow::initUi() {
   view_menu_->addSeparator();
   view_menu_->addAction(actions_.settings);
 #ifdef Q_OS_WIN
-  QMenu* material_menu = view_menu_->addMenu(QStringLiteral("窗口材质"));
+  QMenu* material_menu = view_menu_->addMenu(tr("Window Material"));
   auto* material_group = new QActionGroup(this);
-  actions_.material_auto =
-      material_menu->addAction(QStringLiteral("自动（Mica）"));
+  actions_.material_auto = material_menu->addAction(tr("Auto (Mica)"));
   actions_.material_auto->setObjectName(QStringLiteral("materialAutoAction"));
-  actions_.material_acrylic =
-      material_menu->addAction(QStringLiteral("亚克力"));
+  actions_.material_acrylic = material_menu->addAction(tr("Acrylic"));
   actions_.material_acrylic->setObjectName(
       QStringLiteral("materialAcrylicAction"));
-  actions_.material_none = material_menu->addAction(QStringLiteral("关闭"));
+  actions_.material_none = material_menu->addAction(tr("Close"));
   actions_.material_none->setObjectName(QStringLiteral("materialNoneAction"));
   for (QAction* action : {actions_.material_auto, actions_.material_acrylic,
                           actions_.material_none}) {
@@ -1310,7 +1307,7 @@ void MdViewerWindow::initUi() {
   UpdateMaterialActions();
 #endif
 
-  QMenu* help_menu = app_menu_->addMenu(QStringLiteral("帮助(&H)"));
+  QMenu* help_menu = app_menu_->addMenu(tr("&Help"));
   help_menu->addAction(actions_.about);
 
   // 菜单挂到标题栏按钮后不再是 QMenuBar；关键动作仍挂到窗口，快捷键才稳
@@ -1345,7 +1342,7 @@ void MdViewerWindow::initUi() {
   }
   menu_button_->setPopupMode(QToolButton::InstantPopup);
   menu_button_->setMenu(app_menu_);
-  menu_button_->setToolTip(QStringLiteral("菜单"));
+  menu_button_->setToolTip(tr("Menu"));
 
   // 标题栏左侧：菜单 + 标签条 + 新建；标签条吃掉剩余宽度
   title_leading_widget_ = new QWidget(fluent_frame_->titleBar());
@@ -1369,8 +1366,8 @@ void MdViewerWindow::initUi() {
   }
   // 欢迎标签固定第 0 位、不可关闭
   tab_bar_->addTab(QIcon(QStringLiteral(":/resources/svg/icon.svg")),
-                   QStringLiteral("欢迎"));
-  tab_bar_->setTabToolTip(0, QStringLiteral("欢迎页"));
+                   tr("Welcome"));
+  tab_bar_->setTabToolTip(0, tr("Welcome Page"));
   tab_bar_->RemoveCloseButton(0);
   // 标签 38 + 顶部 4；标题栏高度跟着标签走，否则会被裁掉
   fluent_frame_->titleBar()->setFixedHeight(4 +
@@ -1432,7 +1429,7 @@ void MdViewerWindow::initUi() {
       return;
     }
     QGuiApplication::clipboard()->setText(QDir::toNativeSeparators(path));
-    statusBar()->showMessage(QStringLiteral("已复制路径"), 2000);
+    statusBar()->showMessage(tr("Path copied"), 2000);
   });
   search_controller_ = new SearchController(this);
   root_watcher_ = new QFileSystemWatcher(this);
@@ -1466,8 +1463,8 @@ void MdViewerWindow::initSignals() {
             session_controller_->SaveAll();
             ApplyReadingStyle();
             statusBar()->showMessage(style == ReadingStyle::kPrototype
-                                         ? QStringLiteral("阅读样式：原型")
-                                         : QStringLiteral("阅读样式：库默认"),
+                                         ? tr("Reading style: prototype")
+                                         : tr("Reading style: library default"),
                                      2000);
           });
   connect(settings_panel_, &SettingsPanel::transparentReadingChanged, this,
@@ -1476,8 +1473,8 @@ void MdViewerWindow::initSignals() {
             session_controller_->SaveAll();
             UpdateReadingSurface();
             statusBar()->showMessage(enabled
-                                         ? QStringLiteral("阅读区：透明")
-                                         : QStringLiteral("阅读区：主题底色"),
+                                         ? tr("Reading area: transparent")
+                                         : tr("Reading area: theme background"),
                                      2000);
           });
   connect(actions_.back, &QAction::triggered, this, &MdViewerWindow::GoBack);
@@ -1507,12 +1504,11 @@ void MdViewerWindow::initSignals() {
   connect(actions_.quit, &QAction::triggered, this, &QWidget::close);
   connect(actions_.about, &QAction::triggered, this, [this] {
     QMessageBox::about(
-        this, QStringLiteral("关于"),
-        QStringLiteral("qt_md_viewer——qlitemd 的 Markdown "
-                       "查看器应用。\n\n"
-                       "界面字体：MiSans（小米 MiSans 字体许可）\n\n"
-                       "作者：zhouyonghua\n"
-                       "邮箱：zhouyohu@163.com"));
+        this, tr("About"),
+        tr("qt_md_viewer — the Markdown viewer app of qlitemd.\n\n"
+           "UI font: MiSans (Xiaomi MiSans font license)\n\n"
+           "Author: zhouyonghua\n"
+           "Email: zhouyohu@163.com"));
   });
   connect(welcome_, &WelcomeView::openFileRequested, this,
           &MdViewerWindow::OpenFileDialog);
@@ -1803,13 +1799,14 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
   } else {
     quick_open_files_.clear();
     root_dir_ = QFileInfo(root).absoluteFilePath();
-    side_panel_view_->SetRootMissing(root_dir_,
-                                     QStringLiteral("目录不存在或不可读"));
+    side_panel_view_->SetRootMissing(
+        root_dir_, tr("Folder does not exist or is not readable"));
     side_panel_view_->SetSearchAvailable(false);
   }
   if (document_count_label_ != nullptr) {
-    document_count_label_->setText(QStringLiteral("%1 篇").arg(
-        result.root_exists ? result.markdown_file_count : 0));
+    document_count_label_->setText(
+        tr("%1 documents")
+            .arg(result.root_exists ? result.markdown_file_count : 0));
   }
   if (root_watcher_ != nullptr) {
     if (!watched_dirs_.isEmpty()) {
@@ -1843,8 +1840,7 @@ QString MdViewerWindow::OpenPathCore(const QString& path, OpenIntent intent) {
     const DocumentScanResult result = SetRootDir(info.absoluteFilePath());
     if (!result.root_exists || result.markdown_file_count == 0) {
       statusBar()->showMessage(
-          QStringLiteral("目录中没有 Markdown 文件：%1").arg(result.root),
-          5000);
+          tr("No Markdown files in folder: %1").arg(result.root), 5000);
       return {};
     }
     for (const DocumentEntry& entry : result.entries) {
@@ -1921,8 +1917,8 @@ void MdViewerWindow::RestoreSession() {
   // 上次显式卸载了工作区：重启回欢迎页，最近列表照常显示，
   // 但不自动恢复任何文档
   if (!session_controller_->RestoreRequested()) {
-    side_panel_view_->SetRootMissing(
-        QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+    side_panel_view_->SetRootMissing(QString(),
+                                     tr("Start with \"File > Open Folder\""));
     ShowWelcome();
     return;
   }
@@ -1993,21 +1989,20 @@ void MdViewerWindow::OpenLastFile() {
     if (ShowFile(absolute, OpenReason::kRestore, OpenIntent::kNewTab)) {
       PushHistory(absolute, QString());
       statusBar()->showMessage(
-          QStringLiteral("已恢复上次打开：%1").arg(QFileInfo(path).fileName()),
-          3000);
+          tr("Restored last opened: %1").arg(QFileInfo(path).fileName()), 3000);
     }
     return;
   }
-  side_panel_view_->SetRootMissing(
-      QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+  side_panel_view_->SetRootMissing(QString(),
+                                   tr("Start with \"File > Open Folder\""));
   ShowWelcome();
 }
 
 void MdViewerWindow::OpenFileDialog() {
   const QString start_dir = root_dir_.isEmpty() ? QDir::homePath() : root_dir_;
   const QString path = QFileDialog::getOpenFileName(
-      this, QStringLiteral("打开 Markdown"), start_dir,
-      QStringLiteral("Markdown 文档 (*.md *.markdown);;所有文件 (*)"));
+      this, tr("Open Markdown"), start_dir,
+      tr("Markdown Documents (*.md *.markdown);;All Files (*)"));
   if (!path.isEmpty()) {
     OpenPath(path);
   }
@@ -2015,7 +2010,7 @@ void MdViewerWindow::OpenFileDialog() {
 
 void MdViewerWindow::OpenDirectoryDialog() {
   const QString dir = QFileDialog::getExistingDirectory(
-      this, QStringLiteral("打开目录"),
+      this, tr("Open Folder"),
       root_dir_.isEmpty() ? QDir::homePath() : root_dir_);
   if (!dir.isEmpty()) {
     OpenPath(dir);
@@ -2034,8 +2029,8 @@ void MdViewerWindow::UnloadWorkspace() {
   }
   side_panel_view_->BeginSearch(QString());
   side_panel_view_->SetCurrentFile(QString());
-  side_panel_view_->SetRootMissing(
-      QString(), QStringLiteral("从“文件 > 打开目录”开始阅读"));
+  side_panel_view_->SetRootMissing(QString(),
+                                   tr("Start with \"File > Open Folder\""));
   side_panel_view_->SetSearchAvailable(false);
 
   root_dir_.clear();
@@ -2059,12 +2054,12 @@ void MdViewerWindow::UnloadWorkspace() {
   if (document_bar_ != nullptr) {
     document_bar_->SetPath(QString(), QString());
   }
-  document_count_label_->setText(QStringLiteral("0 篇"));
+  document_count_label_->setText(tr("0 documents"));
   UpdateBookmarkUi();
   actions_.unload_workspace->setEnabled(false);
-  statusBar()->showMessage(QStringLiteral("已卸载工作区：%1")
-                               .arg(QFileInfo(unloaded_root).fileName()),
-                           4000);
+  statusBar()->showMessage(
+      tr("Workspace unloaded: %1").arg(QFileInfo(unloaded_root).fileName()),
+      4000);
   ShowWelcome();
 }
 
@@ -2111,8 +2106,8 @@ void MdViewerWindow::ShowQuickOpen() {
     QuickOpenItem item;
     item.kind = QuickOpenKind::kRecent;
     item.title = info.fileName();
-    item.subtitle = QStringLiteral("最近 · %1")
-                        .arg(QDir::toNativeSeparators(info.absolutePath()));
+    item.subtitle =
+        tr("Recent · %1").arg(QDir::toNativeSeparators(info.absolutePath()));
     item.path = absolute;
     items.append(item);
   }
@@ -2126,43 +2121,36 @@ void MdViewerWindow::ShowQuickOpen() {
     item.command_id = id;
     items.append(item);
   };
-  add_command(QStringLiteral("打开文件…"), QStringLiteral("文件"),
-              QStringLiteral("open-file"));
-  add_command(QStringLiteral("打开目录…"), QStringLiteral("文件"),
-              QStringLiteral("open-dir"));
+  add_command(tr("Open File…"), tr("File"), QStringLiteral("open-file"));
+  add_command(tr("Open Folder…"), tr("File"), QStringLiteral("open-dir"));
   if (!root_dir_.isEmpty()) {
-    add_command(QStringLiteral("卸载工作区"), QStringLiteral("文件"),
+    add_command(tr("Unload Workspace"), tr("File"),
                 QStringLiteral("unload-workspace"));
   }
   add_command(CurrentView()->theme() == MarkdownTheme::Dark
-                  ? QStringLiteral("切换到浅色主题")
-                  : QStringLiteral("切换到深色主题"),
-              QStringLiteral("外观"), QStringLiteral("toggle-theme"));
-  add_command(QStringLiteral("阅读外观…"), QStringLiteral("外观"),
+                  ? tr("Switch to light theme")
+                  : tr("Switch to dark theme"),
+              tr("Appearance"), QStringLiteral("toggle-theme"));
+  add_command(tr("Reading Appearance…"), tr("Appearance"),
               QStringLiteral("appearance"));
   const bool starred = !CurrentTab()->path.isEmpty() &&
                        bookmark_controller_->Contains(CurrentTab()->path);
-  add_command(starred ? QStringLiteral("取消收藏当前文档")
-                      : QStringLiteral("收藏当前文档"),
-              QStringLiteral("阅读"), QStringLiteral("toggle-bookmark"));
-  add_command(QStringLiteral("导出 HTML…"), QStringLiteral("导出"),
-              QStringLiteral("export-html"));
-  add_command(QStringLiteral("导出 PDF…"), QStringLiteral("导出"),
-              QStringLiteral("export-pdf"));
-  add_command(QStringLiteral("刷新文档树"), QStringLiteral("视图"),
+  add_command(starred ? tr("Unbookmark Current Document")
+                      : tr("Bookmark Current Document"),
+              tr("Reading"), QStringLiteral("toggle-bookmark"));
+  add_command(tr("Export HTML…"), tr("Export"), QStringLiteral("export-html"));
+  add_command(tr("Export PDF…"), tr("Export"), QStringLiteral("export-pdf"));
+  add_command(tr("Refresh document tree"), tr("View"),
               QStringLiteral("refresh-root"));
   if (CurrentView()->has_document() && !CurrentView()->is_rendering() &&
       !CurrentView()->GeneratedImageUrls().isEmpty()) {
-    add_command(QStringLiteral("预览公式/图表"), QStringLiteral("阅读"),
+    add_command(tr("Preview formula/diagram"), tr("Reading"),
                 QStringLiteral("preview-image"));
   }
-  add_command(QStringLiteral("缩小"), QStringLiteral("缩放"),
-              QStringLiteral("zoom-out"));
-  add_command(QStringLiteral("重置缩放"), QStringLiteral("缩放"),
-              QStringLiteral("zoom-reset"));
-  add_command(QStringLiteral("放大"), QStringLiteral("缩放"),
-              QStringLiteral("zoom-in"));
-  add_command(QStringLiteral("打开渲染设置"), QStringLiteral("视图"),
+  add_command(tr("Zoom Out"), tr("Zoom"), QStringLiteral("zoom-out"));
+  add_command(tr("Reset Zoom"), tr("Zoom"), QStringLiteral("zoom-reset"));
+  add_command(tr("Zoom In"), tr("Zoom"), QStringLiteral("zoom-in"));
+  add_command(tr("Open render settings"), tr("View"),
               QStringLiteral("show-settings"));
 
   for (const QString& path : quick_open_files_) {
@@ -2258,7 +2246,7 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   if (theme_changed && active != nullptr &&
       (active->has_document() || active->is_rendering())) {
     // 换肤同样要等整篇重渲染；否则旧配色会一直留在屏幕上
-    active->ShowPlaceholder(QStringLiteral("正在渲染…"));
+    active->ShowPlaceholder(tr("Rendering…"));
   }
   // 面板是被动同步方，用 QSignalBlocker 防止再发一次 themeChanged
   settings_panel_->SetTheme(theme);
@@ -2267,8 +2255,8 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   // 星标图标按调色板绘制，换肤后要重画
   RefreshThemeIcons();
   statusBar()->showMessage(theme == MarkdownTheme::Dark
-                               ? QStringLiteral("已切换主题：暗色")
-                               : QStringLiteral("已切换主题：浅色"),
+                               ? tr("Theme switched: dark")
+                               : tr("Theme switched: light"),
                            3000);
 }
 
@@ -2367,10 +2355,10 @@ void MdViewerWindow::ApplyWindowMaterial(WindowMaterial material,
   }
   if (announce) {
     const QString message = material == WindowMaterial::kAcrylic
-                                ? QStringLiteral("窗口材质：亚克力")
+                                ? tr("Window material: acrylic")
                             : material == WindowMaterial::kNone
-                                ? QStringLiteral("窗口材质：关闭")
-                                : QStringLiteral("窗口材质：自动（Mica）");
+                                ? tr("Window material: off")
+                                : tr("Window material: auto (Mica)");
     statusBar()->showMessage(message, 3000);
   }
 #else
@@ -2572,7 +2560,7 @@ void MdViewerWindow::UpdateReadingTime() {
     return;
   }
   const int minutes = qMax(1, (chars + 499) / 500);
-  reading_time_label_->setText(QStringLiteral("约 %1 分钟").arg(minutes));
+  reading_time_label_->setText(tr("about %1 min").arg(minutes));
 }
 
 void MdViewerWindow::ScrollToTop() {
@@ -2636,8 +2624,9 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   if (reason == OpenReason::kUser && info.size() > kLargeDocumentBytes &&
       !large_file_prompted_.contains(absolute_path)) {
     const QMessageBox::StandardButton answer = QMessageBox::warning(
-        this, QStringLiteral("大文件"),
-        QStringLiteral("该文档约 %1，渲染期间窗口可能无响应。仍要打开吗？")
+        this, tr("Large File"),
+        tr("This document is about %1; the window may be unresponsive while "
+           "rendering. Open it anyway?")
             .arg(QLocale().formattedDataSize(info.size())),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (answer != QMessageBox::Yes) {
@@ -2674,7 +2663,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   HideWelcome();
   SetTabLoading(target, true);
   // 旧文档还在屏幕上，而新文档已在后台渲染；先给一个明确的等待页
-  target->view->ShowPlaceholder(QStringLiteral("正在渲染…"));
+  target->view->ShowPlaceholder(tr("Rendering…"));
   target->path = absolute_path;
   // 标题栏、面包屑、状态栏路径统一由当前标签刷新
   UpdateShellForActiveTab();
@@ -2686,7 +2675,7 @@ bool MdViewerWindow::ShowFile(const QString& path, OpenReason reason,
   RefreshRecentMenu();
   if (reason == OpenReason::kRestore) {
     statusBar()->showMessage(
-        QStringLiteral("已恢复 %1（%2）")
+        tr("Restored %1 (%2)")
             .arg(info.fileName(), QLocale().formattedDataSize(info.size())),
         3000);
   }
@@ -2705,8 +2694,8 @@ void MdViewerWindow::UpdateBookmarkUi() {
     star->setIcon(starred
                       ? QIcon(QStringLiteral(":/resources/svg/star-filled.svg"))
                       : ThemeIcon(QStringLiteral("star-outline"), ThemeDark()));
-    star->setToolTip(starred ? QStringLiteral("取消收藏（Ctrl+D）")
-                             : QStringLiteral("收藏当前文档（Ctrl+D）"));
+    star->setToolTip(starred ? tr("Unbookmark (Ctrl+D)")
+                             : tr("Bookmark Current Document (Ctrl+D)"));
   }
   if (side_panel_view_ != nullptr) {
     side_panel_view_->SetBookmarks(bookmark_controller_->items(), root_dir_);
@@ -2717,7 +2706,7 @@ void MdViewerWindow::SetBookmarkChecked(bool starred) {
   const QString path = CurrentTab()->path;
   if (path.isEmpty()) {
     UpdateBookmarkUi();
-    statusBar()->showMessage(QStringLiteral("先打开一篇文档再收藏"), 3000);
+    statusBar()->showMessage(tr("Open a document before bookmarking"), 3000);
     return;
   }
   if (bookmark_controller_->Contains(path) != starred) {
@@ -2725,8 +2714,8 @@ void MdViewerWindow::SetBookmarkChecked(bool starred) {
   }
   bookmark_controller_->Save();
   UpdateBookmarkUi();
-  statusBar()->showMessage(
-      starred ? QStringLiteral("已收藏") : QStringLiteral("已取消收藏"), 2000);
+  statusBar()->showMessage(starred ? tr("Bookmarked") : tr("Bookmark removed"),
+                           2000);
 }
 
 void MdViewerWindow::ToggleBookmarkForPath(const QString& path) {
@@ -2737,15 +2726,14 @@ void MdViewerWindow::ToggleBookmarkForPath(const QString& path) {
   bookmark_controller_->Toggle(path, root_dir_);
   bookmark_controller_->Save();
   UpdateBookmarkUi();
-  statusBar()->showMessage(
-      starred ? QStringLiteral("已收藏") : QStringLiteral("已取消收藏"), 2000);
+  statusBar()->showMessage(starred ? tr("Bookmarked") : tr("Bookmark removed"),
+                           2000);
 }
 
 void MdViewerWindow::OpenBookmark(const QString& path) {
   if (!QFileInfo(path).isFile()) {
     statusBar()->showMessage(
-        QStringLiteral("文件已不存在：%1").arg(QFileInfo(path).fileName()),
-        4000);
+        tr("File no longer exists: %1").arg(QFileInfo(path).fileName()), 4000);
     return;
   }
   const bool outside_root = !IsPathUnderRoot(path, root_dir_);
@@ -2755,7 +2743,8 @@ void MdViewerWindow::OpenBookmark(const QString& path) {
   }
   PushHistory(absolute, QString());
   if (outside_root) {
-    statusBar()->showMessage(QStringLiteral("该书签不在当前目录内"), 4000);
+    statusBar()->showMessage(tr("The bookmark is outside the current folder"),
+                             4000);
   }
 }
 
@@ -2765,7 +2754,7 @@ void MdViewerWindow::RefreshRecentMenu() {
   }
   recent_menu_->clear();
   if (settings_->recent_files.isEmpty()) {
-    QAction* empty = recent_menu_->addAction(QStringLiteral("（无）"));
+    QAction* empty = recent_menu_->addAction(tr("(none)"));
     empty->setEnabled(false);
     return;
   }
@@ -2778,7 +2767,7 @@ void MdViewerWindow::RefreshRecentMenu() {
     });
   }
   recent_menu_->addSeparator();
-  QAction* clear = recent_menu_->addAction(QStringLiteral("清除最近记录"));
+  QAction* clear = recent_menu_->addAction(tr("Clear Recent Files"));
   connect(clear, &QAction::triggered, this, [this] {
     settings_->recent_files.clear();
     settings_->SaveRecent();
@@ -2792,7 +2781,7 @@ void MdViewerWindow::RefreshRecentRootsMenu() {
   }
   recent_roots_menu_->clear();
   if (settings_->recent_roots.isEmpty()) {
-    QAction* empty = recent_roots_menu_->addAction(QStringLiteral("（无）"));
+    QAction* empty = recent_roots_menu_->addAction(tr("(none)"));
     empty->setEnabled(false);
     return;
   }
@@ -2804,8 +2793,7 @@ void MdViewerWindow::RefreshRecentRootsMenu() {
             [this, root] { OpenRecentRoot(root); });
   }
   recent_roots_menu_->addSeparator();
-  QAction* clear =
-      recent_roots_menu_->addAction(QStringLiteral("清除最近工作区"));
+  QAction* clear = recent_roots_menu_->addAction(tr("Clear Recent Workspaces"));
   connect(clear, &QAction::triggered, this, [this] {
     settings_->recent_roots.clear();
     settings_->SaveRecentRoots();
@@ -2815,7 +2803,7 @@ void MdViewerWindow::RefreshRecentRootsMenu() {
 
 void MdViewerWindow::OpenRecentRoot(const QString& root) {
   if (!QFileInfo(root).isDir()) {
-    statusBar()->showMessage(QStringLiteral("工作区不存在：%1").arg(root),
+    statusBar()->showMessage(tr("Workspace does not exist: %1").arg(root),
                              4000);
     return;
   }
@@ -2870,8 +2858,8 @@ void MdViewerWindow::ReportRenderStatus() {
     }
   };
   note_engine(last_render_status_.highlighter, now.highlighter,
-              QStringLiteral("高亮"));
-  note_engine(last_render_status_.formula, now.formula, QStringLiteral("公式"));
+              tr("Highlighting"));
+  note_engine(last_render_status_.formula, now.formula, tr("Formulas"));
   note_engine(last_render_status_.mermaid, now.mermaid,
               QStringLiteral("Mermaid"));
 
@@ -2890,32 +2878,29 @@ void MdViewerWindow::ReportRenderStatus() {
   last_render_status_ = now;
 
   if (!failed_engines.isEmpty()) {
-    statusBar()->showMessage(
-        QStringLiteral("渲染引擎加载失败：%1")
-            .arg(failed_engines.join(QStringLiteral("、"))),
-        5000);
+    statusBar()->showMessage(tr("Failed to load render engines: %1")
+                                 .arg(failed_engines.join(tr(", "))),
+                             5000);
     return;
   }
   if (highlight_failures + formula_failures + mermaid_failures > 0) {
     QStringList parts;
     if (highlight_failures > 0) {
-      parts << QStringLiteral("高亮 %1").arg(highlight_failures);
+      parts << tr("Highlighting %1").arg(highlight_failures);
     }
     if (formula_failures > 0) {
-      parts << QStringLiteral("公式 %1").arg(formula_failures);
+      parts << tr("Formulas %1").arg(formula_failures);
     }
     if (mermaid_failures > 0) {
       parts << QStringLiteral("Mermaid %1").arg(mermaid_failures);
     }
-    statusBar()->showMessage(QStringLiteral("本次渲染失败：%1")
-                                 .arg(parts.join(QStringLiteral("、"))),
-                             5000);
+    statusBar()->showMessage(
+        tr("Render failures this run: %1").arg(parts.join(tr(", "))), 5000);
     return;
   }
   if (!loaded_engines.isEmpty()) {
     statusBar()->showMessage(
-        QStringLiteral("渲染引擎已加载：%1")
-            .arg(loaded_engines.join(QStringLiteral("、"))),
+        tr("Render engines loaded: %1").arg(loaded_engines.join(tr(", "))),
         3000);
   }
 }
@@ -2961,7 +2946,7 @@ void MdViewerWindow::dropEvent(QDropEvent* event) {
   event->acceptProposedAction();
   OpenPath(paths.first());
   if (paths.size() > 1) {
-    statusBar()->showMessage(QStringLiteral("已打开第一个拖入项：%1")
+    statusBar()->showMessage(tr("Opened the first dropped item: %1")
                                  .arg(QFileInfo(paths.first()).fileName()),
                              5000);
   }
@@ -2969,7 +2954,7 @@ void MdViewerWindow::dropEvent(QDropEvent* event) {
 
 void MdViewerWindow::FocusDocumentFind() {
   if (CurrentTab() == nullptr || CurrentTab()->path.isEmpty()) {
-    statusBar()->showMessage(QStringLiteral("先打开一篇文档"), 2000);
+    statusBar()->showMessage(tr("Open a document first"), 2000);
     return;
   }
   UpdateFindControls();
@@ -2981,7 +2966,7 @@ void MdViewerWindow::FocusWorkspaceSearch() {
   EnsureSideView(SideView::kSearch);
   if (workspace_search_edit_ == nullptr ||
       !workspace_search_edit_->isEnabled()) {
-    statusBar()->showMessage(QStringLiteral("先打开一个目录"), 2000);
+    statusBar()->showMessage(tr("Open a folder first"), 2000);
     return;
   }
   workspace_search_edit_->setFocus();
@@ -3068,23 +3053,24 @@ void MdViewerWindow::FindInDocument(const QString& query, bool backward) {
     return;
   }
   if (!view->has_document()) {
-    statusBar()->showMessage(QStringLiteral("先打开一篇文档"), 2000);
+    statusBar()->showMessage(tr("Open a document first"), 2000);
     return;
   }
   if (view->is_rendering()) {
-    statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再查找"), 2000);
+    statusBar()->showMessage(
+        tr("Document is still rendering; try find again later"), 2000);
     return;
   }
   bool wrapped = false;
   const MarkdownView::FindFlags flags =
       backward ? MarkdownView::FindBackward : MarkdownView::FindNoFlag;
   if (!view->FindText(query, flags, &wrapped, /*incremental=*/false)) {
-    statusBar()->showMessage(QStringLiteral("未找到"), 2000);
+    statusBar()->showMessage(tr("Not found"), 2000);
     return;
   }
   if (wrapped) {
     statusBar()->showMessage(
-        backward ? QStringLiteral("已回到结尾") : QStringLiteral("已回到开头"),
+        backward ? tr("Wrapped to the end") : tr("Wrapped to the beginning"),
         2000);
   }
 }
@@ -3104,7 +3090,7 @@ void MdViewerWindow::UpdateFindControls() {
 
 void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {
   if (!QFileInfo(hit.file_path).isFile()) {
-    statusBar()->showMessage(QStringLiteral("文件已不存在"), 4000);
+    statusBar()->showMessage(tr("File no longer exists"), 4000);
     return;
   }
   QString query = search_controller_ != nullptr
@@ -3165,8 +3151,9 @@ void MdViewerWindow::JumpToSearchHit(int ordinal, const QString& query) {
   for (int i = 0; i <= ordinal; ++i) {
     if (!CurrentView()->FindText(query, MarkdownView::FindNoFlag, &wrapped,
                                  /*incremental=*/false)) {
-      statusBar()->showMessage(
-          QStringLiteral("无法精确定位该命中，已停在文档顶部"), 4000);
+      statusBar()->showMessage(tr("Cannot locate the hit precisely; stopped at "
+                                  "the top of the document"),
+                               4000);
       return;
     }
   }
@@ -3174,11 +3161,12 @@ void MdViewerWindow::JumpToSearchHit(int ordinal, const QString& query) {
 
 void MdViewerWindow::ExportHtml() {
   if (CurrentView()->is_rendering()) {
-    statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
+    statusBar()->showMessage(
+        tr("Document is still rendering; try export again later"), 3000);
     return;
   }
   if (!CurrentView()->has_document()) {
-    statusBar()->showMessage(QStringLiteral("先打开一篇 Markdown 再导出"),
+    statusBar()->showMessage(tr("Open a Markdown document before exporting"),
                              3000);
     return;
   }
@@ -3192,8 +3180,7 @@ void MdViewerWindow::ExportHtml() {
   }
 
   QString path = QFileDialog::getSaveFileName(
-      this, QStringLiteral("导出 HTML"), default_path,
-      QStringLiteral("HTML 文件 (*.html *.htm)"));
+      this, tr("Export HTML"), default_path, tr("HTML Files (*.html *.htm)"));
   if (path.isEmpty()) {
     return;
   }
@@ -3205,11 +3192,11 @@ void MdViewerWindow::ExportHtml() {
   QString error;
   if (!CurrentView()->ExportHtml(path, &error)) {
     statusBar()->showMessage(
-        error.isEmpty() ? QStringLiteral("导出 HTML 失败") : error, 5000);
+        error.isEmpty() ? tr("Failed to export HTML") : error, 5000);
     return;
   }
-  statusBar()->showMessage(
-      QStringLiteral("已导出：%1").arg(QFileInfo(path).fileName()), 5000);
+  statusBar()->showMessage(tr("Exported: %1").arg(QFileInfo(path).fileName()),
+                           5000);
 }
 
 void MdViewerWindow::OpenImage(const QUrl& url) { ShowImagePreview(url); }
@@ -3220,16 +3207,16 @@ void MdViewerWindow::ShowImageContextMenu(const QPoint& global_pos,
   const std::optional<MarkdownImageInfo> info = CurrentView()->ImageInfo(url);
 
   QMenu menu(this);
-  QAction* preview = menu.addAction(QStringLiteral("放大查看"));
+  QAction* preview = menu.addAction(tr("Zoom In"));
   preview->setObjectName(QStringLiteral("imagePreviewAction"));
   preview->setEnabled(!pixmap.isNull());
-  QAction* save = menu.addAction(QStringLiteral("图片另存为…"));
+  QAction* save = menu.addAction(tr("Save Image As…"));
   save->setObjectName(QStringLiteral("imageSaveAsAction"));
   save->setEnabled(!pixmap.isNull());
   QAction* source = nullptr;
   if (info.has_value()) {
     menu.addSeparator();
-    source = menu.addAction(QStringLiteral("查看源码"));
+    source = menu.addAction(tr("View Source"));
     source->setObjectName(QStringLiteral("imageSourceAction"));
   }
 
@@ -3246,7 +3233,7 @@ void MdViewerWindow::ShowImageContextMenu(const QPoint& global_pos,
 void MdViewerWindow::SaveImageAs(const QUrl& url) {
   const QPixmap pixmap = CurrentView()->ImagePixmap(url);
   if (pixmap.isNull()) {
-    statusBar()->showMessage(QStringLiteral("这张图片无法保存"), 3000);
+    statusBar()->showMessage(tr("This image cannot be saved"), 3000);
     return;
   }
   QString start_dir = QDir::homePath();
@@ -3254,10 +3241,9 @@ void MdViewerWindow::SaveImageAs(const QUrl& url) {
     start_dir = QFileInfo(CurrentView()->current_file()).absolutePath();
   }
   QString path = QFileDialog::getSaveFileName(
-      this, QStringLiteral("图片另存为"),
-      start_dir + QStringLiteral("/image.png"),
-      QStringLiteral("PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;"
-                     "所有文件 (*)"));
+      this, tr("Save Image As"), start_dir + QStringLiteral("/image.png"),
+      tr("PNG Images (*.png);;JPEG Images (*.jpg *.jpeg);;"
+         "All Files (*)"));
   if (path.isEmpty()) {
     return;
   }
@@ -3265,25 +3251,24 @@ void MdViewerWindow::SaveImageAs(const QUrl& url) {
     path += QStringLiteral(".png");
   }
   if (!pixmap.save(path)) {
-    statusBar()->showMessage(QStringLiteral("图片保存失败"), 5000);
+    statusBar()->showMessage(tr("Failed to save image"), 5000);
     return;
   }
   statusBar()->showMessage(
-      QStringLiteral("已保存图片：%1").arg(QFileInfo(path).fileName()), 5000);
+      tr("Image saved: %1").arg(QFileInfo(path).fileName()), 5000);
 }
 
 void MdViewerWindow::ShowImagePreview(const QUrl& url) {
   const QPixmap pixmap = CurrentView()->ImagePixmap(url);
   if (pixmap.isNull()) {
-    statusBar()->showMessage(QStringLiteral("这张图片无法预览"), 3000);
+    statusBar()->showMessage(tr("This image cannot be previewed"), 3000);
     return;
   }
   const std::optional<MarkdownImageInfo> info = CurrentView()->ImageInfo(url);
-  QString title = QStringLiteral("图片预览");
+  QString title = tr("Image Preview");
   if (info.has_value()) {
-    title = info->kind == MarkdownImageKind::kFormula
-                ? QStringLiteral("公式预览")
-                : QStringLiteral("Mermaid 图表");
+    title = info->kind == MarkdownImageKind::kFormula ? tr("Formula Preview")
+                                                      : tr("Mermaid Diagram");
   }
   ImageLightbox dialog(pixmap, title, info.has_value(), this);
   int pending_action = 0;
@@ -3309,9 +3294,9 @@ void MdViewerWindow::ShowImageSource(const QUrl& url) {
     return;
   }
   QString source = info->source;
-  QString title = QStringLiteral("Mermaid 源码");
+  QString title = tr("Mermaid Source");
   if (info->kind == MarkdownImageKind::kFormula) {
-    title = QStringLiteral("公式源码");
+    title = tr("Formula Source");
     const QString delimiter =
         info->display ? QStringLiteral("$$") : QStringLiteral("$");
     source = delimiter + source + delimiter;
@@ -3322,11 +3307,12 @@ void MdViewerWindow::ShowImageSource(const QUrl& url) {
 
 void MdViewerWindow::ExportPdf() {
   if (CurrentView()->is_rendering()) {
-    statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
+    statusBar()->showMessage(
+        tr("Document is still rendering; try export again later"), 3000);
     return;
   }
   if (!CurrentView()->has_document()) {
-    statusBar()->showMessage(QStringLiteral("先打开一篇 Markdown 再导出"),
+    statusBar()->showMessage(tr("Open a Markdown document before exporting"),
                              3000);
     return;
   }
@@ -3340,8 +3326,7 @@ void MdViewerWindow::ExportPdf() {
   }
 
   QString path = QFileDialog::getSaveFileName(
-      this, QStringLiteral("导出 PDF"), default_path,
-      QStringLiteral("PDF 文件 (*.pdf)"));
+      this, tr("Export PDF"), default_path, tr("PDF Files (*.pdf)"));
   if (path.isEmpty()) {
     return;  // 用户取消
   }
@@ -3351,7 +3336,8 @@ void MdViewerWindow::ExportPdf() {
 
   // 分页与 print 媒体重排都在控件里（见 MarkdownView::Print 的注释）
   if (CurrentView()->is_rendering()) {
-    statusBar()->showMessage(QStringLiteral("文档还在渲染，稍后再导出"), 3000);
+    statusBar()->showMessage(
+        tr("Document is still rendering; try export again later"), 3000);
     return;
   }
   QPrinter printer(QPrinter::HighResolution);
@@ -3359,6 +3345,6 @@ void MdViewerWindow::ExportPdf() {
   printer.setOutputFileName(path);
   CurrentView()->Print(&printer);
 
-  statusBar()->showMessage(
-      QStringLiteral("已导出：%1").arg(QFileInfo(path).fileName()), 5000);
+  statusBar()->showMessage(tr("Exported: %1").arg(QFileInfo(path).fileName()),
+                           5000);
 }

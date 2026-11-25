@@ -397,7 +397,7 @@ void SidePanel::initUi() {
   filter_layout->setSpacing(0);
   filter_edit_ = new QLineEdit(filter_wrap);
   filter_edit_->setObjectName(QStringLiteral("documentFilterEdit"));
-  filter_edit_->setPlaceholderText(QStringLiteral("筛选文件与路径"));
+  filter_edit_->setPlaceholderText(tr("Filter files and paths"));
   filter_edit_->setClearButtonEnabled(true);
   filter_layout->addWidget(filter_edit_);
   documents_layout->addWidget(filter_wrap);
@@ -436,8 +436,7 @@ void SidePanel::initUi() {
   empty_label_->setWordWrap(true);
   empty_label_->setAlignment(Qt::AlignCenter);
   empty_layout->addWidget(empty_label_);
-  choose_root_button_ =
-      new QPushButton(QStringLiteral("重新选择目录"), empty_page_);
+  choose_root_button_ = new QPushButton(tr("Choose Folder Again"), empty_page_);
   choose_root_button_->setObjectName(QStringLiteral("sidebarChooseRootButton"));
   empty_layout->addWidget(choose_root_button_, 0, Qt::AlignCenter);
   empty_layout->addStretch(1);
@@ -446,14 +445,14 @@ void SidePanel::initUi() {
 
   tabs_->addTab(documents_page,
                 ThemeIcon(QStringLiteral("folder"), theme_dark_),
-                QStringLiteral("文档"));
+                tr("Documents"));
 
   auto* bookmarks_page = new QWidget(tabs_);
   bookmarks_page->setObjectName(QStringLiteral("bookmarksPage"));
   auto* bookmarks_layout = new QVBoxLayout(bookmarks_page);
   bookmarks_layout->setContentsMargins(4, 8, 4, 8);
-  auto* bookmarks_hint =
-      new QLabel(QStringLiteral("用 Ctrl+D 收藏当前文档"), bookmarks_page);
+  auto* bookmarks_hint = new QLabel(
+      tr("Press Ctrl+D to bookmark the current document"), bookmarks_page);
   bookmarks_hint->setWordWrap(true);
   bookmarks_layout->addWidget(bookmarks_hint);
   bookmark_tree_ = new QTreeWidget(bookmarks_page);
@@ -470,7 +469,7 @@ void SidePanel::initUi() {
   bookmarks_layout->addWidget(bookmark_tree_, 1);
   tabs_->addTab(bookmarks_page,
                 ThemeIcon(QStringLiteral("star-outline"), theme_dark_),
-                QStringLiteral("书签"));
+                tr("Bookmarks"));
 
   auto* search_page = new QWidget(tabs_);
   search_page->setObjectName(QStringLiteral("searchPage"));
@@ -479,7 +478,7 @@ void SidePanel::initUi() {
   search_layout->setSpacing(6);
   search_edit_ = new QLineEdit(search_page);
   search_edit_->setObjectName(QStringLiteral("workspaceSearchEdit"));
-  search_edit_->setPlaceholderText(QStringLiteral("搜索工作区文件与内容"));
+  search_edit_->setPlaceholderText(tr("Search workspace files and content"));
   search_edit_->setClearButtonEnabled(true);
   search_edit_->setEnabled(false);
   search_layout->addWidget(search_edit_);
@@ -493,9 +492,9 @@ void SidePanel::initUi() {
   search_summary_ = new QLabel(search_header);
   search_summary_->setObjectName(QStringLiteral("searchSummaryLabel"));
   search_summary_->setWordWrap(true);
-  search_summary_->setText(QStringLiteral("输入关键词开始搜索"));
+  search_summary_->setText(tr("Type keywords to start searching"));
   search_header_layout->addWidget(search_summary_, 1);
-  cancel_button_ = new QPushButton(QStringLiteral("取消"), search_header);
+  cancel_button_ = new QPushButton(tr("Cancel"), search_header);
   cancel_button_->setObjectName(QStringLiteral("sidebarCancelButton"));
   cancel_button_->hide();
   search_header_layout->addWidget(cancel_button_);
@@ -519,7 +518,7 @@ void SidePanel::initUi() {
   search_empty_->hide();
   search_layout->addWidget(search_empty_);
   tabs_->addTab(search_page, ThemeIcon(QStringLiteral("search"), theme_dark_),
-                QStringLiteral("搜索"));
+                tr("Search"));
 
   outer->addWidget(tabs_, 1);
 }
@@ -592,7 +591,7 @@ void SidePanel::initSignals() {
         // 路径必须在进菜单前取下来
         const QString path = item->data(0, kPathRole).toString();
         QMenu menu(this);
-        QAction* remove = menu.addAction(QStringLiteral("移除书签"));
+        QAction* remove = menu.addAction(tr("Remove Bookmark"));
         if (menu.exec(bookmark_tree_->viewport()->mapToGlobal(pos)) == remove) {
           emit bookmarkRemoveRequested(path);
         }
@@ -613,7 +612,7 @@ void SidePanel::initSignals() {
 void SidePanel::SetRoot(const DocumentScanResult& result) {
   last_result_ = result;
   if (!result.root_exists) {
-    ShowEmptyPage(QStringLiteral("目录不存在或不可读"));
+    ShowEmptyPage(tr("Folder does not exist or is not readable"));
     return;
   }
 
@@ -629,7 +628,7 @@ void SidePanel::SetRoot(const DocumentScanResult& result) {
 
   document_tree_->clear();
   if (result.markdown_file_count == 0) {
-    ShowEmptyPage(QStringLiteral("该目录中没有 Markdown 文档"));
+    ShowEmptyPage(tr("No Markdown documents in this folder"));
     return;
   }
 
@@ -654,8 +653,9 @@ void SidePanel::SetRootMissing(const QString& root, const QString& reason) {
   last_result_.root = root;
   last_result_.root_exists = false;
   empty_label_->setToolTip(root);
-  ShowEmptyPage(reason.isEmpty() ? QStringLiteral("目录不存在或不可读")
-                                 : reason);
+  ShowEmptyPage(reason.isEmpty()
+                    ? tr("Folder does not exist or is not readable")
+                    : reason);
 }
 
 void SidePanel::BuildTree(const DocumentScanResult& result) {
@@ -733,9 +733,9 @@ void SidePanel::SetSearchAvailable(bool available) {
     return;
   }
   search_edit_->setEnabled(available);
-  search_edit_->setPlaceholderText(available
-                                       ? QStringLiteral("搜索工作区文件与内容")
-                                       : QStringLiteral("先打开一个目录"));
+  search_edit_->setPlaceholderText(
+      available ? tr("Search workspace files and content")
+                : tr("Open a folder first"));
   if (!available) {
     search_edit_->clear();
   }
@@ -800,10 +800,10 @@ void SidePanel::BeginSearch(const QString& query) {
   search_scanned_files_ = 0;
   search_empty_->hide();
   if (query.isEmpty()) {
-    search_summary_->setText(QStringLiteral("输入关键词开始搜索"));
+    search_summary_->setText(tr("Type keywords to start searching"));
     cancel_button_->hide();
   } else {
-    search_summary_->setText(QStringLiteral("正在搜索…"));
+    search_summary_->setText(tr("Searching…"));
     cancel_button_->show();
   }
 }
@@ -831,30 +831,28 @@ void SidePanel::AppendSearchHits(const QVector<SearchHit>& hits,
     child->setData(0, kQueryLengthRole, current_query_.size());
     ++search_total_hits_;
   }
-  search_summary_->setText(
-      QStringLiteral("正在搜索… · 已扫描 %1/%2 · %3 处命中")
-          .arg(search_scanned_files_)
-          .arg(search_total_files_)
-          .arg(search_total_hits_));
+  search_summary_->setText(tr("Searching… · scanned %1/%2 · %3 hits")
+                               .arg(search_scanned_files_)
+                               .arg(search_total_files_)
+                               .arg(search_total_hits_));
 }
 
 void SidePanel::EndSearch(bool truncated, bool canceled) {
   cancel_button_->hide();
   QString notice;
   if (canceled) {
-    notice = QStringLiteral(" · 已取消（部分结果）");
+    notice = tr(" · canceled (partial results)");
   } else if (truncated) {
-    notice = QStringLiteral(" · 已截断");
+    notice = tr(" · truncated");
   }
-  search_summary_->setText(
-      QStringLiteral("在 %1 篇文档中搜索 “%2” · %3 处命中%4")
-          .arg(search_total_files_)
-          .arg(current_query_)
-          .arg(search_total_hits_)
-          .arg(notice));
+  search_summary_->setText(tr("Searched %1 documents for “%2” · %3 hits%4")
+                               .arg(search_total_files_)
+                               .arg(current_query_)
+                               .arg(search_total_hits_)
+                               .arg(notice));
   if (search_total_hits_ == 0) {
-    search_empty_->setText(canceled ? QStringLiteral("搜索已取消")
-                                    : QStringLiteral("未找到匹配"));
+    search_empty_->setText(canceled ? tr("Search canceled")
+                                    : tr("No matches found"));
     search_empty_->show();
   }
 }

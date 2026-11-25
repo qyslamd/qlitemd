@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <limits>
 
+#include <QCoreApplication>
 #include <QFont>
 #include <QFontMetrics>
 #include <QFrame>
@@ -44,7 +45,8 @@ namespace {
 constexpr int kStageCount = 6;
 
 QString OnOff(bool enabled) {
-  return enabled ? QStringLiteral("开") : QStringLiteral("关");
+  return enabled ? QCoreApplication::translate("RenderStatusPanel", "On")
+                 : QCoreApplication::translate("RenderStatusPanel", "Off");
 }
 
 QString BytesText(qint64 bytes) {
@@ -65,15 +67,16 @@ QString ProcessMemoryText() {
 #ifdef _WIN32
   PROCESS_MEMORY_COUNTERS info;
   if (!GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info))) {
-    return QStringLiteral("不可用");
+    return QCoreApplication::translate("RenderStatusPanel", "Unavailable");
   }
-  return QStringLiteral("工作集 %1 · 峰值 %2")
+  return QCoreApplication::translate("RenderStatusPanel",
+                                     "Working set %1 · peak %2")
       .arg(BytesText(static_cast<qint64>(info.WorkingSetSize)),
            BytesText(static_cast<qint64>(info.PeakWorkingSetSize)));
 #else
   QFile status(QStringLiteral("/proc/self/status"));
   if (!status.open(QIODevice::ReadOnly)) {
-    return QStringLiteral("不可用");
+    return QCoreApplication::translate("RenderStatusPanel", "Unavailable");
   }
   const QString text = QString::fromLatin1(status.readAll());
   QString rss;
@@ -199,7 +202,7 @@ void AddDetailRow(QGridLayout* layout, int row, const QString& key,
   MakeSmall(key_label, 10);
   layout->addWidget(key_label, row, 0, Qt::AlignTop);
 
-  *value = new QLabel(QStringLiteral("—"));
+  *value = new QLabel(QCoreApplication::translate("RenderStatusPanel", "—"));
   (*value)->setWordWrap(true);
   (*value)->setAlignment(Qt::AlignRight | Qt::AlignTop);
   MakeSmall(*value, 10);
@@ -219,7 +222,7 @@ class WorkerPips final : public QWidget {
     alive_ = qBound(0, alive, workers_);
     failed_ = qBound(0, failed, workers_);
     processing_ = qBound(0, processing, alive_);
-    setToolTip(QStringLiteral("worker %1 · 存活 %2 · 处理中 %3 · 失败 %4")
+    setToolTip(tr("workers %1 · alive %2 · busy %3 · failed %4")
                    .arg(workers_)
                    .arg(alive_)
                    .arg(processing_)
@@ -280,6 +283,9 @@ class WorkerPips final : public QWidget {
 };
 
 class HitBar final : public QWidget {
+  // tooltip 用了 tr()：缺 Q_OBJECT 会把上下文错成 QObject，翻译表对不上
+  Q_OBJECT
+
  public:
   explicit HitBar(QWidget* parent = nullptr) : QWidget(parent) {
     setMinimumHeight(8);
@@ -290,7 +296,7 @@ class HitBar final : public QWidget {
     rendered_ = qMax<qint64>(0, rendered);
     memory_hits_ = qMax<qint64>(0, memory_hits);
     disk_hits_ = qMax<qint64>(0, disk_hits);
-    setToolTip(QStringLiteral("渲染 %1 · 内存命中 %2 · 磁盘命中 %3")
+    setToolTip(tr("renders %1 · memory hits %2 · disk hits %3")
                    .arg(rendered_)
                    .arg(memory_hits_)
                    .arg(disk_hits_));
@@ -437,16 +443,16 @@ void RenderStatusPanel::initUi() {
   auto* actions_layout = new QHBoxLayout(actions);
   actions_layout->setContentsMargins(0, 0, 0, 0);
   actions_layout->setSpacing(6);
-  refresh_button_ = new QPushButton(QStringLiteral("刷新"), actions);
-  reset_button_ = new QPushButton(QStringLiteral("计数清零"), actions);
+  refresh_button_ = new QPushButton(tr("Refresh"), actions);
+  reset_button_ = new QPushButton(tr("Reset counters"), actions);
   actions_layout->addWidget(refresh_button_);
   actions_layout->addWidget(reset_button_);
   actions_layout->addStretch(1);
   layout->addWidget(actions);
 
   QVBoxLayout* progress_layout = nullptr;
-  auto* progress_card = NewGroup(body, QStringLiteral("任务进度"),
-                                 &progress_layout, &progress_hint_, true);
+  auto* progress_card = NewGroup(body, tr("Task Progress"), &progress_layout,
+                                 &progress_hint_, true);
   progress_card->setObjectName(QStringLiteral("statusProgressGroup"));
   TrackGroup(progress_card);
   auto* progress_row = new QWidget(progress_card);
@@ -458,7 +464,7 @@ void RenderStatusPanel::initUi() {
   progress_ring_->setRange(0, 1);
   progress_ring_->setValue(0);
   progress_ring_->setTextVisible(true);
-  progress_ring_->setFormat(QStringLiteral("—"));
+  progress_ring_->setFormat(tr("—"));
   QFont ring_font = progress_ring_->font();
   ring_font.setPixelSize(14);
   ring_font.setBold(true);
@@ -469,7 +475,7 @@ void RenderStatusPanel::initUi() {
   auto* progress_copy_layout = new QVBoxLayout(progress_copy);
   progress_copy_layout->setContentsMargins(0, 0, 0, 0);
   progress_copy_layout->setSpacing(2);
-  progress_percent_ = new QLabel(QStringLiteral("—"), progress_copy);
+  progress_percent_ = new QLabel(tr("—"), progress_copy);
   QFont percent_font = progress_percent_->font();
   percent_font.setPixelSize(21);
   percent_font.setBold(true);
@@ -492,12 +498,12 @@ void RenderStatusPanel::initUi() {
 
   QVBoxLayout* timing_layout = nullptr;
   auto* timing_card =
-      NewGroup(body, QStringLiteral("耗时构成"), &timing_layout, &timing_hint_);
+      NewGroup(body, tr("Timing Breakdown"), &timing_layout, &timing_hint_);
   timing_card->setObjectName(QStringLiteral("statusTimingGroup"));
   TrackGroup(timing_card);
   const QStringList stage_names{
-      QStringLiteral("解析"), QStringLiteral("收集"), QStringLiteral("worker"),
-      QStringLiteral("组装"), QStringLiteral("布局"), QStringLiteral("其它")};
+      tr("Parse"),    tr("Collect"), QStringLiteral("worker"),
+      tr("Assemble"), tr("Layout"),  tr("Other")};
   for (int i = 0; i < kStageCount; ++i) {
     auto* row = new QWidget(timing_card);
     auto* row_layout = new QHBoxLayout(row);
@@ -528,10 +534,10 @@ void RenderStatusPanel::initUi() {
 
   QVBoxLayout* pools_layout = nullptr;
   auto* pools_card =
-      NewGroup(body, QStringLiteral("worker 池"), &pools_layout, &pools_hint_);
+      NewGroup(body, tr("Worker Pool"), &pools_layout, &pools_hint_);
   pools_card->setObjectName(QStringLiteral("statusPoolsGroup"));
   TrackGroup(pools_card);
-  const QStringList pool_names{QStringLiteral("高亮"), QStringLiteral("公式"),
+  const QStringList pool_names{tr("Highlighting"), tr("Formulas"),
                                QStringLiteral("Mermaid")};
   for (int i = 0; i < 3; ++i) {
     if (i > 0) {
@@ -576,8 +582,8 @@ void RenderStatusPanel::initUi() {
     pools_[i].workers = workers;
     pools_[i].meta = meta;
   }
-  auto* pool_legend = new QLabel(
-      QStringLiteral("实心=处理中 · 空心=空闲 · 红=失败"), pools_card);
+  auto* pool_legend =
+      new QLabel(tr("filled=busy · hollow=idle · red=failed"), pools_card);
   MakeMuted(pool_legend);
   MakeSmall(pool_legend, 9);
   pool_legend->setWordWrap(true);
@@ -585,11 +591,11 @@ void RenderStatusPanel::initUi() {
   layout->addWidget(pools_card);
 
   QVBoxLayout* engines_layout = nullptr;
-  auto* engines_card = NewGroup(body, QStringLiteral("引擎命中"),
-                                &engines_layout, &engines_hint_);
+  auto* engines_card =
+      NewGroup(body, tr("Engine Hits"), &engines_layout, &engines_hint_);
   engines_card->setObjectName(QStringLiteral("statusEnginesGroup"));
   TrackGroup(engines_card);
-  const QStringList engine_names{QStringLiteral("高亮"), QStringLiteral("公式"),
+  const QStringList engine_names{tr("Highlighting"), tr("Formulas"),
                                  QStringLiteral("Mermaid")};
   const QStringList engine_object_names{QStringLiteral("statusHighlight"),
                                         QStringLiteral("statusFormula"),
@@ -641,16 +647,14 @@ void RenderStatusPanel::initUi() {
   layout->addWidget(engines_card);
 
   QVBoxLayout* cache_layout = nullptr;
-  auto* cache_card =
-      NewGroup(body, QStringLiteral("缓存"), &cache_layout, &cache_hint_);
+  auto* cache_card = NewGroup(body, tr("Cache"), &cache_layout, &cache_hint_);
   cache_card->setObjectName(QStringLiteral("statusCacheGroup"));
   TrackGroup(cache_card);
   auto* cache_grid = new QGridLayout;
   cache_grid->setContentsMargins(0, 0, 0, 0);
   cache_grid->setSpacing(5);
-  const QStringList cache_names{QStringLiteral("高亮"), QStringLiteral("公式"),
-                                QStringLiteral("Mermaid"),
-                                QStringLiteral("图片")};
+  const QStringList cache_names{tr("Highlighting"), tr("Formulas"),
+                                QStringLiteral("Mermaid"), tr("Images")};
   for (int i = 0; i < 4; ++i) {
     auto* cell = new QWidget(cache_card);
     cell->setProperty("isCard", true);
@@ -661,7 +665,7 @@ void RenderStatusPanel::initUi() {
     auto* name = new QLabel(cache_names.at(i), cell);
     MakeMuted(name);
     MakeSmall(name, 9);
-    auto* value = new QLabel(QStringLiteral("—"), cell);
+    auto* value = new QLabel(tr("—"), cell);
     QFont value_font = value->font();
     value_font.setBold(true);
     value_font.setPixelSize(10);
@@ -684,11 +688,10 @@ void RenderStatusPanel::initUi() {
   auto* image_cap_head_layout = new QHBoxLayout(image_cap_head);
   image_cap_head_layout->setContentsMargins(0, 0, 0, 0);
   image_cap_head_layout->setSpacing(6);
-  auto* image_cap_title =
-      new QLabel(QStringLiteral("图片缓存 / 上限"), image_cap_head);
+  auto* image_cap_title = new QLabel(tr("Image cache / limit"), image_cap_head);
   MakeMuted(image_cap_title);
   MakeSmall(image_cap_title, 9);
-  image_cap_value_ = new QLabel(QStringLiteral("—"), image_cap_head);
+  image_cap_value_ = new QLabel(tr("—"), image_cap_head);
   image_cap_value_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   MakeSmall(image_cap_value_, 9);
   image_cap_head_layout->addWidget(image_cap_title);
@@ -704,30 +707,28 @@ void RenderStatusPanel::initUi() {
 
   auto* details = new ExExpander(cache_card);
   details->setObjectName(QStringLiteral("statusCacheDetails"));
-  details->setHeader(QStringLiteral("持久缓存和诊断"));
+  details->setHeader(tr("Persistent cache and diagnostics"));
   TrackGroup(details);
   auto* detail_content = new QWidget;
   auto* detail_layout = new QGridLayout(detail_content);
   detail_layout->setContentsMargins(0, 0, 0, 0);
   detail_layout->setSpacing(4);
-  AddDetailRow(detail_layout, 0, QStringLiteral("持久缓存"), &detail_cache_);
-  AddDetailRow(detail_layout, 1, QStringLiteral("条目上限"), &detail_limits_);
-  AddDetailRow(detail_layout, 2, QStringLiteral("进程内存"), &detail_memory_);
-  AddDetailRow(detail_layout, 3, QStringLiteral("诊断"), &detail_diagnostics_);
+  AddDetailRow(detail_layout, 0, tr("Persistent Cache"), &detail_cache_);
+  AddDetailRow(detail_layout, 1, tr("Entry limit"), &detail_limits_);
+  AddDetailRow(detail_layout, 2, tr("Process memory"), &detail_memory_);
+  AddDetailRow(detail_layout, 3, tr("Diagnostics"), &detail_diagnostics_);
   details->addContentWidget(detail_content);
   cache_layout->addWidget(details);
   layout->addWidget(cache_card);
 
   QVBoxLayout* doc_layout = nullptr;
-  auto* doc_card =
-      NewGroup(body, QStringLiteral("文档"), &doc_layout, &doc_hint_);
+  auto* doc_card = NewGroup(body, tr("Documents"), &doc_layout, &doc_hint_);
   doc_card->setObjectName(QStringLiteral("statusDocumentGroup"));
   TrackGroup(doc_card);
   auto* doc_grid = new QGridLayout;
   doc_grid->setContentsMargins(0, 0, 0, 0);
   doc_grid->setSpacing(5);
-  const QStringList doc_names{QStringLiteral("标题"), QStringLiteral("代码块"),
-                              QStringLiteral("公式"),
+  const QStringList doc_names{tr("Headings"), tr("Code Blocks"), tr("Formulas"),
                               QStringLiteral("Mermaid")};
   for (int i = 0; i < 4; ++i) {
     auto* cell = new QWidget(doc_card);
@@ -751,7 +752,7 @@ void RenderStatusPanel::initUi() {
   }
   doc_layout->addLayout(doc_grid);
 
-  const QStringList char_names{QStringLiteral("源码"), QStringLiteral("HTML")};
+  const QStringList char_names{tr("Source"), QStringLiteral("HTML")};
   for (int i = 0; i < 2; ++i) {
     auto* row = new QWidget(doc_card);
     auto* row_layout = new QHBoxLayout(row);
@@ -766,7 +767,7 @@ void RenderStatusPanel::initUi() {
     bar->setValue(0);
     bar->setTextVisible(false);
     bar->setFixedHeight(5);
-    auto* value = new QLabel(QStringLiteral("0 字符"), row);
+    auto* value = new QLabel(tr("0 chars"), row);
     value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     MakeSmall(value, 9);
     row_layout->addWidget(name);
@@ -779,16 +780,15 @@ void RenderStatusPanel::initUi() {
   layout->addWidget(doc_card);
 
   QVBoxLayout* history_layout = nullptr;
-  auto* history_card = NewGroup(body, QStringLiteral("请求历史"),
-                                &history_layout, &history_hint_);
+  auto* history_card =
+      NewGroup(body, tr("Request History"), &history_layout, &history_hint_);
   history_card->setObjectName(QStringLiteral("statusHistoryGroup"));
   TrackGroup(history_card);
   auto* history_grid = new QGridLayout;
   history_grid->setContentsMargins(0, 0, 0, 0);
   history_grid->setSpacing(3);
-  const QStringList history_names{
-      QStringLiteral("开始"), QStringLiteral("完成"), QStringLiteral("取消"),
-      QStringLiteral("过期"), QStringLiteral("worker\n失败")};
+  const QStringList history_names{tr("Start"), tr("Finish"), tr("Cancel"),
+                                  tr("Stale"), tr("worker\\nfailed")};
   for (int i = 0; i < 5; ++i) {
     auto* cell = new QWidget(history_card);
     cell->setProperty("isCard", true);
@@ -843,7 +843,7 @@ void RenderStatusPanel::initSignals() {
     }
     view_->ResetRendererStats();
     RefreshStatus();
-    emit statusMessage(QStringLiteral("渲染计数已清零"));
+    emit statusMessage(tr("Render counters reset"));
   });
   ConnectViewSignals();
 }
@@ -899,13 +899,12 @@ void RenderStatusPanel::RefreshStatus() {
   const MarkdownDiagnostics diagnostics = view_->diagnostics();
   const MarkdownServiceStatus service = view_->render_service_status();
 
-  progress_hint_->setText(
-      progress_request_ != 0
-          ? QStringLiteral("请求 #%1").arg(progress_request_)
-          : (finished_request_ != 0
-                 ? QStringLiteral("最近 #%1").arg(finished_request_)
-                 : QStringLiteral("—")));
-  QString ring_text = QStringLiteral("—");
+  progress_hint_->setText(progress_request_ != 0
+                              ? tr("Request #%1").arg(progress_request_)
+                              : (finished_request_ != 0
+                                     ? tr("Last #%1").arg(finished_request_)
+                                     : tr("—")));
+  QString ring_text = tr("—");
   if (progress_total_ > 0) {
     progress_ring_->setRange(0, progress_total_);
     progress_ring_->setValue(progress_completed_);
@@ -919,13 +918,13 @@ void RenderStatusPanel::RefreshStatus() {
     progress_ring_->setRange(0, 0);
     progress_ring_->setFormat(QString());
     progress_ring_->setTextVisible(false);
-    progress_percent_->setText(QStringLiteral("—"));
+    progress_percent_->setText(tr("—"));
   } else {
     progress_ring_->setRange(0, 1);
     progress_ring_->setValue(0);
-    progress_ring_->setFormat(QStringLiteral("—"));
+    progress_ring_->setFormat(tr("—"));
     progress_ring_->setTextVisible(true);
-    progress_percent_->setText(QStringLiteral("—"));
+    progress_percent_->setText(tr("—"));
   }
   // 圆环内圈宽度固定，按任务数字宽收缩字号，避免 "1234/1234" 被省略
   QFont ring_font = progress_ring_->font();
@@ -938,18 +937,18 @@ void RenderStatusPanel::RefreshStatus() {
                      service.mermaid.queued;
   progress_meta_->setText(
       view_->is_rendering()
-          ? QStringLiteral("%1 个任务处理中 · %2 个排队")
+          ? tr("%1 tasks in flight · %2 queued")
                 .arg(progress_in_flight_)
                 .arg(queued)
           : (progress_total_ > 0
-                 ? QStringLiteral("已完成 %1 个任务").arg(progress_completed_)
-                 : QStringLiteral("暂无任务")));
+                 ? tr("%1 tasks completed").arg(progress_completed_)
+                 : tr("No tasks yet")));
   const MarkdownRenderHistory history = view_->render_history();
   const int alive =
       service.highlight.alive + service.formula.alive + service.mermaid.alive;
   const int failed = service.highlight.failed + service.formula.failed +
                      service.mermaid.failed;
-  progress_chips_->setText(QStringLiteral("worker 存活 %1 · 失败 %2 · 取消 %3")
+  progress_chips_->setText(tr("workers alive %1 · failed %2 · canceled %3")
                                .arg(alive)
                                .arg(failed)
                                .arg(history.requests_cancelled));
@@ -977,7 +976,7 @@ void RenderStatusPanel::RefreshStatus() {
         std::min<qint64>(stage_values[i], std::numeric_limits<int>::max())));
     SetBarColor(bar, StageColor(i, this));
     if (i == 2) {
-      bar->setToolTip(QStringLiteral("worker %1 ms · 最慢任务 %2 ms")
+      bar->setToolTip(tr("worker %1 ms · slowest task %2 ms")
                           .arg(stage_values[i])
                           .arg(timings.worker_max_ms));
     } else {
@@ -985,7 +984,7 @@ void RenderStatusPanel::RefreshStatus() {
     }
     stage_values_[i]->setText(QStringLiteral("%1 ms").arg(stage_values[i]));
   }
-  timing_hint_->setText(QStringLiteral("总 %1 ms").arg(timings.total_ms));
+  timing_hint_->setText(tr("total %1 ms").arg(timings.total_ms));
 
   const MarkdownPoolStatus pool_statuses[3] = {
       service.highlight, service.formula, service.mermaid};
@@ -994,7 +993,7 @@ void RenderStatusPanel::RefreshStatus() {
     pools_[i].pips->SetStatus(pool.workers, pool.alive, pool.failed,
                               pool.processing);
     pools_[i].workers->setText(QStringLiteral("%1 workers").arg(pool.workers));
-    pools_[i].meta->setText(QStringLiteral("排队 %1 · 处理 %2\nJS %3")
+    pools_[i].meta->setText(tr("queued %1 · processed %2\\nJS %3")
                                 .arg(pool.queued)
                                 .arg(pool.processing)
                                 .arg(BytesText(pool.js_memory_bytes)));
@@ -1012,32 +1011,31 @@ void RenderStatusPanel::RefreshStatus() {
     const MarkdownEngineStatus& engine = engine_statuses[i];
     const MarkdownContextStatus& context = contexts[i];
     const QString engine_state =
-        engine.permanently_failed ? QStringLiteral("加载失败")
-                                  : (engine.loaded ? QStringLiteral("已加载")
-                                                   : QStringLiteral("未加载"));
+        engine.permanently_failed
+            ? tr("Load failed")
+            : (engine.loaded ? tr("Loaded") : tr("Not loaded"));
     const StatusPill::Tone tone =
         engine.permanently_failed ? StatusPill::Tone::kBad
                                   : (engine.loaded ? StatusPill::Tone::kGood
                                                    : StatusPill::Tone::kMuted);
     engines_[i].pill->SetStatus(engine_state, tone);
-    engines_[i].sub->setText(
-        engine.loaded ? QStringLiteral("首次 %1 ms").arg(engine.first_load_ms)
-                      : QStringLiteral("首次 —"));
+    engines_[i].sub->setText(engine.loaded
+                                 ? tr("first %1 ms").arg(engine.first_load_ms)
+                                 : tr("first —"));
     engines_[i].bar->SetCounts(context.renders, context.memory_cache_hits,
                                context.disk_cache_hits);
     const quint64 calls =
         context.renders + context.memory_cache_hits + context.disk_cache_hits;
-    engines_[i].detail->setText(
-        QStringLiteral("%1 · 调用 %2 · 渲染 %3 · 失败 %4\n"
-                       "内存命中 %5 · 磁盘命中 %6")
-            .arg(engine_state)
-            .arg(calls)
-            .arg(context.renders)
-            .arg(context.failures)
-            .arg(context.memory_cache_hits)
-            .arg(context.disk_cache_hits));
+    engines_[i].detail->setText(tr("%1 · calls %2 · renders %3 · failures %4\n"
+                                   "memory hits %5 · disk hits %6")
+                                    .arg(engine_state)
+                                    .arg(calls)
+                                    .arg(context.renders)
+                                    .arg(context.failures)
+                                    .arg(context.memory_cache_hits)
+                                    .arg(context.disk_cache_hits));
   }
-  engines_hint_->setText(QStringLiteral("调用 = 渲染 + 命中"));
+  engines_hint_->setText(tr("calls = renders + hits"));
 
   const MarkdownCacheUsage cache = view_->render_context().cache_usage();
   const qint64 cache_bytes[4] = {cache.highlight_bytes, cache.formula_bytes,
@@ -1055,7 +1053,7 @@ void RenderStatusPanel::RefreshStatus() {
     cache_bars_[i]->setValue(static_cast<int>(
         std::min<qint64>(cache_bytes[i], std::numeric_limits<int>::max())));
     SetBarColor(cache_bars_[i], StageColor(i, this));
-    cache_values_[i]->setText(QStringLiteral("%1 条 · %2")
+    cache_values_[i]->setText(tr("%1 entries · %2")
                                   .arg(cache_entries[i])
                                   .arg(BytesText(cache_bytes[i])));
   }
@@ -1069,12 +1067,12 @@ void RenderStatusPanel::RefreshStatus() {
   image_cap_value_->setText(QStringLiteral("%1 / %2").arg(
       BytesText(cache.pixmap_bytes), BytesText(cache.pixmap_limit_bytes)));
   detail_cache_->setText(
-      QStringLiteral("%1 · 目录：%2")
+      tr("%1 · folder: %2")
           .arg(OnOff(view_->persistent_render_cache_enabled()),
-               options.cache_directory.isEmpty() ? QStringLiteral("默认")
+               options.cache_directory.isEmpty() ? tr("Default")
                                                  : options.cache_directory));
   detail_limits_->setText(
-      QStringLiteral("高亮 %1 · 公式 %2 · Mermaid %3 · 图片 %4 MB")
+      tr("highlighting %1 · formulas %2 · Mermaid %3 · images %4 MB")
           .arg(options.highlight_cache_entries)
           .arg(options.formula_cache_entries)
           .arg(options.mermaid_cache_entries)
@@ -1083,7 +1081,7 @@ void RenderStatusPanel::RefreshStatus() {
   detail_diagnostics_->setText(
       QStringLiteral("trace %1 · dump %2")
           .arg(OnOff(diagnostics.trace), diagnostics.dump_directory.isEmpty()
-                                             ? QStringLiteral("关")
+                                             ? tr("Off")
                                              : diagnostics.dump_directory));
   cache_hint_->setText(QStringLiteral("memory cache"));
 
@@ -1093,7 +1091,7 @@ void RenderStatusPanel::RefreshStatus() {
   for (int i = 0; i < 4; ++i) {
     doc_values_[i]->setText(QString::number(document_values[i]));
   }
-  doc_hint_->setText(QStringLiteral("当前文档"));
+  doc_hint_->setText(tr("Current Document"));
   const qint64 char_values[2] = {document.source_chars, document.html_chars};
   const qint64 char_max = qMax<qint64>(1, char_values[1]);
   for (int i = 0; i < 2; ++i) {
@@ -1102,7 +1100,7 @@ void RenderStatusPanel::RefreshStatus() {
     char_bars_[i]->setValue(static_cast<int>(
         std::min<qint64>(char_values[i], std::numeric_limits<int>::max())));
     SetBarColor(char_bars_[i], AccentColor(this));
-    char_values_[i]->setText(QStringLiteral("%1 字符").arg(char_values[i]));
+    char_values_[i]->setText(tr("%1 chars").arg(char_values[i]));
   }
 
   const quint64 history_values[5] = {
@@ -1112,5 +1110,8 @@ void RenderStatusPanel::RefreshStatus() {
   for (int i = 0; i < 5; ++i) {
     history_values_[i]->setText(QString::number(history_values[i]));
   }
-  history_hint_->setText(QStringLiteral("本视图累计"));
+  history_hint_->setText(tr("Total for this view"));
 }
+
+// HitBar 在本文件里带了 Q_OBJECT，AUTOMOC 要求这里包含 moc 产物
+#include "render_status_panel.moc"

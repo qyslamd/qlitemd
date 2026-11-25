@@ -258,7 +258,10 @@ clang-format --dry-run --Werror <file>
   示例的 FluentUI 样式由 FluentUIStyle 负责。
 - 代码中禁止 emoji；应用图标统一放在应用自己的 qrc + SVG 资源里，
   不用 `QStyle` 标准图标。
-- 不在 QObject 派生类中使用中文 `tr()`；界面文本用 `QStringLiteral`。
+- 界面文本用 `tr()`，源语言为英文；中文由 `translations/` 的 zh_CN
+  翻译提供（lupdate/lrelease 管线见 `apps/qt_md_viewer/CMakeLists.txt`，
+  qm 随构建复制到 exe 旁 `translations/`，main.cpp 按 locale 加载）。
+  objectName、文件名等技术标识仍用 `QStringLiteral`，不参与翻译。
 - QWidget 派生类把 UI 初始化和信号槽连接拆到 `initUi()` 与
   `initSignals()`。
 - `qt_md_viewer` 中 `FindText` 与 Windows 宏冲突：包含顺序敏感处必须

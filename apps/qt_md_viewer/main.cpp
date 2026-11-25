@@ -7,7 +7,9 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QIcon>
+#include <QLocale>
 #include <QStringList>
+#include <QTranslator>
 
 #include "md_viewer_settings.h"
 #include "md_viewer_window.h"
@@ -69,6 +71,17 @@ int main(int argc, char** argv) {
   QFont app_font = app.font();
   app_font.setFamily(UiFontFamily());
   app.setFont(app_font);
+
+  // 界面源语言是英文；中文系统加载 zh_CN 翻译，其余语言直接用源文。
+  // qm 与字体一样放在 exe 旁的 translations/ 目录（见 CMake i18n 目标）
+  static QTranslator translator;
+  if (QLocale::system().language() == QLocale::Chinese) {
+    const QString dir = QCoreApplication::applicationDirPath() +
+                        QStringLiteral("/translations");
+    if (translator.load(QStringLiteral("qt_md_viewer_zh_CN"), dir)) {
+      app.installTranslator(&translator);
+    }
+  }
 
   MdViewerWindow window(&settings);
   // 恢复要在 show 前完成：树、文档、滚动位置一次性就位

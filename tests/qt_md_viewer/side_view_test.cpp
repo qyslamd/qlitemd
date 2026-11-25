@@ -1,8 +1,19 @@
 #include "side_view.h"
 
+#include <QCoreApplication>
+
 #include <gtest/gtest.h>
 
+#include "test_i18n_helper.h"
+
 // SideView 的数值会被写进 qt_md_viewer.ini，改动等于破坏旧会话
+int main(int argc, char** argv) {
+  QCoreApplication app(argc, argv);
+  ::testing::InitGoogleTest(&argc, argv);
+  InstallTestTranslator();
+  return RUN_ALL_TESTS();
+}
+
 TEST(SideViewTest, IdsAreStableForPersistence) {
   EXPECT_EQ(static_cast<int>(SideView::kDocuments), 0);
   EXPECT_EQ(static_cast<int>(SideView::kSearch), 1);
