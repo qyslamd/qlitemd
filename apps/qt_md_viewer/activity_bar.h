@@ -9,7 +9,7 @@
 class QButtonGroup;
 class QToolButton;
 
-// 左侧活动栏：固定 30px，只放图标，负责切换侧栏的视图。
+// 左侧活动栏：固定 42px（与标题栏高度一致），只放图标，负责切换侧栏的视图。
 // 点击当前已选中的项时仍会发 viewActivated，宿主据此收起侧栏。
 class ActivityBar : public QWidget {
   Q_OBJECT

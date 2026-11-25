@@ -8,7 +8,7 @@ Release for details.
 
 ### Added
 
-- A 30 px activity bar on the left replaces the dock layout: documents,
+- A 42 px activity bar (matching the title bar height) on the left replaces the dock layout: documents,
   workspace search, bookmarks and render status share one side panel;
   clicking the active icon collapses or reopens it. View, panel and
   outline visibility are persisted (`sidebar_view`, `sidebar_visible`,

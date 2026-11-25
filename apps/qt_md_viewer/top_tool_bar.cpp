@@ -54,17 +54,6 @@ void TopToolBar::ResetInvariants() {
   show();
 }
 
-void TopToolBar::paintEvent(QPaintEvent* event) {
-  // 不调用基类：Fluent 会画工具栏自己的底色、边框和拖动手柄。
-  // 用应用调色板的窗口色填一条，跟中心区保持一致
-  QColor background = QApplication::palette().color(QPalette::Window);
-  // DwmBlur 模式下窗口色带 alpha，直接填会透出 Mica，比中心区亮；
-  // 这里强制不透明，和改造前文档条下方的窗口底色一致
-  background.setAlpha(255);
-  QPainter painter(this);
-  painter.fillRect(event->rect(), background);
-}
-
 DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("documentBar"));
   setFixedHeight(32);

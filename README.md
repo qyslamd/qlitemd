@@ -316,7 +316,7 @@ unloading (File menu: close the current directory and return to the welcome
 page; the session is not restored on the next start, while recent files,
 bookmarks and reading positions are kept), a single-row
 title bar that carries the tabs, a document bar for navigation, zoom and
-in-document find, a 30 px activity bar (documents, search, bookmarks,
+in-document find, a 42 px activity bar (documents, search, bookmarks,
 render status) sharing one side panel, and a fixed right-hand outline with
 a hide button,
 Mica/acrylic window materials, a status bar with document count and build

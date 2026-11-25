@@ -3,12 +3,17 @@
 #include <QButtonGroup>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QSize>
 #include <QToolButton>
 #include <QVBoxLayout>
 
 #include "theme_icons.h"
 
 namespace {
+
+// 42px 带里的按钮与图标尺寸；按钮居中后两侧各留 6px
+constexpr int kButtonSize = 30;
+constexpr int kIconSize = 20;
 
 QToolButton* MakeActivityButton(QWidget* parent, const QString& name,
                                 const QString& tooltip) {
@@ -17,7 +22,8 @@ QToolButton* MakeActivityButton(QWidget* parent, const QString& name,
   button->setAutoRaise(true);
   button->setCheckable(true);
   button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  button->setFixedSize(24, 24);
+  //button->setFixedSize(kButtonSize, kButtonSize);
+  button->setIconSize(QSize(kIconSize, kIconSize));
   button->setToolTip(tooltip);
   button->setAccessibleName(tooltip);
   return button;
@@ -27,8 +33,9 @@ QToolButton* MakeActivityButton(QWidget* parent, const QString& name,
 
 ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("activityBar"));
-  setFixedWidth(30);
-  setAutoFillBackground(true);
+  // 宽度与标题栏高度（4 + 标签 38）一致，左上角上下两条带等宽
+  setFixedWidth(42);
+  //setAutoFillBackground(true); // I need blur effect.
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(3, 6, 3, 6);
   layout->setSpacing(4);
@@ -60,7 +67,8 @@ ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
   settings_button_->setObjectName(QStringLiteral("activitySettings"));
   settings_button_->setAutoRaise(true);
   settings_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  settings_button_->setFixedSize(24, 24);
+  settings_button_->setFixedSize(kButtonSize, kButtonSize);
+  settings_button_->setIconSize(QSize(kIconSize, kIconSize));
   settings_button_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
   settings_button_->setAccessibleName(QStringLiteral("设置"));
   layout->addWidget(settings_button_);

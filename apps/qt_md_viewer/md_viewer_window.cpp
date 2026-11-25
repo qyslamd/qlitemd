@@ -1079,7 +1079,7 @@ void MdViewerWindow::initUi() {
   auto* center = new QWidget(this);
   center->setObjectName(QStringLiteral("mainColumns"));
   auto* columns = new QHBoxLayout(center);
-  columns->setContentsMargins(4, 0, 0, 0);
+  columns->setContentsMargins(4, 2, 4, 2);
   columns->setSpacing(0);
   columns->addWidget(activity_bar_);
 

@@ -22,10 +22,6 @@ class TopToolBar : public QToolBar {
   // restoreState 会把工具条的可见性与几何一起改写，恢复后按这个压回
   // 不变量
   void ResetInvariants();
-
- protected:
-  // 基类会画工具栏背景/边框/手柄，这里全部扣掉，让窗口底色透出来
-  void paintEvent(QPaintEvent* event) override;
 };
 
 // 横带在文档态的页：导航、路径、复制、查找、阅读外观、缩放。
