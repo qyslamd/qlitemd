@@ -54,12 +54,14 @@ TEST(WelcomeBarTest, ButtonsForwardToTheWindow) {
 
 TEST(WelcomeBarTest, HidesQuickOpenWhenNarrow) {
   WelcomeBar bar;
-  bar.resize(600, 32);
+  // 用固定宽度：布局的最小宽度随文案长度（翻译）变化，直接 resize 到
+  // 400 会被顶回最小值，测不到 480 这个阈值
+  bar.setFixedWidth(600);
   bar.show();
   QApplication::processEvents();
   EXPECT_TRUE(bar.quick_open_button()->isVisible());
 
-  bar.resize(400, 32);
+  bar.setFixedWidth(400);
   QApplication::processEvents();
   EXPECT_FALSE(bar.quick_open_button()->isVisible());
 }
