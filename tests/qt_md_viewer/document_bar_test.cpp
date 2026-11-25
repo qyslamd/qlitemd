@@ -30,9 +30,10 @@ DocumentBar* MakeShownBar(int width) {
 TEST(DocumentBarTest, ExposesControlAnchors) {
   DocumentBar bar;
   // objectName 是 GUI 工具和测试共用的锚点；行为由后续用例覆盖
-  for (const char* name : {"docBack", "docForward", "docStar", "docPathLabel",
-                           "docCopyPath", "docFindEdit", "docAppearance",
-                           "docZoomOut", "docZoomReset", "docZoomIn"}) {
+  for (const char* name :
+       {"docBack", "docForward", "docStar", "docPathLabel", "docCopyPath",
+        "docFindEdit", "docOutlineToggle", "docAppearance", "docZoomOut",
+        "docZoomReset", "docZoomIn"}) {
     EXPECT_NE(bar.findChild<QWidget*>(QString::fromLatin1(name)), nullptr)
         << name;
   }
@@ -95,6 +96,8 @@ TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
     EXPECT_EQ(bar->copy_button()->isVisible(), item.copy)
         << "width=" << item.width;
     EXPECT_TRUE(bar->path_label()->isVisible()) << "width=" << item.width;
+    // 大纲开关是主控入口，和查找框一样任何宽度都保留
+    EXPECT_TRUE(bar->outline_button()->isVisible()) << "width=" << item.width;
     delete bar;
   }
 }

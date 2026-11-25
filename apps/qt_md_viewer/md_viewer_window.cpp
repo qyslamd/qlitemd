@@ -1425,6 +1425,14 @@ void MdViewerWindow::initUi() {
     layout_.outline_visible = on;
     UpdateOutlineVisibility();
   });
+  // 大纲开关的快捷入口：点击翻转现有动作，选中态与视图菜单、
+  // 大纲标题栏的 × 按钮保持一致
+  document_bar_->outline_button()->setCheckable(true);
+  connect(document_bar_->outline_button(), &QToolButton::clicked,
+          actions_.outline, &QAction::toggle);
+  connect(actions_.outline, &QAction::toggled, document_bar_->outline_button(),
+          &QToolButton::setChecked);
+  document_bar_->outline_button()->setChecked(actions_.outline->isChecked());
   connect(document_bar_->copy_button(), &QToolButton::clicked, this, [this] {
     const QString path =
         CurrentTab() != nullptr ? CurrentTab()->path : QString();
@@ -2290,6 +2298,9 @@ void MdViewerWindow::RefreshThemeIcons() {
   }
   if (welcome_bar_ != nullptr) {
     welcome_bar_->SetThemeDark(dark);
+  }
+  if (activity_bar_ != nullptr) {
+    activity_bar_->SetThemeDark(dark);
   }
   if (tab_bar_ != nullptr) {
     tab_bar_->SetThemeDark(dark);

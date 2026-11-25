@@ -24,7 +24,7 @@ class TopToolBar : public QToolBar {
   void ResetInvariants();
 };
 
-// 横带在文档态的页：导航、路径、复制、查找、阅读外观、缩放。
+// 横带在文档态的页：导航、路径、复制、查找、大纲、阅读外观、缩放。
 // 是窗口级控件（作用于当前标签），不属于任何 ReaderPage。
 class DocumentBar : public QWidget {
   Q_OBJECT
@@ -43,6 +43,7 @@ class DocumentBar : public QWidget {
   QToolButton* forward_button() const { return forward_button_; }
   QToolButton* star_button() const { return star_button_; }
   QToolButton* copy_button() const { return copy_button_; }
+  QToolButton* outline_button() const { return outline_button_; }
   QToolButton* appearance_button() const { return appearance_button_; }
   QToolButton* zoom_out_button() const { return zoom_out_button_; }
   QToolButton* zoom_reset_button() const { return zoom_reset_button_; }
@@ -64,6 +65,7 @@ class DocumentBar : public QWidget {
   QToolButton* forward_button_ = nullptr;
   QToolButton* star_button_ = nullptr;
   QToolButton* copy_button_ = nullptr;
+  QToolButton* outline_button_ = nullptr;
   QToolButton* appearance_button_ = nullptr;
   QToolButton* zoom_out_button_ = nullptr;
   QToolButton* zoom_reset_button_ = nullptr;

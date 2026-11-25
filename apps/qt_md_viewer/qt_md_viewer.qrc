@@ -9,6 +9,7 @@
         <file>resources/svg/light/folder.svg</file>
         <file>resources/svg/light/forward.svg</file>
         <file>resources/svg/light/menu.svg</file>
+        <file>resources/svg/light/outline.svg</file>
         <file>resources/svg/light/search.svg</file>
         <file>resources/svg/light/star-outline.svg</file>
         <file>resources/svg/light/zoom-in.svg</file>
@@ -22,6 +23,7 @@
         <file>resources/svg/dark/folder.svg</file>
         <file>resources/svg/dark/forward.svg</file>
         <file>resources/svg/dark/menu.svg</file>
+        <file>resources/svg/dark/outline.svg</file>
         <file>resources/svg/dark/search.svg</file>
         <file>resources/svg/dark/star-outline.svg</file>
         <file>resources/svg/dark/zoom-in.svg</file>

@@ -49,7 +49,7 @@ TopToolBar::TopToolBar(QWidget* parent) : QToolBar(parent) {
 void TopToolBar::ResetInvariants() {
   setMovable(false);
   setFloatable(false);
-  setFixedHeight(32);
+  // setFixedHeight(32);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   show();
 }
@@ -94,6 +94,11 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   find_edit_->setFixedWidth(240);
   layout->addWidget(find_edit_);
 
+  outline_button_ = MakeIconButton(this, QStringLiteral("docOutlineToggle"),
+                                   QStringLiteral("大纲（Ctrl+Shift+O）"));
+  outline_button_->setCheckable(true);
+  layout->addWidget(outline_button_);
+
   appearance_button_ =
       MakeIconButton(this, QStringLiteral("docAppearance"),
                      QStringLiteral("阅读外观（字号、行距、栏宽）"));
@@ -134,6 +139,7 @@ void DocumentBar::SetThemeDark(bool dark) {
   dark_ = dark;
   back_button_->setIcon(ThemeIcon(QStringLiteral("back"), dark_));
   forward_button_->setIcon(ThemeIcon(QStringLiteral("forward"), dark_));
+  outline_button_->setIcon(ThemeIcon(QStringLiteral("outline"), dark_));
   appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark_));
   zoom_out_button_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark_));
   zoom_in_button_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark_));
