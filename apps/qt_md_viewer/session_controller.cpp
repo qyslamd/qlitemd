@@ -1,7 +1,86 @@
 #include "session_controller.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+
 #include "md_viewer_settings.h"
-#include "tab_session_codec.h"
+
+TabSessionCodec::TabSessionCodec() { paths_.append(QString()); }
+
+int TabSessionCodec::Add(const QString& path) {
+  if (path.isEmpty()) {
+    return 0;
+  }
+  const int existing = paths_.indexOf(path);
+  if (existing >= 0) {
+    return existing;
+  }
+  paths_.append(path);
+  return paths_.size() - 1;
+}
+
+bool TabSessionCodec::SetActive(int index) {
+  if (index < 0 || index >= paths_.size()) {
+    return false;
+  }
+  active_ = index;
+  return true;
+}
+
+QString TabSessionCodec::path_at(int index) const {
+  if (index < 0 || index >= paths_.size()) {
+    return QString();
+  }
+  return paths_.at(index);
+}
+
+QByteArray TabSessionCodec::Serialize() const {
+  QJsonArray tabs;
+  for (const QString& path : paths_) {
+    tabs.append(path);
+  }
+  QJsonObject object;
+  object.insert(QStringLiteral("tabs"), tabs);
+  object.insert(QStringLiteral("active"), active_);
+  return QJsonDocument(object).toJson(QJsonDocument::Compact);
+}
+
+bool TabSessionCodec::Restore(const QByteArray& data) {
+  QJsonParseError error{};
+  const QJsonDocument document = QJsonDocument::fromJson(data, &error);
+  if (error.error != QJsonParseError::NoError || !document.isObject()) {
+    return false;
+  }
+  const QJsonValue tabs_value = document.object().value(QStringLiteral("tabs"));
+  if (!tabs_value.isArray()) {
+    return false;
+  }
+
+  QStringList restored;
+  restored.append(QString());
+  for (const QJsonValue& value : tabs_value.toArray()) {
+    const QString path = value.toString();
+    if (path.isEmpty() || restored.contains(path)) {
+      continue;
+    }
+    restored.append(path);
+  }
+
+  int restored_active =
+      document.object().value(QStringLiteral("active")).toInt(0);
+  if (restored_active < 0) {
+    restored_active = 0;
+  }
+  if (restored_active >= restored.size()) {
+    restored_active = restored.size() - 1;
+  }
+
+  paths_ = restored;
+  active_ = restored_active;
+  return true;
+}
 
 SessionController::SessionController(MdViewerSettings* settings,
                                      bool session_owner)
@@ -83,19 +162,6 @@ void SessionController::SaveTabs(const QVector<QString>& paths, int active) {
       active >= 0 && active < paths.size() ? paths.at(active) : QString();
   // 恢复结束时需要强制写回一次，是否跳过由调用方决定
   settings_->SaveSession();
-}
-
-void SessionController::SetSidebarVisible(bool visible) {
-  settings_->sidebar_visible = visible;
-}
-
-void SessionController::SetSidebarView(SideView view) {
-  settings_->sidebar_view = static_cast<int>(view);
-  settings_->sidebar_visible = true;
-}
-
-void SessionController::SetOutlineVisible(bool visible) {
-  settings_->outline_visible = visible;
 }
 
 void SessionController::SetRoot(const QString& root) {

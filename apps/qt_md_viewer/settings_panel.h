@@ -1,6 +1,7 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
 #define FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
 
+#include <QDialog>
 #include <QPointer>
 #include <QWidget>
 
@@ -83,6 +84,15 @@ class SettingsPanel : public QWidget {
   QLineEdit* dump_directory_ = nullptr;
   QPushButton* choose_dump_ = nullptr;
   QPushButton* reset_dump_ = nullptr;
+};
+
+// 设置对话框外壳：托管 SettingsPanel。模型窗口，改动即时生效，没有
+// 应用/取消按钮；关闭只是隐藏，下次打开保留滚动位置。
+class SettingsDialog : public QDialog {
+  Q_OBJECT
+
+ public:
+  explicit SettingsDialog(QWidget* content, QWidget* parent = nullptr);
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_

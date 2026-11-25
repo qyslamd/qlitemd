@@ -10,16 +10,6 @@ add_unit_test(
 )
 
 add_unit_test(
-    NAME test_tab_session_codec
-    SOURCES tab_session_codec_test.cpp
-            ${VIEWER_DIR}/tab_session_codec.cpp
-            ${VIEWER_DIR}/tab_session_codec.h
-    INCLUDES ${VIEWER_DIR}
-    QT_MODULES Core
-    LABELS MARKDOWN
-)
-
-add_unit_test(
     NAME test_md_viewer_settings
     SOURCES md_viewer_settings_test.cpp
             ${VIEWER_DIR}/md_viewer_settings.cpp
@@ -71,9 +61,12 @@ add_unit_test(
             ${VIEWER_DIR}/side_panel.h
             ${VIEWER_DIR}/document_index.cpp
             ${VIEWER_DIR}/bookmarks.cpp
+            ${VIEWER_DIR}/md_viewer_settings.cpp
+            ${VIEWER_DIR}/md_viewer_settings.h
     INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
              ${PROJECT_SOURCE_DIR}/3rdparty/fluentui/fluentui3style
-    QT_MODULES Widgets Test
+    QT_MODULES Widgets Gui Test
     LABELS MARKDOWN
     NO_GTEST_MAIN
 )
@@ -81,28 +74,6 @@ add_unit_test(
 add_unit_test(
     NAME test_bookmarks
     SOURCES bookmarks_test.cpp
-            ${VIEWER_DIR}/bookmarks.cpp
-            ${VIEWER_DIR}/document_index.cpp
-    INCLUDES ${VIEWER_DIR}
-    QT_MODULES Core
-    LABELS MARKDOWN
-)
-
-add_unit_test(
-    NAME test_reading_positions
-    SOURCES reading_positions_test.cpp
-            ${VIEWER_DIR}/reading_positions.cpp
-            ${VIEWER_DIR}/reading_positions.h
-    INCLUDES ${VIEWER_DIR}
-    QT_MODULES Core
-    LABELS MARKDOWN
-)
-
-add_unit_test(
-    NAME test_bookmark_controller
-    SOURCES bookmark_controller_test.cpp
-            ${VIEWER_DIR}/bookmark_controller.cpp
-            ${VIEWER_DIR}/bookmark_controller.h
             ${VIEWER_DIR}/bookmarks.cpp
             ${VIEWER_DIR}/document_index.cpp
             ${VIEWER_DIR}/md_viewer_settings.cpp
@@ -115,11 +86,10 @@ add_unit_test(
 )
 
 add_unit_test(
-    NAME test_reading_position_controller
-    SOURCES reading_position_controller_test.cpp
-            ${VIEWER_DIR}/reading_position_controller.cpp
-            ${VIEWER_DIR}/reading_position_controller.h
+    NAME test_reading_positions
+    SOURCES reading_positions_test.cpp
             ${VIEWER_DIR}/reading_positions.cpp
+            ${VIEWER_DIR}/reading_positions.h
             ${VIEWER_DIR}/md_viewer_settings.cpp
             ${VIEWER_DIR}/md_viewer_settings.h
     INCLUDES ${VIEWER_DIR}
@@ -136,7 +106,6 @@ add_unit_test(
             ${VIEWER_DIR}/session_controller.h
             ${VIEWER_DIR}/side_view.cpp
             ${VIEWER_DIR}/side_view.h
-            ${VIEWER_DIR}/tab_session_codec.cpp
             ${VIEWER_DIR}/md_viewer_settings.cpp
             ${VIEWER_DIR}/md_viewer_settings.h
     INCLUDES ${VIEWER_DIR}
@@ -212,21 +181,10 @@ add_unit_test(
 )
 
 add_unit_test(
-    NAME test_reading_progress
-    SOURCES reading_progress_test.cpp
-            ${VIEWER_DIR}/reading_progress.cpp
-            ${VIEWER_DIR}/reading_progress.h
-    INCLUDES ${VIEWER_DIR}
-    QT_MODULES Widgets Test
-    LABELS MARKDOWN
-    NO_GTEST_MAIN
-)
-
-add_unit_test(
     NAME test_document_bar
     SOURCES document_bar_test.cpp
-            ${VIEWER_DIR}/document_bar.cpp
-            ${VIEWER_DIR}/document_bar.h
+            ${VIEWER_DIR}/top_tool_bar.cpp
+            ${VIEWER_DIR}/top_tool_bar.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Widgets Test
     LABELS MARKDOWN
@@ -270,8 +228,8 @@ add_unit_test(
 add_unit_test(
     NAME test_welcome_bar
     SOURCES welcome_bar_test.cpp
-            ${VIEWER_DIR}/welcome_bar.cpp
-            ${VIEWER_DIR}/welcome_bar.h
+            ${VIEWER_DIR}/top_tool_bar.cpp
+            ${VIEWER_DIR}/top_tool_bar.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Widgets Test
     LABELS MARKDOWN
@@ -294,8 +252,6 @@ add_unit_test(
     SOURCES reader_page_test.cpp
             ${VIEWER_DIR}/reader_page.cpp
             ${VIEWER_DIR}/reader_page.h
-            ${VIEWER_DIR}/reading_progress.cpp
-            ${VIEWER_DIR}/reading_progress.h
     INCLUDES ${VIEWER_DIR}
     QT_MODULES Widgets Test
     LABELS MARKDOWN
@@ -319,8 +275,6 @@ add_unit_test(
     SOURCES settings_panel_test.cpp
             ${VIEWER_DIR}/settings_panel.cpp
             ${VIEWER_DIR}/settings_panel.h
-            ${VIEWER_DIR}/settings_dialog.cpp
-            ${VIEWER_DIR}/settings_dialog.h
     INCLUDES ${VIEWER_DIR}
     LIBS qlitemd::markdown_view
     QT_MODULES Widgets Test
@@ -333,7 +287,7 @@ add_unit_test(
 if(TARGET ExWidgets::ExWidgets)
     add_unit_test(
         NAME test_render_status_panel
-        SOURCES status_panel_test.cpp
+        SOURCES render_status_panel_test.cpp
                 ${VIEWER_DIR}/render_status_panel.cpp
         INCLUDES ${VIEWER_DIR}
                  ${PROJECT_SOURCE_DIR}/tests/support

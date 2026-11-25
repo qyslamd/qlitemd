@@ -32,4 +32,28 @@ class BookmarkStore {
 QString DisplayBookmarkPath(const Bookmark& bookmark,
                             const QString& current_root);
 
+struct MdViewerSettings;
+
+// 星标集合 + bookmarks_json 的读写。星标按钮、侧栏列表等 UI 同步
+// 由宿主负责。
+class BookmarkController {
+ public:
+  explicit BookmarkController(MdViewerSettings* settings);
+
+  // 从 settings_->bookmarks_json 读入
+  void Load();
+  bool Contains(const QString& path) const;
+  // 返回切换后的状态：true=已收藏
+  bool Toggle(const QString& path, const QString& root);
+  void Remove(const QString& path);
+  const QVector<Bookmark>& items() const;
+
+  // 写回 settings 并落盘
+  void Save() const;
+
+ private:
+  MdViewerSettings* settings_ = nullptr;
+  BookmarkStore store_;
+};
+
 #endif  // FILE_APPS_QT_MD_VIEWER_BOOKMARKS_H_

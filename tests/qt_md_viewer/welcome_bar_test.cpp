@@ -1,11 +1,11 @@
-#include "welcome_bar.h"
-
 #include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QToolButton>
 
 #include <gtest/gtest.h>
+
+#include "top_tool_bar.h"
 
 // 欢迎态专用工具栏：没有文档级控件，也没有搜索框
 int main(int argc, char** argv) {

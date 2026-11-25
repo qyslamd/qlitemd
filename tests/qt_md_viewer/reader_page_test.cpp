@@ -7,8 +7,6 @@
 
 #include <gtest/gtest.h>
 
-#include "reading_progress.h"
-
 int main(int argc, char** argv) {
   qputenv("QT_QPA_PLATFORM", "offscreen");
   QApplication app(argc, argv);
@@ -36,4 +34,14 @@ TEST(ReaderPageTest, PositionsBackToTopOnResize) {
   // 22px 边距，38px 固定尺寸；位置按页面自身尺寸算
   EXPECT_EQ(page.back_to_top()->x(), 400 - 38 - 22);
   EXPECT_EQ(page.back_to_top()->y(), 300 - 38 - 22);
+}
+
+TEST(ReadingProgressTest, ClampsToUnitRange) {
+  ReadingProgressBar bar;
+  bar.SetProgress(0.42);
+  EXPECT_DOUBLE_EQ(bar.progress(), 0.42);
+  bar.SetProgress(-1.0);
+  EXPECT_DOUBLE_EQ(bar.progress(), 0.0);
+  bar.SetProgress(3.0);
+  EXPECT_DOUBLE_EQ(bar.progress(), 1.0);
 }

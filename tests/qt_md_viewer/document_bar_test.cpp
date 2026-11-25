@@ -1,5 +1,3 @@
-#include "document_bar.h"
-
 #include <QApplication>
 #include <QFontMetrics>
 #include <QLabel>
@@ -7,6 +5,8 @@
 #include <QToolButton>
 
 #include <gtest/gtest.h>
+
+#include "top_tool_bar.h"
 
 int main(int argc, char** argv) {
   qputenv("QT_QPA_PLATFORM", "offscreen");

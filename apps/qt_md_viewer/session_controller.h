@@ -3,19 +3,35 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 #include "side_view.h"
 
 struct MdViewerSettings;
 
-// 侧栏/大纲的宽度与可见性；窗口关闭时整体写入会话
-struct ShellLayoutState {
-  SideView view = SideView::kDocuments;
-  bool sidebar_visible = true;
-  int sidebar_width = 280;
-  int outline_width = 212;
-  bool outline_visible = true;
+// 标签顺序与激活下标的编解码。第 0 项固定是欢迎标签（路径为空）；
+// 其余项是已打开的文档路径，路径唯一。宿主写会话时整表重建，
+// 因此这里只保留 Add/SetActive/序列化，没有关闭与重排语义。
+class TabSessionCodec {
+ public:
+  TabSessionCodec();
+
+  // 空路径返回欢迎标签；已存在返回现有下标；否则追加并返回新下标。
+  int Add(const QString& path);
+  bool SetActive(int index);
+
+  int active() const { return active_; }
+  int count() const { return paths_.size(); }
+  QString path_at(int index) const;
+  bool IsWelcome(int index) const { return index == 0; }
+
+  QByteArray Serialize() const;
+  bool Restore(const QByteArray& data);
+
+ private:
+  QStringList paths_;  // 第 0 项恒为空
+  int active_ = 0;
 };
 
 // 会话持久化：窗口几何、侧栏布局、标签顺序与激活项、根目录和上次文件。
@@ -46,10 +62,6 @@ class SessionController {
   // 标签顺序 + 激活项 + 上次文件，立即落盘
   void SaveTabs(const QVector<QString>& paths, int active);
   // 以下都只改会话字段，随后由 SaveTabs/ClearWorkspace 落盘
-  void SetSidebarVisible(bool visible);
-  // 切到某个视图时侧栏必然展开
-  void SetSidebarView(SideView view);
-  void SetOutlineVisible(bool visible);
   void SetRoot(const QString& root);
   void MarkWorkspaceOpened(const QString& path);
   void ClearWorkspace();

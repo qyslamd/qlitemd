@@ -230,36 +230,39 @@ class MdViewerWindow : public QMainWindow {
   void ConnectTabSignals(DocumentTab* tab);
   void UpdateShellForActiveTab();
 
-  // 菜单里挂着；菜单栏在 fluent 壳下会被搬进标题栏
-  QAction* open_file_action_ = nullptr;
-  QAction* open_dir_action_ = nullptr;
-  QAction* new_tab_action_ = nullptr;
-  QAction* close_tab_action_ = nullptr;
-  QAction* reopen_tab_action_ = nullptr;
-  QAction* new_window_action_ = nullptr;
-  QAction* unload_workspace_action_ = nullptr;
-  QAction* quit_action_ = nullptr;
-  QAction* about_action_ = nullptr;
-  QAction* export_html_action_ = nullptr;
-  QAction* export_pdf_action_ = nullptr;
-  QAction* find_action_ = nullptr;
-  QAction* workspace_search_action_ = nullptr;
-  QAction* view_documents_action_ = nullptr;
-  QAction* view_bookmarks_action_ = nullptr;
-  QAction* view_render_status_action_ = nullptr;
-  QAction* outline_action_ = nullptr;
-  QAction* quick_open_action_ = nullptr;
-  QAction* back_action_ = nullptr;
-  QAction* forward_action_ = nullptr;
-  QAction* zoom_in_action_ = nullptr;
-  QAction* zoom_out_action_ = nullptr;
-  QAction* zoom_reset_action_ = nullptr;
-  QAction* settings_action_ = nullptr;
-  QAction* bookmark_action_ = nullptr;
-  QAction* refresh_action_ = nullptr;
-  QAction* material_auto_action_ = nullptr;
-  QAction* material_acrylic_action_ = nullptr;
-  QAction* material_none_action_ = nullptr;
+  // 菜单/快捷键动作集中一处；个别动作会在初始化之外改状态
+  struct WindowActions {
+    QAction* open_file = nullptr;
+    QAction* open_dir = nullptr;
+    QAction* new_tab = nullptr;
+    QAction* close_tab = nullptr;
+    QAction* reopen_tab = nullptr;
+    QAction* new_window = nullptr;
+    QAction* unload_workspace = nullptr;
+    QAction* quit = nullptr;
+    QAction* about = nullptr;
+    QAction* export_html = nullptr;
+    QAction* export_pdf = nullptr;
+    QAction* find = nullptr;
+    QAction* workspace_search = nullptr;
+    QAction* view_documents = nullptr;
+    QAction* view_bookmarks = nullptr;
+    QAction* view_render_status = nullptr;
+    QAction* outline = nullptr;
+    QAction* quick_open = nullptr;
+    QAction* back = nullptr;
+    QAction* forward = nullptr;
+    QAction* zoom_in = nullptr;
+    QAction* zoom_out = nullptr;
+    QAction* zoom_reset = nullptr;
+    QAction* settings = nullptr;
+    QAction* bookmark = nullptr;
+    QAction* refresh = nullptr;
+    QAction* material_auto = nullptr;
+    QAction* material_acrylic = nullptr;
+    QAction* material_none = nullptr;
+  };
+  WindowActions actions_{};
   // Fluent 标题栏自带的搜索框；控件归标题栏所有
   QLineEdit* document_find_edit_ = nullptr;
   QLineEdit* workspace_search_edit_ = nullptr;
@@ -321,11 +324,9 @@ class MdViewerWindow : public QMainWindow {
   std::array<QWidget*, kSideViewCount> side_view_pages_{};
   QWidget* outline_column_ = nullptr;
   QSplitter* main_splitter_ = nullptr;
-  int side_width_ = 280;
-  int outline_width_ = 212;
   QToolButton* outline_hide_button_ = nullptr;
-  // 用户是否希望看到大纲；窄窗自动隐藏不改这个值
-  bool outline_user_visible_ = true;
+  // 侧栏/大纲布局的活动副本；窗口是唯一写者，退出时交给 SessionController
+  ShellLayoutState layout_;
   QWidget* title_leading_widget_ = nullptr;
   DocumentBar* document_bar_ = nullptr;
   DocumentTabBar* tab_bar_ = nullptr;

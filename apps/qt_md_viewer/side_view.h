@@ -23,4 +23,13 @@ bool IsValidSideView(int value);
 SideView SideViewFromInt(int value, SideView fallback = SideView::kDocuments);
 QString SideViewTitle(SideView view);
 
+// 侧栏/大纲的宽度与可见性；窗口持有活动副本，退出时写入会话
+struct ShellLayoutState {
+  SideView view = SideView::kDocuments;
+  bool sidebar_visible = true;
+  int sidebar_width = 280;
+  int outline_width = 212;
+  bool outline_visible = true;
+};
+
 #endif  // FILE_APPS_QT_MD_VIEWER_SIDE_VIEW_H_

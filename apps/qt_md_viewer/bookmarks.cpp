@@ -10,6 +10,7 @@
 #include <QJsonValue>
 
 #include "document_index.h"
+#include "md_viewer_settings.h"
 
 BookmarkStore BookmarkStore::FromJson(const QString& json) {
   BookmarkStore store;
@@ -85,4 +86,30 @@ QString DisplayBookmarkPath(const Bookmark& bookmark,
         QDir(bookmark.root).relativeFilePath(bookmark.path));
   }
   return QDir::fromNativeSeparators(bookmark.path);
+}
+
+BookmarkController::BookmarkController(MdViewerSettings* settings)
+    : settings_(settings) {}
+
+void BookmarkController::Load() {
+  store_ = BookmarkStore::FromJson(settings_->bookmarks_json);
+}
+
+bool BookmarkController::Contains(const QString& path) const {
+  return store_.Contains(path);
+}
+
+bool BookmarkController::Toggle(const QString& path, const QString& root) {
+  return store_.Toggle(path, root);
+}
+
+void BookmarkController::Remove(const QString& path) { store_.Remove(path); }
+
+const QVector<Bookmark>& BookmarkController::items() const {
+  return store_.items();
+}
+
+void BookmarkController::Save() const {
+  settings_->bookmarks_json = store_.ToJson();
+  settings_->SaveBookmarks();
 }

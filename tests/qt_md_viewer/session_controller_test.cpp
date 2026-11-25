@@ -91,20 +91,6 @@ TEST(SessionControllerTest, WorkspaceFlagsFollowOpenAndClear) {
   EXPECT_TRUE(controller.SavedTabPaths().isEmpty());
 }
 
-TEST(SessionControllerTest, SidebarAndOutlineSettersUpdateTheSnapshot) {
-  MdViewerSettings settings;
-  SessionController controller(&settings, /*session_owner=*/true);
-
-  controller.SetSidebarView(SideView::kBookmarks);
-  controller.SetSidebarVisible(false);
-  controller.SetOutlineVisible(false);
-
-  const ShellLayoutState layout = controller.SavedShellLayout();
-  EXPECT_EQ(layout.view, SideView::kBookmarks);
-  EXPECT_FALSE(layout.sidebar_visible);
-  EXPECT_FALSE(layout.outline_visible);
-}
-
 TEST(SessionControllerTest, SecondaryWindowDoesNotWrite) {
   MdViewerSettings settings;
   const QByteArray original_tabs = settings.open_tabs_json;
@@ -116,4 +102,69 @@ TEST(SessionControllerTest, SecondaryWindowDoesNotWrite) {
 
   EXPECT_TRUE(settings.window_geometry.isEmpty());
   EXPECT_EQ(settings.open_tabs_json, original_tabs);
+}
+
+TEST(TabSessionCodecTest, StartsWithWelcomeTab) {
+  TabSessionCodec model;
+  EXPECT_EQ(model.count(), 1);
+  EXPECT_EQ(model.active(), 0);
+  EXPECT_TRUE(model.path_at(0).isEmpty());
+}
+
+TEST(TabSessionCodecTest, AddAppendsAndReturnsIndex) {
+  TabSessionCodec model;
+  EXPECT_EQ(model.Add(QStringLiteral("/a")), 1);
+  EXPECT_EQ(model.Add(QStringLiteral("/b")), 2);
+  EXPECT_EQ(model.count(), 3);
+  EXPECT_EQ(model.path_at(1), QStringLiteral("/a"));
+  EXPECT_EQ(model.path_at(2), QStringLiteral("/b"));
+}
+
+TEST(TabSessionCodecTest, AddDuplicateReturnsExistingIndex) {
+  TabSessionCodec model;
+  const int first = model.Add(QStringLiteral("/a"));
+  EXPECT_EQ(model.Add(QStringLiteral("/a")), first);
+  EXPECT_EQ(model.count(), 2);
+}
+
+TEST(TabSessionCodecTest, AddEmptyReturnsWelcome) {
+  TabSessionCodec model;
+  EXPECT_EQ(model.Add(QString()), 0);
+  EXPECT_EQ(model.count(), 1);
+}
+
+TEST(TabSessionCodecTest, SerializeRestoreRoundTrip) {
+  TabSessionCodec model;
+  model.Add(QStringLiteral("/a"));
+  model.Add(QStringLiteral("/b"));
+  model.SetActive(2);
+  const QByteArray data = model.Serialize();
+
+  TabSessionCodec restored;
+  EXPECT_TRUE(restored.Restore(data));
+  EXPECT_EQ(restored.count(), 3);
+  EXPECT_EQ(restored.active(), 2);
+  EXPECT_EQ(restored.path_at(0), QString());
+  EXPECT_EQ(restored.path_at(1), QStringLiteral("/a"));
+  EXPECT_EQ(restored.path_at(2), QStringLiteral("/b"));
+}
+
+TEST(TabSessionCodecTest, RestoreRejectsInvalidJson) {
+  TabSessionCodec model;
+  model.Add(QStringLiteral("/a"));
+  EXPECT_FALSE(model.Restore(QByteArrayLiteral("{not json")));
+  EXPECT_EQ(model.count(), 2);
+  EXPECT_EQ(model.path_at(1), QStringLiteral("/a"));
+}
+
+TEST(TabSessionCodecTest, RestoreDedupesAndClampsActive) {
+  TabSessionCodec restored;
+  const QByteArray data = QByteArrayLiteral(
+      "{\"tabs\":[\"\",\"/a\",\"/a\",\"\",\"/b\"],"
+      "\"active\":99}");
+  EXPECT_TRUE(restored.Restore(data));
+  EXPECT_EQ(restored.count(), 3);
+  EXPECT_EQ(restored.path_at(1), QStringLiteral("/a"));
+  EXPECT_EQ(restored.path_at(2), QStringLiteral("/b"));
+  EXPECT_EQ(restored.active(), 2);
 }

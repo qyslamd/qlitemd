@@ -1,3 +1,5 @@
+#include "render_status_panel.h"
+
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
@@ -9,7 +11,6 @@
 
 #include "markdown_test_wait.h"
 #include "markdown_view.h"
-#include "render_status_panel.h"
 
 // 渲染状态面板的刷新链路：文档重建后 outlineChanged 触发 RefreshStatus，
 // Mermaid 的计数必须已经落进上下文。独立进程方便控制环境

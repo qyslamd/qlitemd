@@ -76,8 +76,7 @@
 // clang-format on
 
 #include "activity_bar.h"
-#include "bookmark_controller.h"
-#include "document_bar.h"
+#include "bookmarks.h"
 #include "document_index.h"
 #include "document_tab_bar.h"
 #include "image_lightbox.h"
@@ -86,18 +85,15 @@
 #include "quick_open.h"
 #include "reader_appearance_popup.h"
 #include "reader_page.h"
-#include "reading_position_controller.h"
-#include "reading_progress.h"
+#include "reading_positions.h"
 #include "render_status_panel.h"
 #include "search_controller.h"
 #include "session_controller.h"
-#include "settings_dialog.h"
 #include "settings_panel.h"
 #include "side_panel.h"
 #include "text_search.h"
 #include "theme_icons.h"
 #include "top_tool_bar.h"
-#include "welcome_bar.h"
 #include "welcome_view.h"
 
 namespace {
@@ -248,16 +244,13 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
     top_tool_bar_->ResetInvariants();
   }
   // 活动栏、侧栏与大纲不走 dock 状态，直接按设置恢复
-  const ShellLayoutState shell = session_controller_->SavedShellLayout();
-  side_width_ = shell.sidebar_width;
-  outline_width_ = shell.outline_width;
-  outline_user_visible_ = shell.outline_visible;
-  if (outline_action_ != nullptr) {
-    outline_action_->setChecked(outline_user_visible_);
+  layout_ = session_controller_->SavedShellLayout();
+  if (actions_.outline != nullptr) {
+    actions_.outline->setChecked(layout_.outline_visible);
   }
   if (activity_bar_ != nullptr && side_panel_ != nullptr) {
-    ApplySideView(shell.view);
-    side_panel_->setVisible(shell.sidebar_visible);
+    ApplySideView(layout_.view);
+    side_panel_->setVisible(layout_.sidebar_visible);
     ApplySplitterSizes();
   }
   ShowWelcome();
@@ -863,8 +856,8 @@ void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
 
 void MdViewerWindow::UpdateShellForActiveTab() {
   DocumentTab* tab = CurrentTab();
-  if (close_tab_action_ != nullptr) {
-    close_tab_action_->setEnabled(active_tab_ > 0);
+  if (actions_.close_tab != nullptr) {
+    actions_.close_tab->setEnabled(active_tab_ > 0);
   }
   if (tab_bar_ != nullptr) {
     const QSignalBlocker blocker(tab_bar_);
@@ -916,61 +909,63 @@ void MdViewerWindow::UpdateShellForActiveTab() {
 }
 
 void MdViewerWindow::createActions() {
-  open_file_action_ = new QAction(QStringLiteral("打开文件…"), this);
-  open_file_action_->setShortcut(QKeySequence::Open);
-  open_dir_action_ = new QAction(QStringLiteral("打开目录…"), this);
-  new_tab_action_ = new QAction(QStringLiteral("新建标签页"), this);
-  new_tab_action_->setObjectName(QStringLiteral("newTabAction"));
-  new_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+T")));
-  close_tab_action_ = new QAction(QStringLiteral("关闭标签页"), this);
-  close_tab_action_->setObjectName(QStringLiteral("closeTabAction"));
-  close_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
-  reopen_tab_action_ =
+  actions_.open_file = new QAction(QStringLiteral("打开文件…"), this);
+  actions_.open_file->setShortcut(QKeySequence::Open);
+  actions_.open_dir = new QAction(QStringLiteral("打开目录…"), this);
+  actions_.new_tab = new QAction(QStringLiteral("新建标签页"), this);
+  actions_.new_tab->setObjectName(QStringLiteral("newTabAction"));
+  actions_.new_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+T")));
+  actions_.close_tab = new QAction(QStringLiteral("关闭标签页"), this);
+  actions_.close_tab->setObjectName(QStringLiteral("closeTabAction"));
+  actions_.close_tab->setShortcut(QKeySequence(QStringLiteral("Ctrl+W")));
+  actions_.reopen_tab =
       new QAction(QStringLiteral("重新打开关闭的标签页"), this);
-  reopen_tab_action_->setObjectName(QStringLiteral("reopenTabAction"));
-  reopen_tab_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+T")));
-  new_window_action_ = new QAction(QStringLiteral("新建窗口"), this);
-  new_window_action_->setObjectName(QStringLiteral("newWindowAction"));
-  new_window_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
-  unload_workspace_action_ = new QAction(QStringLiteral("卸载工作区"), this);
-  unload_workspace_action_->setObjectName(
+  actions_.reopen_tab->setObjectName(QStringLiteral("reopenTabAction"));
+  actions_.reopen_tab->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+T")));
+  actions_.new_window = new QAction(QStringLiteral("新建窗口"), this);
+  actions_.new_window->setObjectName(QStringLiteral("newWindowAction"));
+  actions_.new_window->setShortcut(
+      QKeySequence(QStringLiteral("Ctrl+Shift+N")));
+  actions_.unload_workspace = new QAction(QStringLiteral("卸载工作区"), this);
+  actions_.unload_workspace->setObjectName(
       QStringLiteral("unloadWorkspaceAction"));
-  unload_workspace_action_->setEnabled(false);
-  quit_action_ = new QAction(QStringLiteral("退出"), this);
-  quit_action_->setShortcut(QKeySequence::Quit);
-  about_action_ = new QAction(QStringLiteral("关于"), this);
-  export_html_action_ = new QAction(QStringLiteral("导出 HTML…"), this);
-  export_html_action_->setObjectName(QStringLiteral("exportHtmlAction"));
-  export_pdf_action_ = new QAction(QStringLiteral("导出 PDF…"), this);
+  actions_.unload_workspace->setEnabled(false);
+  actions_.quit = new QAction(QStringLiteral("退出"), this);
+  actions_.quit->setShortcut(QKeySequence::Quit);
+  actions_.about = new QAction(QStringLiteral("关于"), this);
+  actions_.export_html = new QAction(QStringLiteral("导出 HTML…"), this);
+  actions_.export_html->setObjectName(QStringLiteral("exportHtmlAction"));
+  actions_.export_pdf = new QAction(QStringLiteral("导出 PDF…"), this);
 
   // 两个搜索入口：Ctrl+F 查当前文档，Ctrl+Shift+F 搜整个工作区。
   // Ctrl+K 退休，不再绑定任何搜索
-  find_action_ = new QAction(QStringLiteral("在当前文档中查找"), this);
-  find_action_->setShortcut(QKeySequence(QKeySequence::Find));
-  find_action_->setToolTip(QStringLiteral("在当前文档中查找（Ctrl+F）"));
-  workspace_search_action_ = new QAction(QStringLiteral("搜索工作区"), this);
-  workspace_search_action_->setObjectName(
+  actions_.find = new QAction(QStringLiteral("在当前文档中查找"), this);
+  actions_.find->setShortcut(QKeySequence(QKeySequence::Find));
+  actions_.find->setToolTip(QStringLiteral("在当前文档中查找（Ctrl+F）"));
+  actions_.workspace_search = new QAction(QStringLiteral("搜索工作区"), this);
+  actions_.workspace_search->setObjectName(
       QStringLiteral("workspaceSearchAction"));
-  workspace_search_action_->setShortcut(
+  actions_.workspace_search->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+F")));
-  workspace_search_action_->setToolTip(
+  actions_.workspace_search->setToolTip(
       QStringLiteral("搜索工作区文件与内容（Ctrl+Shift+F）"));
 
   // 活动栏的四个视图与大纲开关
-  view_documents_action_ = new QAction(QStringLiteral("文档视图"), this);
-  view_documents_action_->setShortcut(
+  actions_.view_documents = new QAction(QStringLiteral("文档视图"), this);
+  actions_.view_documents->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+E")));
-  view_bookmarks_action_ = new QAction(QStringLiteral("收藏视图"), this);
-  view_bookmarks_action_->setShortcut(
+  actions_.view_bookmarks = new QAction(QStringLiteral("收藏视图"), this);
+  actions_.view_bookmarks->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+B")));
-  view_render_status_action_ =
+  actions_.view_render_status =
       new QAction(QStringLiteral("渲染状态视图"), this);
-  view_render_status_action_->setShortcut(
+  actions_.view_render_status->setShortcut(
       QKeySequence(QStringLiteral("Ctrl+Shift+R")));
-  outline_action_ = new QAction(QStringLiteral("大纲"), this);
-  outline_action_->setObjectName(QStringLiteral("outlineAction"));
-  outline_action_->setCheckable(true);
-  outline_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+O")));
+  actions_.outline = new QAction(QStringLiteral("大纲"), this);
+  actions_.outline->setObjectName(QStringLiteral("outlineAction"));
+  actions_.outline->setCheckable(true);
+  actions_.outline->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+O")));
 }
 
 void MdViewerWindow::initUi() {
@@ -1199,143 +1194,144 @@ void MdViewerWindow::initUi() {
 
   // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
   const bool initial_dark = settings_->dark_theme;
-  quick_open_action_ = new QAction(QStringLiteral("快速跳转…"), this);
-  quick_open_action_->setObjectName(QStringLiteral("quickOpenAction"));
-  quick_open_action_->setIcon(
+  actions_.quick_open = new QAction(QStringLiteral("快速跳转…"), this);
+  actions_.quick_open->setObjectName(QStringLiteral("quickOpenAction"));
+  actions_.quick_open->setIcon(
       ThemeIcon(QStringLiteral("search"), initial_dark));
-  quick_open_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+P")));
-  quick_open_action_->setToolTip(
+  actions_.quick_open->setShortcut(QKeySequence(QStringLiteral("Ctrl+P")));
+  actions_.quick_open->setToolTip(
       QStringLiteral("跳转到文件、标题或命令（Ctrl+P）"));
 
   // 导航与缩放从工具条搬进标题栏；文件跳转和锚点跳转共用一个历史栈
-  back_action_ = new QAction(QStringLiteral("后退"), this);
-  back_action_->setObjectName(QStringLiteral("navBackAction"));
-  back_action_->setIcon(ThemeIcon(QStringLiteral("back"), initial_dark));
-  back_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Left")));
-  back_action_->setToolTip(QStringLiteral("后退（Ctrl+Alt+←）"));
+  actions_.back = new QAction(QStringLiteral("后退"), this);
+  actions_.back->setObjectName(QStringLiteral("navBackAction"));
+  actions_.back->setIcon(ThemeIcon(QStringLiteral("back"), initial_dark));
+  actions_.back->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Left")));
+  actions_.back->setToolTip(QStringLiteral("后退（Ctrl+Alt+←）"));
 
-  forward_action_ = new QAction(QStringLiteral("前进"), this);
-  forward_action_->setObjectName(QStringLiteral("navForwardAction"));
-  forward_action_->setIcon(ThemeIcon(QStringLiteral("forward"), initial_dark));
-  forward_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Right")));
-  forward_action_->setToolTip(QStringLiteral("前进（Ctrl+Alt+→）"));
+  actions_.forward = new QAction(QStringLiteral("前进"), this);
+  actions_.forward->setObjectName(QStringLiteral("navForwardAction"));
+  actions_.forward->setIcon(ThemeIcon(QStringLiteral("forward"), initial_dark));
+  actions_.forward->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+Right")));
+  actions_.forward->setToolTip(QStringLiteral("前进（Ctrl+Alt+→）"));
 
   // 缩放快捷键由 MarkdownView 内部持有，这里的按钮不再重复注册快捷键
-  zoom_out_action_ = new QAction(QStringLiteral("−"), this);
-  zoom_out_action_->setObjectName(QStringLiteral("zoomOutAction"));
-  zoom_out_action_->setIcon(
+  actions_.zoom_out = new QAction(QStringLiteral("−"), this);
+  actions_.zoom_out->setObjectName(QStringLiteral("zoomOutAction"));
+  actions_.zoom_out->setIcon(
       ThemeIcon(QStringLiteral("zoom-out"), initial_dark));
-  zoom_out_action_->setToolTip(QStringLiteral("缩小（Ctrl+-）"));
+  actions_.zoom_out->setToolTip(QStringLiteral("缩小（Ctrl+-）"));
 
-  zoom_reset_action_ = new QAction(QStringLiteral("100%"), this);
-  zoom_reset_action_->setObjectName(QStringLiteral("zoomResetAction"));
-  zoom_reset_action_->setIcon(
+  actions_.zoom_reset = new QAction(QStringLiteral("100%"), this);
+  actions_.zoom_reset->setObjectName(QStringLiteral("zoomResetAction"));
+  actions_.zoom_reset->setIcon(
       ThemeIcon(QStringLiteral("zoom-reset"), initial_dark));
-  zoom_reset_action_->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
+  actions_.zoom_reset->setToolTip(QStringLiteral("重置缩放（Ctrl+0）"));
 
-  settings_action_ = new QAction(QStringLiteral("设置…"), this);
-  settings_action_->setObjectName(QStringLiteral("settingsAction"));
-  settings_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
-  settings_action_->setToolTip(QStringLiteral("设置（Ctrl+,）"));
+  actions_.settings = new QAction(QStringLiteral("设置…"), this);
+  actions_.settings->setObjectName(QStringLiteral("settingsAction"));
+  actions_.settings->setShortcut(QKeySequence(QStringLiteral("Ctrl+,")));
+  actions_.settings->setToolTip(QStringLiteral("设置（Ctrl+,）"));
 
-  zoom_in_action_ = new QAction(QStringLiteral("+"), this);
-  zoom_in_action_->setObjectName(QStringLiteral("zoomInAction"));
-  zoom_in_action_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), initial_dark));
-  zoom_in_action_->setToolTip(QStringLiteral("放大（Ctrl+=）"));
+  actions_.zoom_in = new QAction(QStringLiteral("+"), this);
+  actions_.zoom_in->setObjectName(QStringLiteral("zoomInAction"));
+  actions_.zoom_in->setIcon(ThemeIcon(QStringLiteral("zoom-in"), initial_dark));
+  actions_.zoom_in->setToolTip(QStringLiteral("放大（Ctrl+=）"));
 
-  bookmark_action_ = new QAction(QStringLiteral("收藏当前文档"), this);
-  bookmark_action_->setObjectName(QStringLiteral("bookmarkAction"));
-  bookmark_action_->setShortcut(QKeySequence(QStringLiteral("Ctrl+D")));
-  bookmark_action_->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
+  actions_.bookmark = new QAction(QStringLiteral("收藏当前文档"), this);
+  actions_.bookmark->setObjectName(QStringLiteral("bookmarkAction"));
+  actions_.bookmark->setShortcut(QKeySequence(QStringLiteral("Ctrl+D")));
+  actions_.bookmark->setToolTip(QStringLiteral("收藏当前文档（Ctrl+D）"));
   UpdateHistoryActions();
 
   // 汉堡菜单：文件/视图/帮助三组动作
   app_menu_ = new QMenu(this);
   QMenu* file_menu = app_menu_->addMenu(QStringLiteral("文件(&F)"));
-  file_menu->addAction(new_tab_action_);
-  file_menu->addAction(close_tab_action_);
-  file_menu->addAction(reopen_tab_action_);
-  file_menu->addAction(new_window_action_);
+  file_menu->addAction(actions_.new_tab);
+  file_menu->addAction(actions_.close_tab);
+  file_menu->addAction(actions_.reopen_tab);
+  file_menu->addAction(actions_.new_window);
   file_menu->addSeparator();
-  file_menu->addAction(open_file_action_);
-  file_menu->addAction(open_dir_action_);
-  file_menu->addAction(unload_workspace_action_);
+  file_menu->addAction(actions_.open_file);
+  file_menu->addAction(actions_.open_dir);
+  file_menu->addAction(actions_.unload_workspace);
   recent_menu_ = file_menu->addMenu(QStringLiteral("最近打开"));
   recent_roots_menu_ = file_menu->addMenu(QStringLiteral("最近打开的工作区"));
   file_menu->addSeparator();
-  file_menu->addAction(export_html_action_);
-  file_menu->addAction(export_pdf_action_);
+  file_menu->addAction(actions_.export_html);
+  file_menu->addAction(actions_.export_pdf);
   file_menu->addSeparator();
-  file_menu->addAction(quit_action_);
+  file_menu->addAction(actions_.quit);
 
   view_menu_ = app_menu_->addMenu(QStringLiteral("视图(&V)"));
-  view_menu_->addAction(quick_open_action_);
-  view_menu_->addAction(workspace_search_action_);
+  view_menu_->addAction(actions_.quick_open);
+  view_menu_->addAction(actions_.workspace_search);
   view_menu_->addSeparator();
-  view_menu_->addAction(view_documents_action_);
-  view_menu_->addAction(view_bookmarks_action_);
-  view_menu_->addAction(view_render_status_action_);
-  view_menu_->addAction(outline_action_);
+  view_menu_->addAction(actions_.view_documents);
+  view_menu_->addAction(actions_.view_bookmarks);
+  view_menu_->addAction(actions_.view_render_status);
+  view_menu_->addAction(actions_.outline);
   view_menu_->addSeparator();
-  view_menu_->addAction(back_action_);
-  view_menu_->addAction(forward_action_);
-  refresh_action_ = new QAction(QStringLiteral("刷新"), this);
-  refresh_action_->setObjectName(QStringLiteral("refreshAction"));
-  refresh_action_->setShortcut(QKeySequence(Qt::Key_F5));
-  view_menu_->addAction(refresh_action_);
+  view_menu_->addAction(actions_.back);
+  view_menu_->addAction(actions_.forward);
+  actions_.refresh = new QAction(QStringLiteral("刷新"), this);
+  actions_.refresh->setObjectName(QStringLiteral("refreshAction"));
+  actions_.refresh->setShortcut(QKeySequence(Qt::Key_F5));
+  view_menu_->addAction(actions_.refresh);
   view_menu_->addSeparator();
-  view_menu_->addAction(zoom_out_action_);
-  view_menu_->addAction(zoom_reset_action_);
-  view_menu_->addAction(zoom_in_action_);
+  view_menu_->addAction(actions_.zoom_out);
+  view_menu_->addAction(actions_.zoom_reset);
+  view_menu_->addAction(actions_.zoom_in);
   view_menu_->addSeparator();
-  view_menu_->addAction(settings_action_);
+  view_menu_->addAction(actions_.settings);
 #ifdef Q_OS_WIN
   QMenu* material_menu = view_menu_->addMenu(QStringLiteral("窗口材质"));
   auto* material_group = new QActionGroup(this);
-  material_auto_action_ =
+  actions_.material_auto =
       material_menu->addAction(QStringLiteral("自动（Mica）"));
-  material_auto_action_->setObjectName(QStringLiteral("materialAutoAction"));
-  material_acrylic_action_ = material_menu->addAction(QStringLiteral("亚克力"));
-  material_acrylic_action_->setObjectName(
+  actions_.material_auto->setObjectName(QStringLiteral("materialAutoAction"));
+  actions_.material_acrylic =
+      material_menu->addAction(QStringLiteral("亚克力"));
+  actions_.material_acrylic->setObjectName(
       QStringLiteral("materialAcrylicAction"));
-  material_none_action_ = material_menu->addAction(QStringLiteral("关闭"));
-  material_none_action_->setObjectName(QStringLiteral("materialNoneAction"));
-  for (QAction* action : {material_auto_action_, material_acrylic_action_,
-                          material_none_action_}) {
+  actions_.material_none = material_menu->addAction(QStringLiteral("关闭"));
+  actions_.material_none->setObjectName(QStringLiteral("materialNoneAction"));
+  for (QAction* action : {actions_.material_auto, actions_.material_acrylic,
+                          actions_.material_none}) {
     action->setCheckable(true);
     material_group->addAction(action);
   }
-  connect(material_auto_action_, &QAction::triggered, this,
+  connect(actions_.material_auto, &QAction::triggered, this,
           [this] { ApplyWindowMaterial(WindowMaterial::kAuto, true); });
-  connect(material_acrylic_action_, &QAction::triggered, this,
+  connect(actions_.material_acrylic, &QAction::triggered, this,
           [this] { ApplyWindowMaterial(WindowMaterial::kAcrylic, true); });
-  connect(material_none_action_, &QAction::triggered, this,
+  connect(actions_.material_none, &QAction::triggered, this,
           [this] { ApplyWindowMaterial(WindowMaterial::kNone, true); });
   UpdateMaterialActions();
 #endif
 
   QMenu* help_menu = app_menu_->addMenu(QStringLiteral("帮助(&H)"));
-  help_menu->addAction(about_action_);
+  help_menu->addAction(actions_.about);
 
   // 菜单挂到标题栏按钮后不再是 QMenuBar；关键动作仍挂到窗口，快捷键才稳
-  addAction(open_file_action_);
-  addAction(open_dir_action_);
-  addAction(new_tab_action_);
-  addAction(close_tab_action_);
-  addAction(reopen_tab_action_);
-  addAction(new_window_action_);
-  addAction(quit_action_);
-  addAction(find_action_);
-  addAction(workspace_search_action_);
-  addAction(view_documents_action_);
-  addAction(view_bookmarks_action_);
-  addAction(view_render_status_action_);
-  addAction(outline_action_);
-  addAction(quick_open_action_);
-  addAction(back_action_);
-  addAction(forward_action_);
-  addAction(bookmark_action_);
-  addAction(refresh_action_);
+  addAction(actions_.open_file);
+  addAction(actions_.open_dir);
+  addAction(actions_.new_tab);
+  addAction(actions_.close_tab);
+  addAction(actions_.reopen_tab);
+  addAction(actions_.new_window);
+  addAction(actions_.quit);
+  addAction(actions_.find);
+  addAction(actions_.workspace_search);
+  addAction(actions_.view_documents);
+  addAction(actions_.view_bookmarks);
+  addAction(actions_.view_render_status);
+  addAction(actions_.outline);
+  addAction(actions_.quick_open);
+  addAction(actions_.back);
+  addAction(actions_.forward);
+  addAction(actions_.bookmark);
+  addAction(actions_.refresh);
 
   menu_button_ = new QToolButton(fluent_frame_->titleBar());
   menu_button_->setObjectName(QStringLiteral("mainMenuButton"));
@@ -1385,19 +1381,19 @@ void MdViewerWindow::initUi() {
   document_find_edit_ = document_bar_->find_edit();
   document_find_edit_->installEventFilter(this);
   workspace_search_edit_ = side_panel_view_->search_edit();
-  document_bar_->back_button()->setDefaultAction(back_action_);
-  document_bar_->forward_button()->setDefaultAction(forward_action_);
-  document_bar_->zoom_out_button()->setDefaultAction(zoom_out_action_);
-  document_bar_->zoom_in_button()->setDefaultAction(zoom_in_action_);
+  document_bar_->back_button()->setDefaultAction(actions_.back);
+  document_bar_->forward_button()->setDefaultAction(actions_.forward);
+  document_bar_->zoom_out_button()->setDefaultAction(actions_.zoom_out);
+  document_bar_->zoom_in_button()->setDefaultAction(actions_.zoom_in);
   connect(document_bar_->zoom_reset_button(), &QToolButton::clicked, this,
-          [this] { zoom_reset_action_->trigger(); });
+          [this] { actions_.zoom_reset->trigger(); });
   connect(document_bar_->star_button(), &QToolButton::clicked, this,
           &MdViewerWindow::SetBookmarkChecked);
   connect(document_bar_->appearance_button(), &QToolButton::clicked, this,
           &MdViewerWindow::ShowReaderAppearance);
   connect(welcome_bar_, &WelcomeBar::quickOpenRequested, this, [this] {
-    if (quick_open_action_ != nullptr) {
-      quick_open_action_->trigger();
+    if (actions_.quick_open != nullptr) {
+      actions_.quick_open->trigger();
     }
   });
   connect(activity_bar_, &ActivityBar::settingsRequested, this,
@@ -1406,29 +1402,27 @@ void MdViewerWindow::initUi() {
           &MdViewerWindow::ShowSideView);
   connect(main_splitter_, &QSplitter::splitterMoved, this, [this] {
     if (side_panel_ != nullptr && side_panel_->isVisible()) {
-      side_width_ = side_panel_->width();
+      layout_.sidebar_width = side_panel_->width();
     }
     if (outline_column_ != nullptr && outline_column_->isVisible()) {
-      outline_width_ = outline_column_->width();
+      layout_.outline_width = outline_column_->width();
     }
   });
   connect(outline_hide_button_, &QToolButton::clicked, this, [this] {
-    outline_user_visible_ = false;
-    session_controller_->SetOutlineVisible(false);
-    if (outline_action_ != nullptr) {
-      outline_action_->setChecked(false);
+    layout_.outline_visible = false;
+    if (actions_.outline != nullptr) {
+      actions_.outline->setChecked(false);
     }
     UpdateOutlineVisibility();
   });
-  connect(view_documents_action_, &QAction::triggered, this,
+  connect(actions_.view_documents, &QAction::triggered, this,
           [this] { EnsureSideView(SideView::kDocuments); });
-  connect(view_bookmarks_action_, &QAction::triggered, this,
+  connect(actions_.view_bookmarks, &QAction::triggered, this,
           [this] { EnsureSideView(SideView::kBookmarks); });
-  connect(view_render_status_action_, &QAction::triggered, this,
+  connect(actions_.view_render_status, &QAction::triggered, this,
           [this] { EnsureSideView(SideView::kRenderStatus); });
-  connect(outline_action_, &QAction::toggled, this, [this](bool on) {
-    outline_user_visible_ = on;
-    session_controller_->SetOutlineVisible(on);
+  connect(actions_.outline, &QAction::toggled, this, [this](bool on) {
+    layout_.outline_visible = on;
     UpdateOutlineVisibility();
   });
   connect(document_bar_->copy_button(), &QToolButton::clicked, this, [this] {
@@ -1486,32 +1480,32 @@ void MdViewerWindow::initSignals() {
                                          : QStringLiteral("阅读区：主题底色"),
                                      2000);
           });
-  connect(back_action_, &QAction::triggered, this, &MdViewerWindow::GoBack);
-  connect(forward_action_, &QAction::triggered, this,
+  connect(actions_.back, &QAction::triggered, this, &MdViewerWindow::GoBack);
+  connect(actions_.forward, &QAction::triggered, this,
           &MdViewerWindow::GoForward);
-  connect(zoom_in_action_, &QAction::triggered, this, [this] {
+  connect(actions_.zoom_in, &QAction::triggered, this, [this] {
     if (CurrentView() != nullptr) {
       CurrentView()->ZoomIn();
     }
   });
-  connect(zoom_out_action_, &QAction::triggered, this, [this] {
+  connect(actions_.zoom_out, &QAction::triggered, this, [this] {
     if (CurrentView() != nullptr) {
       CurrentView()->ZoomOut();
     }
   });
-  connect(zoom_reset_action_, &QAction::triggered, this, [this] {
+  connect(actions_.zoom_reset, &QAction::triggered, this, [this] {
     if (CurrentView() != nullptr) {
       CurrentView()->ResetZoom();
     }
   });
-  connect(open_file_action_, &QAction::triggered, this,
+  connect(actions_.open_file, &QAction::triggered, this,
           &MdViewerWindow::OpenFileDialog);
-  connect(open_dir_action_, &QAction::triggered, this,
+  connect(actions_.open_dir, &QAction::triggered, this,
           &MdViewerWindow::OpenDirectoryDialog);
-  connect(unload_workspace_action_, &QAction::triggered, this,
+  connect(actions_.unload_workspace, &QAction::triggered, this,
           &MdViewerWindow::UnloadWorkspace);
-  connect(quit_action_, &QAction::triggered, this, &QWidget::close);
-  connect(about_action_, &QAction::triggered, this, [this] {
+  connect(actions_.quit, &QAction::triggered, this, &QWidget::close);
+  connect(actions_.about, &QAction::triggered, this, [this] {
     QMessageBox::about(
         this, QStringLiteral("关于"),
         QStringLiteral("qt_md_viewer——qlitemd 的 Markdown "
@@ -1548,7 +1542,7 @@ void MdViewerWindow::initSignals() {
             bookmark_controller_->Save();
             UpdateBookmarkUi();
           });
-  connect(bookmark_action_, &QAction::triggered, this, [this] {
+  connect(actions_.bookmark, &QAction::triggered, this, [this] {
     const QString path = CurrentTab()->path;
     SetBookmarkChecked(!path.isEmpty() &&
                        !bookmark_controller_->Contains(path));
@@ -1582,21 +1576,21 @@ void MdViewerWindow::initSignals() {
     }
     SaveTabSession();
   });
-  connect(settings_action_, &QAction::triggered, this,
+  connect(actions_.settings, &QAction::triggered, this,
           &MdViewerWindow::ShowSettings);
   connect(render_status_, &RenderStatusPanel::statusMessage, this,
           [this](const QString& message) {
             statusBar()->showMessage(message, 5000);
           });
-  connect(export_html_action_, &QAction::triggered, this,
+  connect(actions_.export_html, &QAction::triggered, this,
           &MdViewerWindow::ExportHtml);
-  connect(export_pdf_action_, &QAction::triggered, this,
+  connect(actions_.export_pdf, &QAction::triggered, this,
           &MdViewerWindow::ExportPdf);
-  connect(quick_open_action_, &QAction::triggered, this,
+  connect(actions_.quick_open, &QAction::triggered, this,
           &MdViewerWindow::ShowQuickOpen);
-  connect(find_action_, &QAction::triggered, this,
+  connect(actions_.find, &QAction::triggered, this,
           &MdViewerWindow::FocusDocumentFind);
-  connect(workspace_search_action_, &QAction::triggered, this,
+  connect(actions_.workspace_search, &QAction::triggered, this,
           &MdViewerWindow::FocusWorkspaceSearch);
   // 当前文档查找：输入即找，回车下一个，Shift+回车上一个
   connect(document_find_edit_, &QLineEdit::textChanged, this,
@@ -1648,7 +1642,7 @@ void MdViewerWindow::initSignals() {
           [this](const QString&) { root_rescan_timer_->start(); });
   connect(root_rescan_timer_, &QTimer::timeout, this,
           &MdViewerWindow::RefreshRoot);
-  connect(refresh_action_, &QAction::triggered, this,
+  connect(actions_.refresh, &QAction::triggered, this,
           &MdViewerWindow::RefreshRoot);
   // Esc 把焦点还给正文；文档查找框的 Esc 在 eventFilter 里处理
   auto* escape = new QShortcut(QKeySequence(Qt::Key_Escape), this);
@@ -1658,18 +1652,18 @@ void MdViewerWindow::initSignals() {
       CurrentView()->setFocus();
     }
   });
-  connect(new_tab_action_, &QAction::triggered, this,
+  connect(actions_.new_tab, &QAction::triggered, this,
           &MdViewerWindow::OpenFileDialog);
-  connect(new_window_action_, &QAction::triggered, this, [this] {
+  connect(actions_.new_window, &QAction::triggered, this, [this] {
     // 次窗口不读写会话：停在自己的欢迎页，多工作区靠它实现
     auto* window = new MdViewerWindow(settings_, /*session_owner=*/false);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->resize(1100, 800);
     window->show();
   });
-  connect(close_tab_action_, &QAction::triggered, this,
+  connect(actions_.close_tab, &QAction::triggered, this,
           [this] { CloseTab(active_tab_); });
-  connect(reopen_tab_action_, &QAction::triggered, this,
+  connect(actions_.reopen_tab, &QAction::triggered, this,
           &MdViewerWindow::ReopenClosedTab);
   if (tab_bar_ != nullptr) {
     connect(tab_bar_, &QTabBar::currentChanged, this, [this](int) {
@@ -1794,8 +1788,8 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
     settings_->AddRecentRoot(root_dir_);
     RefreshRecentRootsMenu();
     SaveTabSession();
-    if (unload_workspace_action_ != nullptr) {
-      unload_workspace_action_->setEnabled(true);
+    if (actions_.unload_workspace != nullptr) {
+      actions_.unload_workspace->setEnabled(true);
     }
     side_panel_view_->SetRoot(result);
     side_panel_view_->SetSearchAvailable(true);
@@ -1901,11 +1895,11 @@ void MdViewerWindow::GoForward() {
 }
 
 void MdViewerWindow::UpdateHistoryActions() {
-  if (back_action_ != nullptr) {
-    back_action_->setEnabled(CurrentTab()->history.CanGoBack());
+  if (actions_.back != nullptr) {
+    actions_.back->setEnabled(CurrentTab()->history.CanGoBack());
   }
-  if (forward_action_ != nullptr) {
-    forward_action_->setEnabled(CurrentTab()->history.CanGoForward());
+  if (actions_.forward != nullptr) {
+    actions_.forward->setEnabled(CurrentTab()->history.CanGoForward());
   }
 }
 
@@ -2067,7 +2061,7 @@ void MdViewerWindow::UnloadWorkspace() {
   }
   document_count_label_->setText(QStringLiteral("0 篇"));
   UpdateBookmarkUi();
-  unload_workspace_action_->setEnabled(false);
+  actions_.unload_workspace->setEnabled(false);
   statusBar()->showMessage(QStringLiteral("已卸载工作区：%1")
                                .arg(QFileInfo(unloaded_root).fileName()),
                            4000);
@@ -2209,11 +2203,11 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
 
   const QString& id = item.command_id;
   if (id == QLatin1String("open-file")) {
-    open_file_action_->trigger();
+    actions_.open_file->trigger();
   } else if (id == QLatin1String("open-dir")) {
-    open_dir_action_->trigger();
+    actions_.open_dir->trigger();
   } else if (id == QLatin1String("unload-workspace")) {
-    unload_workspace_action_->trigger();
+    actions_.unload_workspace->trigger();
   } else if (id == QLatin1String("toggle-theme")) {
     ToggleTheme();
   } else if (id == QLatin1String("appearance")) {
@@ -2224,19 +2218,19 @@ void MdViewerWindow::ActivateQuickOpenItem(const QuickOpenItem& item) {
       ShowImagePreview(images.first());
     }
   } else if (id == QLatin1String("toggle-bookmark")) {
-    bookmark_action_->trigger();
+    actions_.bookmark->trigger();
   } else if (id == QLatin1String("export-html")) {
-    export_html_action_->trigger();
+    actions_.export_html->trigger();
   } else if (id == QLatin1String("export-pdf")) {
-    export_pdf_action_->trigger();
+    actions_.export_pdf->trigger();
   } else if (id == QLatin1String("refresh-root")) {
     RefreshRoot();
   } else if (id == QLatin1String("zoom-out")) {
-    zoom_out_action_->trigger();
+    actions_.zoom_out->trigger();
   } else if (id == QLatin1String("zoom-reset")) {
-    zoom_reset_action_->trigger();
+    actions_.zoom_reset->trigger();
   } else if (id == QLatin1String("zoom-in")) {
-    zoom_in_action_->trigger();
+    actions_.zoom_in->trigger();
   } else if (id == QLatin1String("show-settings")) {
     ShowSettings();
   }
@@ -2282,12 +2276,12 @@ void MdViewerWindow::RefreshThemeIcons() {
   // 主题相关图标分 svg/light 与 svg/dark 两套，换肤时整体换一套；
   // 星标里实心星是语义图标，UpdateBookmarkUi 内部处理
   const bool dark = ThemeDark();
-  quick_open_action_->setIcon(ThemeIcon(QStringLiteral("search"), dark));
-  back_action_->setIcon(ThemeIcon(QStringLiteral("back"), dark));
-  forward_action_->setIcon(ThemeIcon(QStringLiteral("forward"), dark));
-  zoom_out_action_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark));
-  zoom_reset_action_->setIcon(ThemeIcon(QStringLiteral("zoom-reset"), dark));
-  zoom_in_action_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark));
+  actions_.quick_open->setIcon(ThemeIcon(QStringLiteral("search"), dark));
+  actions_.back->setIcon(ThemeIcon(QStringLiteral("back"), dark));
+  actions_.forward->setIcon(ThemeIcon(QStringLiteral("forward"), dark));
+  actions_.zoom_out->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark));
+  actions_.zoom_reset->setIcon(ThemeIcon(QStringLiteral("zoom-reset"), dark));
+  actions_.zoom_in->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark));
   if (menu_button_ != nullptr) {
     menu_button_->setIcon(ThemeIcon(QStringLiteral("menu"), dark));
   }
@@ -2387,13 +2381,13 @@ void MdViewerWindow::ApplyWindowMaterial(WindowMaterial material,
 }
 
 void MdViewerWindow::UpdateMaterialActions() {
-  if (material_auto_action_ == nullptr) {
+  if (actions_.material_auto == nullptr) {
     return;
   }
-  material_auto_action_->setChecked(window_material_ == WindowMaterial::kAuto);
-  material_acrylic_action_->setChecked(window_material_ ==
-                                       WindowMaterial::kAcrylic);
-  material_none_action_->setChecked(window_material_ == WindowMaterial::kNone);
+  actions_.material_auto->setChecked(window_material_ == WindowMaterial::kAuto);
+  actions_.material_acrylic->setChecked(window_material_ ==
+                                        WindowMaterial::kAcrylic);
+  actions_.material_none->setChecked(window_material_ == WindowMaterial::kNone);
 }
 
 void MdViewerWindow::RefreshChromePalette() {
@@ -2836,23 +2830,19 @@ void MdViewerWindow::SaveSettings() {
   RememberCurrentPosition();
   WriteTabSession();
   session_controller_->SaveGeometry(saveGeometry());
-  ShellLayoutState layout;
   if (activity_bar_ != nullptr) {
-    layout.view = activity_bar_->active_view();
+    layout_.view = activity_bar_->active_view();
   }
   if (side_panel_ != nullptr) {
-    layout.sidebar_visible = side_panel_->isVisible();
+    layout_.sidebar_visible = side_panel_->isVisible();
     if (side_panel_->isVisible()) {
-      side_width_ = side_panel_->width();
+      layout_.sidebar_width = side_panel_->width();
     }
   }
   if (outline_column_ != nullptr && outline_column_->isVisible()) {
-    outline_width_ = outline_column_->width();
+    layout_.outline_width = outline_column_->width();
   }
-  layout.sidebar_width = side_width_;
-  layout.outline_width = outline_width_;
-  layout.outline_visible = outline_user_visible_;
-  session_controller_->SaveShellLayout(layout);
+  session_controller_->SaveShellLayout(layout_);
   CaptureGlobalSettings(CurrentTab());
   settings_->window_material = window_material_;
   session_controller_->SaveAll();
@@ -3004,9 +2994,9 @@ void MdViewerWindow::ShowSideView(SideView view) {
   }
   // 点当前已选中的视图 = 收起/展开侧栏
   if (activity_bar_->active_view() == view && side_panel_->isVisible()) {
-    side_width_ = side_panel_->width();
+    layout_.sidebar_width = side_panel_->width();
+    layout_.sidebar_visible = false;
     side_panel_->hide();
-    session_controller_->SetSidebarVisible(false);
     return;
   }
   EnsureSideView(view);
@@ -3019,7 +3009,8 @@ void MdViewerWindow::EnsureSideView(SideView view) {
   side_panel_->show();
   ApplySplitterSizes();
   ApplySideView(view);
-  session_controller_->SetSidebarView(view);
+  layout_.view = view;
+  layout_.sidebar_visible = true;
 }
 
 void MdViewerWindow::ApplySideView(SideView view) {
@@ -3049,7 +3040,7 @@ void MdViewerWindow::ApplySplitterSizes() {
     return;
   }
   // 隐藏的列会被 QSplitter 忽略，中间正文吃掉剩余宽度
-  main_splitter_->setSizes({side_width_, 800, outline_width_});
+  main_splitter_->setSizes({layout_.sidebar_width, 800, layout_.outline_width});
 }
 
 void MdViewerWindow::UpdateOutlineVisibility() {
@@ -3057,12 +3048,13 @@ void MdViewerWindow::UpdateOutlineVisibility() {
     return;
   }
   const bool welcome = CurrentTab() == nullptr || CurrentTab()->path.isEmpty();
-  const bool should_show = outline_user_visible_ && !welcome && width() >= 980;
+  const bool should_show =
+      layout_.outline_visible && !welcome && width() >= 980;
   if (outline_column_->isVisible() == should_show) {
     return;
   }
   if (outline_column_->isVisible()) {
-    outline_width_ = outline_column_->width();
+    layout_.outline_width = outline_column_->width();
     outline_column_->hide();
   } else {
     outline_column_->show();
