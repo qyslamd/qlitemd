@@ -14,6 +14,7 @@ set(ALL_SRCS
     reading_positions.h
     document_index.cpp
     document_index.h
+    document_tab.cpp
     document_tab.h
     document_bar.cpp
     document_bar.h

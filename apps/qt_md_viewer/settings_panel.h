@@ -1,6 +1,7 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
 #define FILE_APPS_QT_MD_VIEWER_SETTINGS_PANEL_H_
 
+#include <QPointer>
 #include <QWidget>
 
 #include "markdown_types.h"
@@ -57,7 +58,8 @@ class SettingsPanel : public QWidget {
   // 开关默认文字跟状态走（Fluent Gallery 同款写法）
   QCheckBox* CreateSwitch(bool checked);
 
-  MarkdownView* view_ = nullptr;
+  // 视图可能随标签关闭而销毁；QPointer 自动置空，槽里再判空
+  QPointer<MarkdownView> view_;
   QListWidget* category_list_ = nullptr;
   QStackedWidget* page_stack_ = nullptr;
   QComboBox* theme_ = nullptr;

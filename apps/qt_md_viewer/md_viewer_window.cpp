@@ -352,7 +352,7 @@ MarkdownView* MdViewerWindow::CurrentView() const {
 
 ReaderPage* MdViewerWindow::CurrentPage() const {
   DocumentTab* tab = CurrentTab();
-  return tab != nullptr ? tab->page : nullptr;
+  return tab != nullptr ? tab->page.get() : nullptr;
 }
 
 int MdViewerWindow::FindTabIndex(const QString& path) const {
@@ -369,11 +369,10 @@ int MdViewerWindow::FindTabIndex(const QString& path) const {
 
 DocumentTab* MdViewerWindow::CreateDocumentTab() {
   auto tab = std::make_unique<DocumentTab>();
-  auto* view = new MarkdownView(pages_);
+  auto* view = new MarkdownView();
   tab->view = view;
-  auto* page = new ReaderPage(view, pages_);
-  tab->page = page;
-  pages_->addWidget(page);
+  tab->page = std::make_unique<ReaderPage>(view, pages_);
+  pages_->addWidget(tab->page.get());
   // 新标签继承当前标签的缩放（§5.1），再套一遍全局设置
   DocumentTab* active = CurrentTab();
   if (active != nullptr) {
@@ -406,22 +405,7 @@ DocumentTab* MdViewerWindow::CreateDocumentTab() {
   return created;
 }
 
-void MdViewerWindow::DetachPanelsFromTab(DocumentTab* tab) {
-  if (tab == nullptr || tab != CurrentTab() || tabs_.empty()) {
-    return;
-  }
-  MarkdownView* fallback = tabs_[0]->view;
-  if (settings_panel_ != nullptr && fallback != nullptr) {
-    settings_panel_->SetView(fallback);
-  }
-  if (render_status_ != nullptr && fallback != nullptr) {
-    render_status_->SetView(fallback);
-  }
-}
-
 void MdViewerWindow::ClearDocumentTabs() {
-  // 活动标签的视图可能正被设置/状态面板引用
-  DetachPanelsFromTab(CurrentTab());
   if (tab_bar_ != nullptr) {
     const QSignalBlocker blocker(tab_bar_);
     while (tab_bar_->count() > 1) {
@@ -429,13 +413,10 @@ void MdViewerWindow::ClearDocumentTabs() {
     }
   }
   for (int i = static_cast<int>(tabs_.size()) - 1; i >= 1; --i) {
-    ReaderPage* page = tabs_[i]->page;
-    if (page != nullptr) {
-      pages_->removeWidget(page);
-      // 立即删：deleteLater 期间视图还在，排队中的渲染信号会带着
-      // 已析构的 DocumentTab 指针进来
-      delete page;
+    if (tabs_[i]->page != nullptr) {
+      pages_->removeWidget(tabs_[i]->page.get());
     }
+    // 立即析构：排队中的渲染信号不能带着已析构的 DocumentTab 指针进来
     tabs_.erase(tabs_.begin() + i);
   }
   active_tab_ = 0;
@@ -703,7 +684,7 @@ void MdViewerWindow::ShowActiveTab() {
     return;
   }
   QWidget* page =
-      tab->page != nullptr ? static_cast<QWidget*>(tab->page) : welcome_;
+      tab->page != nullptr ? static_cast<QWidget*>(tab->page.get()) : welcome_;
   pages_->setCurrentWidget(page);
   if (tab->view != nullptr) {
     ApplyGlobalSettings(tab);
@@ -757,16 +738,10 @@ void MdViewerWindow::CloseTab(int index) {
       closed_tabs_.removeLast();
     }
   }
-  if (tab == CurrentTab()) {
-    DetachPanelsFromTab(tab);
-  }
   if (tab->page != nullptr) {
-    pages_->removeWidget(tab->page);
-    // 先销毁页面（连带视图与信号），再销毁 DocumentTab
-    delete tab->page;
-    tab->page = nullptr;
-    tab->view = nullptr;
+    pages_->removeWidget(tab->page.get());
   }
+  // DocumentTab 析构时删除 ReaderPage（连带其子视图）
   tabs_.erase(tabs_.begin() + index);
   if (tab_bar_ != nullptr) {
     const QSignalBlocker blocker(tab_bar_);

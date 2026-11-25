@@ -3,6 +3,7 @@
 
 #include <array>
 
+#include <QPointer>
 #include <QWidget>
 
 class ExExpander;
@@ -51,7 +52,8 @@ class RenderStatusPanel : public QWidget {
   void UpdateScrollContentHeight();
   void TrackGroup(ExExpander* group);
 
-  MarkdownView* view_ = nullptr;
+  // 视图可能随标签关闭而销毁；QPointer 自动置空，刷新时再判空
+  QPointer<MarkdownView> view_;
   QWidget* scroll_body_ = nullptr;
   QVBoxLayout* scroll_body_layout_ = nullptr;
   QPushButton* refresh_button_ = nullptr;

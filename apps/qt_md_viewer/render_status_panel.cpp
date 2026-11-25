@@ -838,6 +838,9 @@ void RenderStatusPanel::initSignals() {
   connect(refresh_button_, &QPushButton::clicked, this,
           &RenderStatusPanel::RefreshStatus);
   connect(reset_button_, &QPushButton::clicked, this, [this] {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->ResetRendererStats();
     RefreshStatus();
     emit statusMessage(QStringLiteral("渲染计数已清零"));
@@ -850,11 +853,11 @@ void RenderStatusPanel::ConnectViewSignals() {
     return;
   }
   // 文档重建（含主题/开关切换）都会更新计数，顺手刷新
-  connect(view_, &MarkdownView::outlineChanged, this,
+  connect(view_.data(), &MarkdownView::outlineChanged, this,
           &RenderStatusPanel::RefreshStatus);
-  connect(view_, &MarkdownView::renderStatusChanged, this,
+  connect(view_.data(), &MarkdownView::renderStatusChanged, this,
           &RenderStatusPanel::RefreshStatus);
-  connect(view_, &MarkdownView::renderProgress, this,
+  connect(view_.data(), &MarkdownView::renderProgress, this,
           [this](quint64 request_id, int completed, int total, int in_flight) {
             progress_request_ = request_id;
             progress_completed_ = completed;
@@ -862,29 +865,34 @@ void RenderStatusPanel::ConnectViewSignals() {
             progress_in_flight_ = in_flight;
             RefreshStatus();
           });
-  connect(view_, &MarkdownView::renderFinished, this,
+  connect(view_.data(), &MarkdownView::renderFinished, this,
           [this](quint64 request_id) {
             finished_request_ = request_id;
             progress_in_flight_ = 0;
             RefreshStatus();
           });
-  connect(view_, &MarkdownView::zoomChanged, this,
+  connect(view_.data(), &MarkdownView::zoomChanged, this,
           &RenderStatusPanel::RefreshStatus);
-  connect(view_, &MarkdownView::viewportScrolled, this,
+  connect(view_.data(), &MarkdownView::viewportScrolled, this,
           &RenderStatusPanel::RefreshStatus);
 }
 
 void RenderStatusPanel::SetView(MarkdownView* view) {
-  if (view == nullptr || view == view_) {
+  if (view == view_) {
     return;
   }
-  disconnect(view_, nullptr, this, nullptr);
+  if (view_ != nullptr) {
+    disconnect(view_.data(), nullptr, this, nullptr);
+  }
   view_ = view;
   ConnectViewSignals();
   RefreshStatus();
 }
 
 void RenderStatusPanel::RefreshStatus() {
+  if (view_ == nullptr) {
+    return;
+  }
   const MarkdownRendererStatus status = view_->renderer_status();
   const MarkdownRenderContextOptions& options =
       view_->render_context().options();

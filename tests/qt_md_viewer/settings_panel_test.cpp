@@ -1,6 +1,7 @@
 #include "settings_panel.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QDateTime>
 #include <QDir>
 #include <QListWidget>
@@ -56,4 +57,17 @@ TEST(SettingsPanelLayoutTest, HasCategoryNavAndPages) {
   EXPECT_NE(panel.findChild<QWidget*>(QStringLiteral("persistentCacheCheck")),
             nullptr);
   EXPECT_NE(panel.findChild<QWidget*>(QStringLiteral("traceCheck")), nullptr);
+}
+
+TEST(RenderSettingsPanelLayoutTest, SurvivesViewDestruction) {
+  // 关闭标签会销毁视图；面板持有 QPointer，槽里必须安全空转
+  auto* view = new MarkdownView();
+  SettingsPanel panel(view);
+  delete view;
+
+  auto* line_numbers =
+      panel.findChild<QCheckBox*>(QStringLiteral("codeLineNumbersCheck"));
+  ASSERT_NE(line_numbers, nullptr);
+  line_numbers->setChecked(!line_numbers->isChecked());
+  QApplication::processEvents();
 }

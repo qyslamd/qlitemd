@@ -212,8 +212,6 @@ class MdViewerWindow : public QMainWindow {
   int FindTabIndex(const QString& path) const;
   DocumentTab* CreateDocumentTab();
   void ClearDocumentTabs();
-  // 删除活动标签前先把面板绑回欢迎视图，避免持有悬空 view_ 指针
-  void DetachPanelsFromTab(DocumentTab* tab);
   void ActivateTab(int index);
   // 激活下标已改好后刷新页面与外壳；关闭标签后也走这里
   void ShowActiveTab();

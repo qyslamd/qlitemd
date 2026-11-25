@@ -116,6 +116,8 @@ void AddPage(QListWidget* list, QStackedWidget* stack, const QString& name,
 
 SettingsPanel::SettingsPanel(MarkdownView* view, QWidget* parent)
     : QWidget(parent), view_(view) {
+  // 窗口用欢迎标签的隐藏视图兜底，构造时必须有一个可读视图
+  Q_ASSERT(view_ != nullptr);
   initUi();
   initSignals();
 }
@@ -429,7 +431,7 @@ void SettingsPanel::initUi() {
 }
 
 void SettingsPanel::SetView(MarkdownView* view) {
-  if (view != nullptr) {
+  if (view != view_) {
     view_ = view;
   }
 }
@@ -518,7 +520,7 @@ void SettingsPanel::initSignals() {
           &SettingsPanel::transparentReadingChanged);
   connect(admonition_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
-            if (index < 0) {
+            if (index < 0 || view_ == nullptr) {
               return;
             }
             view_->SetAdmonitionMode(static_cast<MarkdownAdmonitionMode>(
@@ -526,16 +528,22 @@ void SettingsPanel::initSignals() {
             emit settingsChanged();
           });
   connect(code_line_numbers_, &QCheckBox::toggled, this, [this](bool on) {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->SetCodeLineNumbers(on);
     emit settingsChanged();
   });
   connect(formula_rendering_, &QCheckBox::toggled, this, [this](bool on) {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->SetFormulaRenderingEnabled(on);
     emit settingsChanged();
   });
   connect(formula_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
-            if (index < 0) {
+            if (index < 0 || view_ == nullptr) {
               return;
             }
             view_->SetFormulaBackend(static_cast<MarkdownFormulaBackend>(
@@ -543,12 +551,15 @@ void SettingsPanel::initSignals() {
             emit settingsChanged();
           });
   connect(mermaid_rendering_, &QCheckBox::toggled, this, [this](bool on) {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->SetMermaidRenderingEnabled(on);
     emit settingsChanged();
   });
   connect(mermaid_backend_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int index) {
-            if (index < 0) {
+            if (index < 0 || view_ == nullptr) {
               return;
             }
             view_->SetMermaidBackend(static_cast<MarkdownMermaidBackend>(
@@ -556,6 +567,9 @@ void SettingsPanel::initSignals() {
             emit settingsChanged();
           });
   connect(persistent_cache_, &QCheckBox::toggled, this, [this](bool on) {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->SetPersistentRenderCacheEnabled(on);
     emit settingsChanged();
   });
@@ -563,16 +577,25 @@ void SettingsPanel::initSignals() {
   connect(choose_cache_, &QPushButton::clicked, this,
           &SettingsPanel::BrowseCacheDirectory);
   connect(reset_cache_, &QPushButton::clicked, this, [this] {
+    if (view_ == nullptr) {
+      return;
+    }
     cache_directory_->clear();
     view_->SetRenderCacheDirectory(QString());
     emit settingsChanged();
     emit statusMessage(QStringLiteral("持久缓存目录恢复默认"));
   });
   connect(clear_memory_cache_, &QPushButton::clicked, this, [this] {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->ClearRenderCaches();
     emit statusMessage(QStringLiteral("已清空内存缓存"));
   });
   connect(clear_cache_, &QPushButton::clicked, this, [this] {
+    if (view_ == nullptr) {
+      return;
+    }
     view_->ClearPersistentRenderCache();
     emit statusMessage(QStringLiteral("已清除持久渲染缓存"));
   });
@@ -585,6 +608,9 @@ void SettingsPanel::initSignals() {
 }
 
 void SettingsPanel::ApplyDiagnostics() {
+  if (view_ == nullptr) {
+    return;
+  }
   MarkdownDiagnostics diagnostics;
   diagnostics.trace = trace_->isChecked();
   diagnostics.dump_directory = dump_directory_->text().trimmed();
@@ -593,6 +619,9 @@ void SettingsPanel::ApplyDiagnostics() {
 }
 
 void SettingsPanel::BrowseCacheDirectory() {
+  if (view_ == nullptr) {
+    return;
+  }
   const QString dir = QFileDialog::getExistingDirectory(
       this, QStringLiteral("选择持久缓存目录"),
       cache_directory_->text().isEmpty() ? QDir::homePath()
@@ -606,6 +635,9 @@ void SettingsPanel::BrowseCacheDirectory() {
 }
 
 void SettingsPanel::BrowseDumpDirectory() {
+  if (view_ == nullptr) {
+    return;
+  }
   const QString dir = QFileDialog::getExistingDirectory(
       this, QStringLiteral("选择 dump 目录"),
       dump_directory_->text().isEmpty() ? QDir::homePath()
