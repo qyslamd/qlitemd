@@ -93,8 +93,9 @@ class RecentItemDelegate final : public QStyledItemDelegate {
   bool dark_ = false;
 };
 
-WelcomeView::WelcomeView(QWidget* parent) : QWidget(parent) {
+WelcomeView::WelcomeView(QWidget* parent) : QFrame(parent) {
   setObjectName(QStringLiteral("welcomeView"));
+  setFrameShape(QFrame::StyledPanel);
 
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(48, 40, 48, 40);
@@ -290,7 +291,7 @@ void WelcomeView::RebuildRecentItems() {
 }
 
 void WelcomeView::paintEvent(QPaintEvent* event) {
-  Q_UNUSED(event);
-  QPainter painter(this);
-  painter.fillRect(rect(), palette().color(QPalette::Base));
+  QFrame::paintEvent(event);
+  // QPainter painter(this);
+  // painter.fillRect(rect(), palette().color(QPalette::Base));
 }

@@ -107,10 +107,7 @@ set(ALL_SRCS
     qt_md_viewer.qrc
 )
 
-# add_executable(${TARGET_NAME} WIN32 ${ALL_SRCS})
-
-# 暂时不要WIN32，开发过程中留着控制台打印输出挺好的
-add_executable(${TARGET_NAME} ${ALL_SRCS})
+add_executable(${TARGET_NAME} WIN32 ${ALL_SRCS})
 
 # 每次构建都重新编译 qm（ts 由 update_translations 手动维护，避免
 # lupdate 每次构建都改写源目录里的 ts）

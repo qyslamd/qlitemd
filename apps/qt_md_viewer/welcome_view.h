@@ -1,8 +1,9 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_WELCOME_VIEW_H_
 #define FILE_APPS_QT_MD_VIEWER_WELCOME_VIEW_H_
 
+#include <QFrame>
 #include <QStringList>
-#include <QWidget>
+
 
 class QLabel;
 class QListWidget;
@@ -10,7 +11,7 @@ class RecentItemDelegate;
 
 // 没有已提交文档时的落地页：打开入口、最近文档、快捷键提示。
 // 只发信号，不碰文件系统策略；打开动作由宿主执行。
-class WelcomeView : public QWidget {
+class WelcomeView : public QFrame {
   Q_OBJECT
 
  public:

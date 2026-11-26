@@ -124,6 +124,11 @@ class DocumentTabBarStyle : public QProxyStyle {
     painter->setPen(base);
     QRect text_rect = subElementRect(SE_TabBarTabText, tab, widget);
     int left = tab->rect.x() + 10;
+    // 首个/唯一标签的选中形状向左只借 len/2，内容右移一点才和中间标签对齐
+    if (tab->position == QStyleOptionTab::Beginning ||
+        tab->position == QStyleOptionTab::OnlyOneTab) {
+      left += 6;
+    }
     // QStyleOptionTab 不一定带 icon；直接从所属标签条取
     const auto* bar = qobject_cast<const QTabBar*>(widget);
     const int index = bar != nullptr ? bar->tabAt(tab->rect.center()) : -1;

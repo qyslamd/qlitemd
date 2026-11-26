@@ -1048,7 +1048,7 @@ void MdViewerWindow::initUi() {
   center->setObjectName(QStringLiteral("mainColumns"));
   auto* columns = new QHBoxLayout(center);
   columns->setContentsMargins(4, 2, 4, 2);
-  columns->setSpacing(0);
+  columns->setSpacing(2);
   columns->addWidget(activity_bar_);
 
   // 活动栏固定；侧栏、正文、大纲放在 splitter 里，宽度可拖动
