@@ -47,7 +47,8 @@ TEST(DocumentBarTest, KeepsToolbarRhythm) {
   EXPECT_EQ(bar->height(), 40);
   EXPECT_NE(bar->findChild<QWidget*>(QStringLiteral("docZoomGroup")), nullptr);
   EXPECT_EQ(
-      bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(), 2);
+      bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(),
+      2);
   delete bar;
 }
 

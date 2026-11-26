@@ -4,7 +4,6 @@
 #include <QFrame>
 #include <QStringList>
 
-
 class QLabel;
 class QListWidget;
 class RecentItemDelegate;
