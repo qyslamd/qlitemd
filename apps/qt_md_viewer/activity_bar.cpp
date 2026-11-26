@@ -6,6 +6,7 @@
 #include <QSize>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QtDebug>
 
 #include "theme_icons.h"
 
@@ -31,11 +32,10 @@ QToolButton* MakeActivityButton(QWidget* parent, const QString& name,
 
 }  // namespace
 
-ActivityBar::ActivityBar(QWidget* parent) : QWidget(parent) {
+ActivityBar::ActivityBar(QWidget* parent) : QFrame(parent) {
   setObjectName(QStringLiteral("activityBar"));
-  // 宽度与标题栏高度（4 + 标签 38）一致，左上角上下两条带等宽
   setFixedWidth(42);
-  // setAutoFillBackground(true); // I need blur effect.
+  setFrameShape(QFrame::StyledPanel);
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(3, 6, 3, 6);
   layout->setSpacing(4);
@@ -101,14 +101,14 @@ void ActivityBar::SetActiveView(SideView view) {
 }
 
 void ActivityBar::paintEvent(QPaintEvent* event) {
-  QWidget::paintEvent(event);
+  QFrame::paintEvent(event);
   const QToolButton* active = button(active_view_);
   if (active == nullptr) {
     return;
   }
   const QRect button_rect = active->geometry();
   QPainter painter(this);
-  painter.fillRect(QRect(0, button_rect.top() + 3, 2, button_rect.height() - 6),
+  painter.fillRect(QRect(0, button_rect.top() + 3, 4, button_rect.height() - 6),
                    palette().color(QPalette::Highlight));
 }
 

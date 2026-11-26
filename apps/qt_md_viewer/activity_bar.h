@@ -1,8 +1,8 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_ACTIVITY_BAR_H_
 #define FILE_APPS_QT_MD_VIEWER_ACTIVITY_BAR_H_
 
+#include <QFrame>
 #include <QVector>
-#include <QWidget>
 
 #include "side_view.h"
 
@@ -11,7 +11,7 @@ class QToolButton;
 
 // 左侧活动栏：固定 42px（与标题栏高度一致），只放图标，负责切换侧栏的视图。
 // 点击当前已选中的项时仍会发 viewActivated，宿主据此收起侧栏。
-class ActivityBar : public QWidget {
+class ActivityBar : public QFrame {
   Q_OBJECT
 
  public:

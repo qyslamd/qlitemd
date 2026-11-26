@@ -39,8 +39,6 @@ TopToolBar::TopToolBar(QWidget* parent) : QToolBar(parent) {
   setAllowedAreas(Qt::TopToolBarArea);
   setContextMenuPolicy(Qt::PreventContextMenu);
   ResetInvariants();
-  // 工具栏自己的布局默认带 style 给的边框内边距，这里清掉，
-  // 让内容控件贴满 32px 的条
   setContentsMargins(0, 0, 0, 0);
   if (layout() != nullptr) {
     layout()->setContentsMargins(0, 0, 0, 0);
@@ -50,7 +48,6 @@ TopToolBar::TopToolBar(QWidget* parent) : QToolBar(parent) {
 void TopToolBar::ResetInvariants() {
   setMovable(false);
   setFloatable(false);
-  // setFixedHeight(32);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   show();
 }
