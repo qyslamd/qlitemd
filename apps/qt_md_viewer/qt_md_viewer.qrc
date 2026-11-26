@@ -5,6 +5,7 @@
         <file>resources/svg/status-dot.svg</file>
         <file>resources/svg/light/appearance.svg</file>
         <file>resources/svg/light/back.svg</file>
+        <file>resources/svg/light/copy.svg</file>
         <file>resources/svg/light/export.svg</file>
         <file>resources/svg/light/file.svg</file>
         <file>resources/svg/light/folder.svg</file>
@@ -20,6 +21,7 @@
         <file>resources/svg/light/settings.svg</file>
         <file>resources/svg/dark/appearance.svg</file>
         <file>resources/svg/dark/back.svg</file>
+        <file>resources/svg/dark/copy.svg</file>
         <file>resources/svg/dark/export.svg</file>
         <file>resources/svg/dark/file.svg</file>
         <file>resources/svg/dark/folder.svg</file>

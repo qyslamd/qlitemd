@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QEvent>
 #include <QFileInfo>
 #include <QFontMetrics>
 #include <QHBoxLayout>
@@ -59,10 +60,10 @@ class ToolbarSeparator : public QWidget {
   }
 };
 
-// 给缩放这类成组控件一个圆角底，避免一排按钮全是同一层级
-class ToolbarPill : public QWidget {
+// 工具栏里的圆角底：缩放组和路径层共用，避免一排控件全是同一层级
+class ToolbarLayer : public QWidget {
  public:
-  explicit ToolbarPill(QWidget* parent) : QWidget(parent) {
+  explicit ToolbarLayer(QWidget* parent) : QWidget(parent) {
     setObjectName(QStringLiteral("toolbarPill"));
   }
 
@@ -130,23 +131,27 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   layout->addWidget(back_button_);
   layout->addWidget(forward_button_);
   layout->addWidget(star_button_);
-  layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
 
-  path_label_ = new QLabel(this);
+  // 路径和复制合成一层，像地址栏；layer 自己就是和导航组的分界
+  path_layer_ = new ToolbarLayer(this);
+  path_layer_->setObjectName(QStringLiteral("docPathLayer"));
+  auto* path_layout = new QHBoxLayout(path_layer_);
+  path_layout->setContentsMargins(10, 2, 4, 2);
+  path_layout->setSpacing(4);
+
+  path_label_ = new QLabel(path_layer_);
   path_label_->setObjectName(QStringLiteral("docPathLabel"));
   // 路径是上下文信息，低于文档动作一级
   path_label_->setForegroundRole(QPalette::PlaceholderText);
   path_label_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   path_label_->setTextInteractionFlags(Qt::NoTextInteraction);
-  layout->addWidget(path_label_, 1);
+  path_label_->installEventFilter(this);
+  path_layout->addWidget(path_label_, 1);
 
-  copy_button_ = new QToolButton(this);
-  copy_button_->setObjectName(QStringLiteral("docCopyPath"));
-  copy_button_->setAutoRaise(true);
-  copy_button_->setText(tr("Copy"));
-  copy_button_->setToolButtonStyle(Qt::ToolButtonTextOnly);
-  copy_button_->setToolTip(tr("Copy current document path"));
-  layout->addWidget(copy_button_);
+  copy_button_ = MakeIconButton(path_layer_, QStringLiteral("docCopyPath"),
+                                tr("Copy current document path"));
+  path_layout->addWidget(copy_button_);
+  layout->addWidget(path_layer_, 1, Qt::AlignVCenter);
 
   find_edit_ = new QLineEdit(this);
   find_edit_->setObjectName(QStringLiteral("docFindEdit"));
@@ -166,7 +171,7 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
       tr("Reading appearance (font size, line height, measure)"));
   layout->addWidget(appearance_button_);
 
-  zoom_group_ = new ToolbarPill(this);
+  zoom_group_ = new ToolbarLayer(this);
   zoom_group_->setObjectName(QStringLiteral("docZoomGroup"));
   auto* zoom_layout = new QHBoxLayout(zoom_group_);
   zoom_layout->setContentsMargins(2, 2, 2, 2);
@@ -217,6 +222,7 @@ void DocumentBar::SetThemeDark(bool dark) {
   dark_ = dark;
   back_button_->setIcon(ThemeIcon(QStringLiteral("back"), dark_));
   forward_button_->setIcon(ThemeIcon(QStringLiteral("forward"), dark_));
+  copy_button_->setIcon(ThemeIcon(QStringLiteral("copy"), dark_));
   outline_button_->setIcon(ThemeIcon(QStringLiteral("outline"), dark_));
   appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark_));
   zoom_out_button_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark_));
@@ -227,6 +233,15 @@ void DocumentBar::SetThemeDark(bool dark) {
 void DocumentBar::resizeEvent(QResizeEvent* event) {
   QWidget::resizeEvent(event);
   UpdateChildVisibility();
+}
+
+bool DocumentBar::eventFilter(QObject* watched, QEvent* event) {
+  // 路径标签在 layer 里，DocumentBar 收到 resizeEvent 时它的宽度还没落定；
+  // 以标签自己的 resize 为准重新省略
+  if (watched == path_label_ && event->type() == QEvent::Resize) {
+    UpdatePathElision();
+  }
+  return QWidget::eventFilter(watched, event);
 }
 
 void DocumentBar::UpdateChildVisibility() {

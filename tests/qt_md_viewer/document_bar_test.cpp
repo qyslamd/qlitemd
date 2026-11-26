@@ -31,9 +31,10 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
   DocumentBar bar;
   // objectName 是 GUI 工具和测试共用的锚点；行为由后续用例覆盖
   for (const char* name :
-       {"docBack", "docForward", "docStar", "docPathLabel", "docCopyPath",
-        "docFindEdit", "docOutlineToggle", "docAppearance", "docZoomOut",
-        "docZoomReset", "docZoomIn", "docExport", "docExportMenu"}) {
+       {"docBack", "docForward", "docStar", "docPathLayer", "docPathLabel",
+        "docCopyPath", "docFindEdit", "docOutlineToggle", "docAppearance",
+        "docZoomOut", "docZoomReset", "docZoomIn", "docExport",
+        "docExportMenu"}) {
     EXPECT_NE(bar.findChild<QWidget*>(QString::fromLatin1(name)), nullptr)
         << name;
   }
@@ -41,12 +42,26 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
 
 TEST(DocumentBarTest, KeepsToolbarRhythm) {
   DocumentBar* bar = MakeShownBar(1000);
-  // 40px 的行高给图标和输入框留出呼吸空间；分组靠两条分隔线 + 缩放胶囊
+  // 40px 的行高给图标和输入框留出呼吸空间；路径层自己就是导航组的分界，
+  // 所以只剩两条分隔线（查找后、导出前）
   EXPECT_EQ(bar->height(), 40);
   EXPECT_NE(bar->findChild<QWidget*>(QStringLiteral("docZoomGroup")), nullptr);
   EXPECT_EQ(
-      bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(), 3);
+      bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(), 2);
   delete bar;
+}
+
+TEST(DocumentBarTest, ReelidesPathAfterLayout) {
+  // 路径标签在 layer 里，SetPath 时宽度还是 0；布局落定后要重新省略一次，
+  // 否则宽窗下也会停留在 200px 的省略结果
+  DocumentBar bar;
+  const QString path = QStringLiteral(
+      "docs/guide/一个宽度超过两百像素但远小于整窗的文档标题.md");
+  bar.SetPath(path, path);
+  bar.resize(1200, 40);
+  bar.show();
+  QApplication::processEvents();
+  EXPECT_EQ(bar.path_label()->text(), path);
 }
 
 TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {

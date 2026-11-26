@@ -5,6 +5,7 @@
 #include <QToolBar>
 #include <QWidget>
 
+class QEvent;
 class QLabel;
 class QLineEdit;
 class QMenu;
@@ -60,6 +61,7 @@ class DocumentBar : public QWidget {
 
  protected:
   void resizeEvent(QResizeEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
  private:
   void UpdateChildVisibility();
@@ -67,6 +69,7 @@ class DocumentBar : public QWidget {
 
   QString display_path_;
   bool dark_ = false;
+  QWidget* path_layer_ = nullptr;
   QWidget* zoom_group_ = nullptr;
   QWidget* export_separator_ = nullptr;
   QLabel* path_label_ = nullptr;
