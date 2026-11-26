@@ -6,8 +6,6 @@ set(TARGET_SRCS
     formula_renderer.cpp
     formula_renderer.h
     markdown_engine_state.h
-    markdown_outline_widget.cpp
-    markdown_outline_widget.h
     markdown_render_context.cpp
     markdown_render_context.h
     markdown_render_context_internal.h

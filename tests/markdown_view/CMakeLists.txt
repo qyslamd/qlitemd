@@ -138,16 +138,6 @@ add_unit_test(
 )
 set_tests_properties(test_render_service PROPERTIES TIMEOUT 120)
 
-# 大纲控件：层级结构、点击回跳、当前项高亮。QTest 用于点击命中
-add_unit_test(
-    NAME test_outline_widget
-    SOURCES outline_widget_test.cpp
-    LIBS qlitemd::markdown_view
-    QT_MODULES Widgets Test
-    LABELS MARKDOWN
-    NO_GTEST_MAIN
-)
-
 # JsRuntime 的错误处理：异常消费、坏字节码、非异常放行。
 add_unit_test(
     NAME test_js_runtime

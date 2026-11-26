@@ -1,5 +1,5 @@
-#ifndef FILE_MARKDOWN_MARKDOWN_OUTLINE_WIDGET_H_
-#define FILE_MARKDOWN_MARKDOWN_OUTLINE_WIDGET_H_
+#ifndef FILE_APPS_QT_MD_VIEWER_MARKDOWN_OUTLINE_WIDGET_H_
+#define FILE_APPS_QT_MD_VIEWER_MARKDOWN_OUTLINE_WIDGET_H_
 
 #include <QHash>
 #include <QTreeWidget>
@@ -10,9 +10,9 @@
 class QTreeWidgetItem;
 
 // 文档大纲：标题按层级缩进，点击发锚点。纯数据驱动——不依赖 MarkdownView，
-// 滚动联动由宿主接（示例见 examples/md_viewer）。
+// 滚动联动由窗口接。
 //
-// 不设任何样式表：配色交给宿主的样式体系（md_viewer 的 Fluent 风格直接生效）
+// 不设任何样式表：配色交给应用的 Fluent 样式体系
 class MarkdownOutlineWidget : public QTreeWidget {
   Q_OBJECT
 
@@ -33,4 +33,4 @@ class MarkdownOutlineWidget : public QTreeWidget {
   QHash<QString, QTreeWidgetItem*> items_;
 };
 
-#endif  // FILE_MARKDOWN_MARKDOWN_OUTLINE_WIDGET_H_
+#endif  // FILE_APPS_QT_MD_VIEWER_MARKDOWN_OUTLINE_WIDGET_H_

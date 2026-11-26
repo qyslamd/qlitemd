@@ -73,6 +73,8 @@ set(ALL_SRCS
     side_view.h
     image_lightbox.cpp
     image_lightbox.h
+    markdown_outline_widget.cpp
+    markdown_outline_widget.h
     md_viewer_settings.cpp
     md_viewer_settings.h
     md_viewer_window.cpp

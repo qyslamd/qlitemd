@@ -22,6 +22,18 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_outline_widget
+    SOURCES outline_widget_test.cpp
+            ${VIEWER_DIR}/markdown_outline_widget.cpp
+            ${VIEWER_DIR}/markdown_outline_widget.h
+    INCLUDES ${VIEWER_DIR}
+             ${PROJECT_SOURCE_DIR}/src/markdown_view
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+
+add_unit_test(
     NAME test_theme_icons
     SOURCES theme_icons_test.cpp
             ${VIEWER_DIR}/qt_md_viewer.qrc
