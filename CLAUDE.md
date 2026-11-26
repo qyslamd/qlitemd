@@ -282,7 +282,10 @@ clang-format --dry-run --Werror <file>
   `0004-caption-button-label-color.patch` 让 `win_caption_*` 的
   checked 状态不再套用强调色文字（否则最大化/置顶后图标反色）；
   `0005-menu-indicator-icon-only.patch` 不给纯图标菜单按钮画下拉箭头
-  （否则箭头压在图标上）。升级 FluentUI 时需重放补丁。
+  （否则箭头压在图标上）；
+  `0006-splitter-handle.patch` 给 `QSplitterHandle` 打开 `WA_Hover`
+  并接管 `CE_Splitter`，分割条才有常态/悬停/按下三态（Qt 5.15 的手柄
+  默认收不到 hover）。升级 FluentUI 时需重放补丁。
 - `resources/` 下五份 JS 载荷按字节稳定，`.gitattributes` 标了 `-text`；
   不要做行尾转换，也不要直接编辑压缩后的文件。高亮、公式与 Mermaid 都
   走 QuickJS 路径，因此任何构建都会编入 QuickJS。`highlight.min.js` 由

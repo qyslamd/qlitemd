@@ -37,6 +37,9 @@
 #include <QSettings>
 #include <QSlider>
 #include <QSpinBox>
+#if QT_CONFIG( splitter )
+#    include <QSplitterHandle>
+#endif
 #include <QString>
 #include <QStyleFactory>
 #include <QStyleHints>
@@ -6076,6 +6079,69 @@ void FluentUI3Style::drawControl( ControlElement element, const QStyleOption* op
                 }
             }
             break;
+#if QT_CONFIG( splitter )
+        case CE_Splitter :
+        {
+            if ( !( option->state & State_Enabled ) )
+            {
+                break;
+            }
+
+            // State_Horizontal 表示 splitter 水平排布，手柄是一条竖线
+            const bool horizontal = option->state & State_Horizontal;
+            const bool hovered    = option->state & State_MouseOver;
+            const bool pressed    = option->state & State_Sunken;
+
+            // 常态保持透明，只在鼠标移入和按下时出现分隔条
+            if ( !hovered && !pressed )
+            {
+                break;
+            }
+
+            QColor color;
+            qreal thickness = 2.0;
+            qreal endInset  = 4.0;
+            if ( pressed )
+            {
+                color     = accentColor( option );
+                thickness = 3.0;
+                endInset  = 2.0;
+            }
+            else
+            {
+                color = highContrastTheme == true ? option->palette.buttonText().color()
+                                                  : winUI3Color( frameColorStrong );
+            }
+
+            const QRectF area = QRectF( option->rect );
+            if ( ( horizontal && area.height() <= 2 * endInset )
+                 || ( !horizontal && area.width() <= 2 * endInset ) )
+            {
+                break;
+            }
+
+            // 圆角短条按设备像素对齐，否则 1px 线落在半像素上会被抗锯齿
+            // 糊成两列浅灰
+            const qreal dpr = painter->device() ? painter->device()->devicePixelRatioF() : 1.0;
+            const qreal lineThickness = qMax( 1, qRound( thickness * dpr ) ) / dpr;
+            const auto snapToDevice = [ dpr ]( qreal value ) { return qRound( value * dpr ) / dpr; };
+
+            const QRectF bar = horizontal
+                                   ? QRectF( snapToDevice( area.center().x() - lineThickness / 2.0 ),
+                                             area.top() + endInset,
+                                             lineThickness,
+                                             area.height() - 2 * endInset )
+                                   : QRectF( area.left() + endInset,
+                                             snapToDevice( area.center().y() - lineThickness / 2.0 ),
+                                             area.width() - 2 * endInset,
+                                             lineThickness );
+
+            painter->setPen( Qt::NoPen );
+            painter->setBrush( color );
+            painter->drawRoundedRect( bar, lineThickness / 2.0, lineThickness / 2.0 );
+            break;
+        }
+#endif  // QT_CONFIG(splitter)
 #if QT_CONFIG( progressbar )
         case CE_ProgressBar :
             if ( const QStyleOptionProgressBar* pb = qstyleoption_cast<const QStyleOptionProgressBar*>( option ) )
@@ -7948,6 +8014,15 @@ void FluentUI3Style::polish( QWidget* widget )
     {
         installSliderValueTipHooks( slider );
     }
+
+#if QT_CONFIG( splitter )
+    if ( auto* splitterHandle = qobject_cast<QSplitterHandle*>( widget ) )
+    {
+        // Qt 5.15 的 QSplitterHandle 没有打开 WA_Hover，类里的 hover 分支
+        // 永远不会执行；补上后 CE_Splitter 才能收到 State_MouseOver。
+        splitterHandle->setAttribute( Qt::WA_Hover, true );
+    }
+#endif
 
     /// 没有动态更新主题的需求，可屏蔽
     if ( auto le = qobject_cast<QLineEdit*>( widget ) )
