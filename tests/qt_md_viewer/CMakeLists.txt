@@ -59,6 +59,16 @@ add_unit_test(
     SOURCES side_panel_test.cpp
             ${VIEWER_DIR}/side_panel.cpp
             ${VIEWER_DIR}/side_panel.h
+            ${VIEWER_DIR}/side_panel_delegates.cpp
+            ${VIEWER_DIR}/side_panel_delegates.h
+            ${VIEWER_DIR}/side_panel_roles.h
+            ${VIEWER_DIR}/documents_page.cpp
+            ${VIEWER_DIR}/documents_page.h
+            ${VIEWER_DIR}/bookmarks_page.cpp
+            ${VIEWER_DIR}/bookmarks_page.h
+            ${VIEWER_DIR}/search_page.cpp
+            ${VIEWER_DIR}/search_page.h
+            ${VIEWER_DIR}/side_view.cpp
             ${VIEWER_DIR}/document_index.cpp
             ${VIEWER_DIR}/bookmarks.cpp
             ${VIEWER_DIR}/md_viewer_settings.cpp

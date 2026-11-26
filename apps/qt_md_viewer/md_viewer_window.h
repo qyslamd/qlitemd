@@ -279,7 +279,6 @@ class MdViewerWindow : public QMainWindow {
   MarkdownOutlineWidget* outline_ = nullptr;
   SettingsPanel* settings_panel_ = nullptr;
   RenderStatusPanel* render_status_ = nullptr;
-  SidePanel* side_panel_view_ = nullptr;
   QuickOpenPopup* quick_open_ = nullptr;
   ReaderAppearancePopup* appearance_popup_ = nullptr;
   WelcomeView* welcome_ = nullptr;
@@ -315,12 +314,8 @@ class MdViewerWindow : public QMainWindow {
   FluentWindowFrame* fluent_frame_ = nullptr;
   SettingsDialog* settings_dialog_ = nullptr;
   ActivityBar* activity_bar_ = nullptr;
-  QWidget* side_panel_ = nullptr;
-  QLabel* side_title_ = nullptr;
-  QStackedWidget* side_stack_ = nullptr;
-  QWidget* render_status_page_ = nullptr;
-  // 活动栏视图到侧栏页的映射：新增视图只改这张表，不在切换逻辑里加分支
-  std::array<QWidget*, kSideViewCount> side_view_pages_{};
+  // 侧栏自己持有标题与四页栈；窗口只负责显隐和切视图
+  SidePanel* side_panel_ = nullptr;
   QWidget* outline_column_ = nullptr;
   QSplitter* main_splitter_ = nullptr;
   QToolButton* outline_hide_button_ = nullptr;

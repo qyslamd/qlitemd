@@ -180,6 +180,9 @@ QString LoadTextResource(const QString& path) {
 }
 
 class SourceDialog final : public QDialog {
+  // 按钮文案用了 tr()：缺 Q_OBJECT 会把上下文错成 QObject
+  Q_OBJECT
+
  public:
   SourceDialog(const QString& title, const QString& source,
                QWidget* parent = nullptr)
@@ -883,8 +886,8 @@ void MdViewerWindow::UpdateShellForActiveTab() {
     if (document_bar_ != nullptr) {
       document_bar_->SetPath(QString(), QString());
     }
-    if (side_panel_view_ != nullptr) {
-      side_panel_view_->SetCurrentFile(QString());
+    if (side_panel_ != nullptr) {
+      side_panel_->SetCurrentFile(QString());
     }
   } else {
     setWindowTitle(DocumentDisplayTitle(root_dir_, tab->path));
@@ -892,8 +895,8 @@ void MdViewerWindow::UpdateShellForActiveTab() {
       document_bar_->SetPath(DocumentDisplayTitle(root_dir_, tab->path),
                              QDir::toNativeSeparators(tab->path));
     }
-    if (side_panel_view_ != nullptr) {
-      side_panel_view_->SetCurrentFile(tab->path);
+    if (side_panel_ != nullptr) {
+      side_panel_->SetCurrentFile(tab->path);
     }
   }
   if (tab_count_label_ != nullptr) {
@@ -1009,41 +1012,10 @@ void MdViewerWindow::initUi() {
   // 活动栏 + 侧栏 + 正文 + 大纲：固定布局，不再使用 dock
   activity_bar_ = new ActivityBar(this);
 
-  side_panel_view_ = new SidePanel(this);
-  side_panel_view_->SetTabBarVisible(false);
-
-  side_panel_ = new QWidget(this);
-  side_panel_->setObjectName(QStringLiteral("sidePanel"));
-  side_panel_->setMinimumWidth(200);
-  auto* side_layout = new QVBoxLayout(side_panel_);
-  side_layout->setContentsMargins(0, 0, 0, 0);
-  side_layout->setSpacing(0);
-  side_title_ = new QLabel(tr("Documents"), side_panel_);
-  side_title_->setObjectName(QStringLiteral("sidePanelTitle"));
-  side_title_->setContentsMargins(10, 8, 10, 4);
-  QFont side_title_font = side_title_->font();
-  side_title_font.setBold(true);
-  side_title_->setFont(side_title_font);
-  side_layout->addWidget(side_title_);
-  side_stack_ = new QStackedWidget(side_panel_);
-  side_stack_->setObjectName(QStringLiteral("sideStack"));
-  side_stack_->addWidget(side_panel_view_);
-
-  render_status_page_ = new QWidget(side_stack_);
-  render_status_page_->setObjectName(QStringLiteral("renderStatusPage"));
-  auto* status_layout = new QVBoxLayout(render_status_page_);
-  status_layout->setContentsMargins(8, 8, 8, 8);
-  status_layout->setSpacing(6);
-  render_status_ = new RenderStatusPanel(CurrentView(), render_status_page_);
-  status_layout->addWidget(render_status_, 1);
-  side_stack_->addWidget(render_status_page_);
-  // 文档/搜索/收藏共用 SidePanel；渲染状态是栈里的独立页
-  side_view_pages_[static_cast<int>(SideView::kDocuments)] = side_panel_view_;
-  side_view_pages_[static_cast<int>(SideView::kSearch)] = side_panel_view_;
-  side_view_pages_[static_cast<int>(SideView::kBookmarks)] = side_panel_view_;
-  side_view_pages_[static_cast<int>(SideView::kRenderStatus)] =
-      render_status_page_;
-  side_layout->addWidget(side_stack_, 1);
+  side_panel_ = new SidePanel(this);
+  // 渲染状态页由宿主创建、SidePanel 提供带边距的宿主页
+  render_status_ = new RenderStatusPanel(CurrentView());
+  side_panel_->SetRenderStatusWidget(render_status_);
 
   // 大纲固定在正文右侧；标题行留一个收起按钮
   outline_column_ = new QWidget(this);
@@ -1372,7 +1344,7 @@ void MdViewerWindow::initUi() {
   fluent_frame_->titleBar()->searchLineEdit()->setVisible(false);
   document_find_edit_ = document_bar_->find_edit();
   document_find_edit_->installEventFilter(this);
-  workspace_search_edit_ = side_panel_view_->search_edit();
+  workspace_search_edit_ = side_panel_->search_edit();
   document_bar_->back_button()->setDefaultAction(actions_.back);
   document_bar_->forward_button()->setDefaultAction(actions_.forward);
   document_bar_->zoom_out_button()->setDefaultAction(actions_.zoom_out);
@@ -1528,18 +1500,18 @@ void MdViewerWindow::initSignals() {
             NavigateTo(path, QString(), /*record_history=*/true);
           });
   // 点树里的文件换文档；树在根外打开书签时不换根
-  connect(side_panel_view_, &SidePanel::fileActivated, this,
+  connect(side_panel_, &SidePanel::fileActivated, this,
           [this](const QString& path, bool new_tab) {
             NavigateTo(path, QString(), /*record_history=*/true,
                        new_tab ? OpenIntent::kNewTab : OpenIntent::kReplace);
           });
-  connect(side_panel_view_, &SidePanel::chooseRootRequested, this,
+  connect(side_panel_, &SidePanel::chooseRootRequested, this,
           &MdViewerWindow::OpenDirectoryDialog);
-  connect(side_panel_view_, &SidePanel::bookmarkActivated, this,
+  connect(side_panel_, &SidePanel::bookmarkActivated, this,
           &MdViewerWindow::OpenBookmark);
-  connect(side_panel_view_, &SidePanel::bookmarkToggleRequested, this,
+  connect(side_panel_, &SidePanel::bookmarkToggleRequested, this,
           &MdViewerWindow::ToggleBookmarkForPath);
-  connect(side_panel_view_, &SidePanel::bookmarkRemoveRequested, this,
+  connect(side_panel_, &SidePanel::bookmarkRemoveRequested, this,
           [this](const QString& path) {
             bookmark_controller_->Remove(path);
             bookmark_controller_->Save();
@@ -1619,25 +1591,25 @@ void MdViewerWindow::initSignals() {
     search_controller_->FindDocumentNow(document_find_edit_->text(), false);
   });
   // 工作区搜索：输入即重置并防抖，回车跳过防抖
-  connect(side_panel_view_, &SidePanel::searchTextChanged, this,
+  connect(side_panel_, &SidePanel::searchTextChanged, this,
           [this](const QString& text) {
             search_controller_->ScheduleWorkspaceSearch(root_dir_, text);
           });
   connect(search_controller_, &SearchController::workspaceSearchReset,
-          side_panel_view_, &SidePanel::BeginSearch);
+          side_panel_, &SidePanel::BeginSearch);
   connect(search_controller_, &SearchController::workspaceSearchBatch,
-          side_panel_view_, &SidePanel::AppendSearchHits);
+          side_panel_, &SidePanel::AppendSearchHits);
   connect(search_controller_, &SearchController::workspaceSearchFinished,
-          side_panel_view_, &SidePanel::EndSearch);
+          side_panel_, &SidePanel::EndSearch);
   connect(search_controller_, &SearchController::workspaceSearchFailed,
-          side_panel_view_, &SidePanel::SetSearchError);
-  connect(side_panel_view_, &SidePanel::searchSubmitted, this, [this] {
+          side_panel_, &SidePanel::SetSearchError);
+  connect(side_panel_, &SidePanel::searchSubmitted, this, [this] {
     search_controller_->SearchWorkspaceNow(root_dir_,
                                            workspace_search_edit_->text());
   });
-  connect(side_panel_view_, &SidePanel::searchHitActivated, this,
+  connect(side_panel_, &SidePanel::searchHitActivated, this,
           &MdViewerWindow::OpenSearchHit);
-  connect(side_panel_view_, &SidePanel::cancelSearchRequested, this,
+  connect(side_panel_, &SidePanel::cancelSearchRequested, this,
           [this] { search_controller_->CancelWorkspaceSearch(); });
   connect(root_watcher_, &QFileSystemWatcher::directoryChanged, this,
           [this](const QString&) { root_rescan_timer_->start(); });
@@ -1777,7 +1749,7 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
   // 换根后旧根的结果没有意义，先取消扫描并清空结果页
   if (search_controller_ != nullptr) {
     search_controller_->ResetWorkspaceSearch();
-    side_panel_view_->BeginSearch(QString());
+    side_panel_->BeginSearch(QString());
   }
   const DocumentScanResult result = ScanDocumentRoot(root);
   if (result.root_exists) {
@@ -1790,8 +1762,8 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
     if (actions_.unload_workspace != nullptr) {
       actions_.unload_workspace->setEnabled(true);
     }
-    side_panel_view_->SetRoot(result);
-    side_panel_view_->SetSearchAvailable(true);
+    side_panel_->SetRoot(result);
+    side_panel_->SetSearchAvailable(true);
     quick_open_files_.clear();
     quick_open_files_.reserve(result.markdown_file_count);
     for (const DocumentEntry& entry : result.entries) {
@@ -1802,9 +1774,9 @@ DocumentScanResult MdViewerWindow::SetRootDir(const QString& root) {
   } else {
     quick_open_files_.clear();
     root_dir_ = QFileInfo(root).absoluteFilePath();
-    side_panel_view_->SetRootMissing(
-        root_dir_, tr("Folder does not exist or is not readable"));
-    side_panel_view_->SetSearchAvailable(false);
+    side_panel_->SetRootMissing(root_dir_,
+                                tr("Folder does not exist or is not readable"));
+    side_panel_->SetSearchAvailable(false);
   }
   if (document_count_label_ != nullptr) {
     document_count_label_->setText(
@@ -1920,8 +1892,8 @@ void MdViewerWindow::RestoreSession() {
   // 上次显式卸载了工作区：重启回欢迎页，最近列表照常显示，
   // 但不自动恢复任何文档
   if (!session_controller_->RestoreRequested()) {
-    side_panel_view_->SetRootMissing(QString(),
-                                     tr("Start with \"File > Open Folder\""));
+    side_panel_->SetRootMissing(QString(),
+                                tr("Start with \"File > Open Folder\""));
     ShowWelcome();
     return;
   }
@@ -1996,8 +1968,8 @@ void MdViewerWindow::OpenLastFile() {
     }
     return;
   }
-  side_panel_view_->SetRootMissing(QString(),
-                                   tr("Start with \"File > Open Folder\""));
+  side_panel_->SetRootMissing(QString(),
+                              tr("Start with \"File > Open Folder\""));
   ShowWelcome();
 }
 
@@ -2030,11 +2002,11 @@ void MdViewerWindow::UnloadWorkspace() {
   if (search_controller_ != nullptr) {
     search_controller_->ResetWorkspaceSearch();
   }
-  side_panel_view_->BeginSearch(QString());
-  side_panel_view_->SetCurrentFile(QString());
-  side_panel_view_->SetRootMissing(QString(),
-                                   tr("Start with \"File > Open Folder\""));
-  side_panel_view_->SetSearchAvailable(false);
+  side_panel_->BeginSearch(QString());
+  side_panel_->SetCurrentFile(QString());
+  side_panel_->SetRootMissing(QString(),
+                              tr("Start with \"File > Open Folder\""));
+  side_panel_->SetSearchAvailable(false);
 
   root_dir_.clear();
   // 意图标志：没有它，重启时 OpenLastFile 会从最近列表把工作区拉回来
@@ -2308,8 +2280,8 @@ void MdViewerWindow::RefreshThemeIcons() {
     title_bar->setPalette(chrome);
   }
   UpdateBookmarkUi();
-  if (side_panel_view_ != nullptr) {
-    side_panel_view_->SetThemeDark(dark);
+  if (side_panel_ != nullptr) {
+    side_panel_->SetThemeDark(dark);
   }
   if (welcome_ != nullptr) {
     welcome_->SetThemeDark(dark);
@@ -2703,8 +2675,8 @@ void MdViewerWindow::UpdateBookmarkUi() {
     star->setToolTip(starred ? tr("Unbookmark (Ctrl+D)")
                              : tr("Bookmark Current Document (Ctrl+D)"));
   }
-  if (side_panel_view_ != nullptr) {
-    side_panel_view_->SetBookmarks(bookmark_controller_->items(), root_dir_);
+  if (side_panel_ != nullptr) {
+    side_panel_->SetBookmarks(bookmark_controller_->items(), root_dir_);
   }
 }
 
@@ -3005,24 +2977,12 @@ void MdViewerWindow::EnsureSideView(SideView view) {
 }
 
 void MdViewerWindow::ApplySideView(SideView view) {
-  if (!IsValidSideView(static_cast<int>(view))) {
-    return;
-  }
   if (activity_bar_ != nullptr) {
     activity_bar_->SetActiveView(view);
   }
-  if (side_title_ != nullptr) {
-    side_title_->setText(SideViewTitle(view));
-  }
-  // SidePanel 只认自己的三页；渲染状态由下面的映射换成独立页
-  if (side_panel_view_ != nullptr) {
-    side_panel_view_->ShowView(view);
-  }
-  if (side_stack_ != nullptr) {
-    QWidget* page = side_view_pages_[static_cast<int>(view)];
-    if (page != nullptr) {
-      side_stack_->setCurrentWidget(page);
-    }
+  // 标题与页切换都在 SidePanel 内部，页序即 SideView 数值
+  if (side_panel_ != nullptr) {
+    side_panel_->ShowView(view);
   }
 }
 
@@ -3354,3 +3314,6 @@ void MdViewerWindow::ExportPdf() {
   statusBar()->showMessage(tr("Exported: %1").arg(QFileInfo(path).fileName()),
                            5000);
 }
+
+// SourceDialog 在 .cpp 里带 Q_OBJECT，AUTOMOC 要求包含 moc 产物
+#include "md_viewer_window.moc"

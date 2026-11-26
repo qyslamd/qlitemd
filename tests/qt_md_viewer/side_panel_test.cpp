@@ -379,14 +379,10 @@ TEST(SidePanelTest, SearchInputLivesInTheSearchTab) {
 
 TEST(SidePanelTest, ShowViewMapsSideViewPages) {
   SidePanel panel;
-  EXPECT_TRUE(panel.ShowView(SideView::kSearch));
-  EXPECT_EQ(panel.currentView(), SideView::kSearch);
-  EXPECT_TRUE(panel.ShowView(SideView::kBookmarks));
-  EXPECT_EQ(panel.currentView(), SideView::kBookmarks);
-  EXPECT_TRUE(panel.ShowView(SideView::kDocuments));
-  EXPECT_EQ(panel.currentView(), SideView::kDocuments);
-
-  // 渲染状态不是侧栏的页：忽略，且保持当前页
-  EXPECT_FALSE(panel.ShowView(SideView::kRenderStatus));
-  EXPECT_EQ(panel.currentView(), SideView::kDocuments);
+  // 页下标就是 SideView 数值：四页一一对应，不再有映射表
+  for (SideView view : {SideView::kSearch, SideView::kBookmarks,
+                        SideView::kRenderStatus, SideView::kDocuments}) {
+    panel.ShowView(view);
+    EXPECT_EQ(panel.currentView(), view);
+  }
 }

@@ -52,6 +52,8 @@ set(ALL_SRCS
     activity_bar.h
     bookmarks.cpp
     bookmarks.h
+    bookmarks_page.cpp
+    bookmarks_page.h
     reading_positions.cpp
     reading_positions.h
     document_index.cpp
@@ -60,8 +62,13 @@ set(ALL_SRCS
     document_tab.h
     document_tab_bar.cpp
     document_tab_bar.h
+    documents_page.cpp
+    documents_page.h
     side_panel.cpp
     side_panel.h
+    side_panel_delegates.cpp
+    side_panel_delegates.h
+    side_panel_roles.h
     side_view.cpp
     side_view.h
     image_lightbox.cpp
@@ -82,6 +89,8 @@ set(ALL_SRCS
     reader_page.h
     search_controller.cpp
     search_controller.h
+    search_page.cpp
+    search_page.h
     session_controller.cpp
     session_controller.h
     settings_panel.cpp

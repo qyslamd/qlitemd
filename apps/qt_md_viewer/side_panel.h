@@ -1,51 +1,41 @@
 #ifndef FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_
 #define FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_
 
-#include <QHash>
-#include <QSet>
 #include <QString>
+#include <QVector>
 #include <QWidget>
 
 #include "bookmarks.h"
 #include "document_index.h"
+#include "side_panel_roles.h"
 #include "side_view.h"
 #include "text_search.h"
 
 class QLabel;
 class QLineEdit;
-class QPushButton;
 class QStackedWidget;
-class QTabWidget;
-class QTreeWidget;
-class QTreeWidgetItem;
-class BookmarkDelegate;
-class DocumentTreeDelegate;
+class DocumentsPage;
+class BookmarksPage;
+class SearchPage;
 
-constexpr int kPathRole = Qt::UserRole;
-constexpr int kRelativePathRole = Qt::UserRole + 1;
-constexpr int kIsDirectoryRole = Qt::UserRole + 2;
-constexpr int kMissingRole = Qt::UserRole + 3;
-constexpr int kSearchHitRole = Qt::UserRole + 4;
-constexpr int kSizeRole = Qt::UserRole + 5;
-constexpr int kCountRole = Qt::UserRole + 6;
-constexpr int kBookmarkedRole = Qt::UserRole + 7;
-constexpr int kBookmarkDisplayPathRole = Qt::UserRole + 8;
-constexpr int kQueryLengthRole = Qt::UserRole + 9;
-
-// 左侧栏：文档树 / 书签 / 搜索结果三个页签。只负责渲染与发信号，
-// 根目录、书签集合、搜索任务都由 MdViewerWindow 编排。
+// 左侧栏：标题 + 一个按 SideView 数值排布的 QStackedWidget。
+// 文档/搜索/书签三页由本类创建，渲染状态页由宿主注入（避免侧栏依赖
+// 具体的渲染面板）；根目录、收藏集合、搜索任务都由 MdViewerWindow 编排。
 class SidePanel : public QWidget {
   Q_OBJECT
 
  public:
   explicit SidePanel(QWidget* parent = nullptr);
 
+  // 渲染状态页：SidePanel 负责提供带边距的宿主页，控件归宿主所有
+  void SetRenderStatusWidget(QWidget* widget);
+
   void SetRoot(const DocumentScanResult& result);
   void SetRootMissing(const QString& root, const QString& reason);
   void SetFilter(const QString& text);
   // 没有工作区时禁用搜索输入，占位文字改成提示
   void SetSearchAvailable(bool available);
-  QLineEdit* search_edit() const { return search_edit_; }
+  QLineEdit* search_edit() const;
   void SetCurrentFile(const QString& absolute_path);
   void SetBookmarks(const QVector<Bookmark>& bookmarks,
                     const QString& current_root);
@@ -54,13 +44,10 @@ class SidePanel : public QWidget {
                         int total_files);
   void EndSearch(bool truncated, bool canceled);
   void SetSearchError(const QString& message);
-  // 渲染状态不是侧栏的页，这类视图返回 false 且不切换
-  bool ShowView(SideView view);
+  // 四页与 SideView 一一对应：页下标就是枚举值
+  void ShowView(SideView view);
   SideView currentView() const;
-  // 活动栏模式下页签条由外部取代，内部只负责切页
-  void SetTabBarVisible(bool visible);
-  // 暗色/亮色两套 SVG 图标：切主题后由窗口调用，delegate 与页签图标
-  // 一起刷新
+  // 暗色/亮色两套 SVG 图标：切主题后由窗口调用
   void SetThemeDark(bool dark);
 
  signals:
@@ -76,49 +63,16 @@ class SidePanel : public QWidget {
   void cancelSearchRequested();
   void chooseRootRequested();
 
- protected:
-  bool eventFilter(QObject* watched, QEvent* event) override;
-
  private:
   void initUi();
   void initSignals();
-  void BuildTree(const DocumentScanResult& result);
-  void ApplyFilter();
-  void ShowEmptyPage(const QString& message);
-  void UpdateDocumentBookmarkRoles();
 
-  QTabWidget* tabs_ = nullptr;
-  QLineEdit* filter_edit_ = nullptr;
-  QLineEdit* search_edit_ = nullptr;
-  QStackedWidget* document_stack_ = nullptr;
-  QTreeWidget* document_tree_ = nullptr;
-  QTreeWidget* bookmark_tree_ = nullptr;
-  QTreeWidget* search_tree_ = nullptr;
-  QLabel* search_summary_ = nullptr;
-  QLabel* search_empty_ = nullptr;
-  QHash<QString, QTreeWidgetItem*> search_groups_;
-  QHash<QString, int> search_group_counts_;
-  QString current_query_;
-  int search_total_hits_ = 0;
-  int search_total_files_ = 0;
-  int search_scanned_files_ = 0;
-  QWidget* empty_page_ = nullptr;
-  QLabel* empty_label_ = nullptr;
-  QPushButton* choose_root_button_ = nullptr;
-  QPushButton* cancel_button_ = nullptr;
-  QString current_file_;
-  QString filter_text_;
-  QSet<QString> bookmarked_paths_;
-  // delegate 在 mouseRelease 里先切换收藏，随后视图还会发 itemClicked；
-  // 这里记一笔，避免同一次点击又把文档打开
-  bool star_click_pending_ = false;
-  // 文档树点击时记下 Ctrl 状态；中键自己发信号后吞掉随后的 itemClicked
-  bool ctrl_click_ = false;
-  bool suppress_item_click_ = false;
-  bool theme_dark_ = false;
-  DocumentTreeDelegate* document_tree_delegate_ = nullptr;
-  BookmarkDelegate* bookmark_tree_delegate_ = nullptr;
-  DocumentScanResult last_result_;
+  QLabel* title_ = nullptr;
+  QStackedWidget* stack_ = nullptr;
+  DocumentsPage* documents_ = nullptr;
+  SearchPage* search_ = nullptr;
+  BookmarksPage* bookmarks_ = nullptr;
+  QWidget* render_status_host_ = nullptr;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_SIDE_PANEL_H_

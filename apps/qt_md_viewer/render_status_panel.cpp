@@ -212,6 +212,9 @@ void AddDetailRow(QGridLayout* layout, int row, const QString& key,
 }  // namespace
 
 class WorkerPips final : public QWidget {
+  // tooltip 用了 tr()：缺 Q_OBJECT 会把上下文错成 QObject
+  Q_OBJECT
+
  public:
   explicit WorkerPips(QWidget* parent = nullptr) : QWidget(parent) {
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
