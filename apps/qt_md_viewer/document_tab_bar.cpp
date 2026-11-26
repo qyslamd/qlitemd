@@ -15,6 +15,8 @@
 #include <QTimer>
 #include <QWindow>
 
+#include "chrome_theme.h"
+
 namespace {
 
 // 四角圆弧路径；选中与悬停的矩形不同，路径本身共用
@@ -216,28 +218,6 @@ class DocumentTabBarStyle : public QProxyStyle {
 
 }  // namespace
 
-TabStripColors TabStripColorsFor(bool dark) {
-  TabStripColors colors;
-  if (dark) {
-    // 暗色：框架 #2E2F30，选中 #3B3B3B
-    colors.background = QColor(0x2e, 0x2f, 0x30);
-    colors.selected = SelectedTabColorFor(true);
-    colors.hover = QColor(0x59, 0x59, 0x59, 76);
-    colors.separator = QColor(0xd3, 0xd3, 0xd5);
-    colors.selected_text = QColor(Qt::white);
-    colors.normal_text = QColor(0xd3, 0xd3, 0xd5);
-  } else {
-    // 浅色：框架 #CECECE，选中 #F9F9FB
-    colors.background = QColor(0xce, 0xce, 0xce);
-    colors.selected = SelectedTabColorFor(false);
-    colors.hover = QColor(255, 255, 255, 76);
-    colors.separator = QColor(0x4b, 0x4b, 0x4b);
-    colors.selected_text = QColor(Qt::black);
-    colors.normal_text = QColor(0x66, 0x66, 0x66);
-  }
-  return colors;
-}
-
 DocumentTabBar::DocumentTabBar(QWidget* parent) : QTabBar(parent) {
   setObjectName(QStringLiteral("documentTabBar"));
   setDrawBase(false);
@@ -293,7 +273,7 @@ bool DocumentTabBar::IsTabLoading(int index) const {
 }
 
 void DocumentTabBar::SetThemeDark(bool dark) {
-  const TabStripColors colors = TabStripColorsFor(dark);
+  const ChromeColors colors = ChromeColorsFor(dark);
   QPalette strip = palette();
   strip.setColor(QPalette::Window, colors.background);
   strip.setColor(QPalette::Base, colors.selected);
@@ -306,10 +286,7 @@ void DocumentTabBar::SetThemeDark(bool dark) {
 }
 
 void DocumentTabBar::paintEvent(QPaintEvent* event) {
-  {
-    QPainter painter(this);
-    painter.fillRect(rect(), palette().color(QPalette::Window));
-  }
+  // 背景由标题栏统一铺；这里再填一层会把半透明 chrome 叠厚
   QTabBar::paintEvent(event);
 }
 

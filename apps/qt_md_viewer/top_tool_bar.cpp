@@ -17,7 +17,7 @@
 #include <QSizePolicy>
 #include <QToolButton>
 
-#include "document_tab_bar.h"
+#include "chrome_theme.h"
 #include "theme_icons.h"
 
 namespace {
@@ -101,13 +101,14 @@ void TopToolBar::ResetInvariants() {
   show();
 }
 
-void TopToolBar::paintEvent(QPaintEvent* event) {
-  // 先让 QToolBar 走完基样式，再盖一层自己的 surface：用选中标签的
-  // 底色，让标签和工具栏连成一片（Chrome/Edge 的做法）
-  QToolBar::paintEvent(event);
+void TopToolBar::paintEvent(QPaintEvent*) {
+  // 不调基样式：它会先铺一层不透明底，Blur 就透不上来。
+  // 和标签一样铺"框架色 + 选中色"两层半透明，两边叠出来的颜色一致。
   QPainter painter(this);
   const bool dark = palette().color(QPalette::Window).lightness() < 128;
-  painter.fillRect(rect(), SelectedTabColorFor(dark));
+  const ChromeColors colors = ChromeColorsFor(dark);
+  painter.fillRect(rect(), colors.background);
+  painter.fillRect(rect(), colors.selected);
   painter.fillRect(QRect(0, height() - 1, width(), 1),
                    DimLineColor(palette(), 32));
 }

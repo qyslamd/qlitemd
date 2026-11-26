@@ -77,6 +77,7 @@
 
 #include "activity_bar.h"
 #include "bookmarks.h"
+#include "chrome_theme.h"
 #include "document_index.h"
 #include "document_tab_bar.h"
 #include "image_lightbox.h"
@@ -1314,7 +1315,7 @@ void MdViewerWindow::initUi() {
   // 标题栏左侧：菜单 + 标签条 + 新建；标签条吃掉剩余宽度
   title_leading_widget_ = new QWidget(fluent_frame_->titleBar());
   title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
-  title_leading_widget_->setAutoFillBackground(true);
+  // 背景交给标题栏统一铺，否则半透明 chrome 会多叠一层
   auto* leading_layout = new QHBoxLayout(title_leading_widget_);
   // 标签 38px 高，顶部留 4px；标题栏整体高度见下面的 setFixedHeight
   leading_layout->setContentsMargins(0, 4, 0, 0);
@@ -2268,7 +2269,7 @@ void MdViewerWindow::RefreshThemeIcons() {
   }
   if (title_leading_widget_ != nullptr) {
     QPalette strip = title_leading_widget_->palette();
-    strip.setColor(QPalette::Window, TabStripColorsFor(dark).background);
+    strip.setColor(QPalette::Window, ChromeColorsFor(dark).background);
     title_leading_widget_->setPalette(strip);
   }
   // Chrome 的标签条与标题栏同一条框架色；整条标题栏一起铺
@@ -2276,7 +2277,7 @@ void MdViewerWindow::RefreshThemeIcons() {
     QWidget* title_bar = fluent_frame_->titleBar();
     title_bar->setAutoFillBackground(true);
     QPalette chrome = title_bar->palette();
-    chrome.setColor(QPalette::Window, TabStripColorsFor(dark).background);
+    chrome.setColor(QPalette::Window, ChromeColorsFor(dark).background);
     title_bar->setPalette(chrome);
   }
   UpdateBookmarkUi();
