@@ -211,10 +211,12 @@ class DocumentTabBarStyle : public QProxyStyle {
       const QRectF rect = tab->rect;
       const qreal len = rect.height() / 3.0;
       if (tab->selectedPosition != QStyleOptionTab::NextIsSelected) {
+        // 原来的线长是两条 len/2 留白后的 2/3 高；再收 1/3，留白改为 5len/6
+        const qreal inset = len * 5.0 / 6.0;
         painter->setPen(QPen(palette.color(QPalette::Mid), 0.5));
-        painter->drawLine(
-            QLineF(rect.right() - len / 3.0, rect.top() + len / 2.0,
-                   rect.right() - len / 3.0, rect.bottom() - len / 2.0));
+        painter->drawLine(QLineF(rect.right() - len / 3.0, rect.top() + inset,
+                                 rect.right() - len / 3.0,
+                                 rect.bottom() - inset));
       }
     }
     painter->restore();
