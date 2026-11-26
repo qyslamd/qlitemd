@@ -39,6 +39,16 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
   }
 }
 
+TEST(DocumentBarTest, KeepsToolbarRhythm) {
+  DocumentBar* bar = MakeShownBar(1000);
+  // 40px 的行高给图标和输入框留出呼吸空间；分组靠两条分隔线 + 缩放胶囊
+  EXPECT_EQ(bar->height(), 40);
+  EXPECT_NE(bar->findChild<QWidget*>(QStringLiteral("docZoomGroup")), nullptr);
+  EXPECT_EQ(
+      bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(), 3);
+  delete bar;
+}
+
 TEST(DocumentBarTest, ElidesPathButKeepsFullTooltip) {
   DocumentBar* bar = MakeShownBar(700);
   // 不同平台的字体度量差很多，路径要撑到必然放不下才谈得上省略

@@ -22,6 +22,11 @@ struct TabStripColors {
 
 TabStripColors TabStripColorsFor(bool dark);
 
+// 选中标签的底色。工具栏复用同一个值，标签和工具栏才能连成一片。
+inline QColor SelectedTabColorFor(bool dark) {
+  return dark ? QColor(0x3b, 0x3b, 0x3b) : QColor(0xf9, 0xf9, 0xfb);
+}
+
 // 标题栏里的文档标签条：等宽、超出宽度后滚动、自绘 Chrome 外观。
 // 欢迎标签由宿主放在第 0 位并用 RemoveCloseButton 去掉关闭按钮。
 class DocumentTabBar : public QTabBar {

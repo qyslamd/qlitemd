@@ -8,6 +8,7 @@
 class QLabel;
 class QLineEdit;
 class QMenu;
+class QPaintEvent;
 class QResizeEvent;
 class QToolButton;
 
@@ -23,6 +24,9 @@ class TopToolBar : public QToolBar {
   // restoreState 会把工具条的可见性与几何一起改写，恢复后按这个压回
   // 不变量
   void ResetInvariants();
+
+ protected:
+  void paintEvent(QPaintEvent* event) override;
 };
 
 // 横带在文档态的页：导航、路径、复制、查找、大纲、阅读外观、缩放、导出。
@@ -64,6 +68,7 @@ class DocumentBar : public QWidget {
   QString display_path_;
   bool dark_ = false;
   QWidget* zoom_group_ = nullptr;
+  QWidget* export_separator_ = nullptr;
   QLabel* path_label_ = nullptr;
   QLineEdit* find_edit_ = nullptr;
   QToolButton* back_button_ = nullptr;

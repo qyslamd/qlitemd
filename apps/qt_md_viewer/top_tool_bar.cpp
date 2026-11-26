@@ -17,9 +17,14 @@
 #include <QSizePolicy>
 #include <QToolButton>
 
+#include "document_tab_bar.h"
 #include "theme_icons.h"
 
 namespace {
+
+constexpr int kToolbarHeight = 40;
+constexpr int kToolbarButtonSize = 28;
+constexpr int kToolbarIconSize = 18;
 
 QToolButton* MakeIconButton(QWidget* parent, const QString& name,
                             const QString& tooltip) {
@@ -28,8 +33,52 @@ QToolButton* MakeIconButton(QWidget* parent, const QString& name,
   button->setAutoRaise(true);
   button->setToolTip(tooltip);
   button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  button->setFixedSize(24, 24);
+  button->setFixedSize(kToolbarButtonSize, kToolbarButtonSize);
+  button->setIconSize(QSize(kToolbarIconSize, kToolbarIconSize));
   return button;
+}
+
+// 半透明线条跟着 WindowText 走：浅色主题是黑线，深色主题是白线
+QColor DimLineColor(const QPalette& palette, int alpha) {
+  QColor color = palette.color(QPalette::WindowText);
+  color.setAlpha(alpha);
+  return color;
+}
+
+class ToolbarSeparator : public QWidget {
+ public:
+  explicit ToolbarSeparator(QWidget* parent) : QWidget(parent) {
+    setObjectName(QStringLiteral("toolbarSeparator"));
+    setFixedSize(1, 16);
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter painter(this);
+    painter.fillRect(rect(), DimLineColor(palette(), 30));
+  }
+};
+
+// 给缩放这类成组控件一个圆角底，避免一排按钮全是同一层级
+class ToolbarPill : public QWidget {
+ public:
+  explicit ToolbarPill(QWidget* parent) : QWidget(parent) {
+    setObjectName(QStringLiteral("toolbarPill"));
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QRectF pill = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    painter.setPen(QPen(DimLineColor(palette(), 24), 1.0));
+    painter.setBrush(palette().color(QPalette::Base));
+    painter.drawRoundedRect(pill, 6.0, 6.0);
+  }
+};
+
+QWidget* MakeToolbarSeparator(QWidget* parent) {
+  return new ToolbarSeparator(parent);
 }
 
 }  // namespace
@@ -52,12 +101,23 @@ void TopToolBar::ResetInvariants() {
   show();
 }
 
+void TopToolBar::paintEvent(QPaintEvent* event) {
+  // 先让 QToolBar 走完基样式，再盖一层自己的 surface：用选中标签的
+  // 底色，让标签和工具栏连成一片（Chrome/Edge 的做法）
+  QToolBar::paintEvent(event);
+  QPainter painter(this);
+  const bool dark = palette().color(QPalette::Window).lightness() < 128;
+  painter.fillRect(rect(), SelectedTabColorFor(dark));
+  painter.fillRect(QRect(0, height() - 1, width(), 1),
+                   DimLineColor(palette(), 32));
+}
+
 DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("documentBar"));
-  setFixedHeight(32);
+  setFixedHeight(kToolbarHeight);
   auto* layout = new QHBoxLayout(this);
-  layout->setContentsMargins(8, 0, 8, 0);
-  layout->setSpacing(4);
+  layout->setContentsMargins(12, 0, 12, 0);
+  layout->setSpacing(6);
 
   back_button_ =
       MakeIconButton(this, QStringLiteral("docBack"), tr("Back (Ctrl+Alt+←)"));
@@ -69,10 +129,12 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   layout->addWidget(back_button_);
   layout->addWidget(forward_button_);
   layout->addWidget(star_button_);
-  layout->addSpacing(4);
+  layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
 
   path_label_ = new QLabel(this);
   path_label_->setObjectName(QStringLiteral("docPathLabel"));
+  // 路径是上下文信息，低于文档动作一级
+  path_label_->setForegroundRole(QPalette::PlaceholderText);
   path_label_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   path_label_->setTextInteractionFlags(Qt::NoTextInteraction);
   layout->addWidget(path_label_, 1);
@@ -91,6 +153,7 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   find_edit_->setClearButtonEnabled(true);
   find_edit_->setFixedWidth(240);
   layout->addWidget(find_edit_);
+  layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
 
   outline_button_ = MakeIconButton(this, QStringLiteral("docOutlineToggle"),
                                    tr("Outline (Ctrl+Shift+O)"));
@@ -102,10 +165,10 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
       tr("Reading appearance (font size, line height, measure)"));
   layout->addWidget(appearance_button_);
 
-  zoom_group_ = new QWidget(this);
+  zoom_group_ = new ToolbarPill(this);
   zoom_group_->setObjectName(QStringLiteral("docZoomGroup"));
   auto* zoom_layout = new QHBoxLayout(zoom_group_);
-  zoom_layout->setContentsMargins(0, 0, 0, 0);
+  zoom_layout->setContentsMargins(2, 2, 2, 2);
   zoom_layout->setSpacing(2);
   zoom_out_button_ = MakeIconButton(zoom_group_, QStringLiteral("docZoomOut"),
                                     tr("Zoom Out (Ctrl+-)"));
@@ -121,14 +184,17 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   zoom_layout->addWidget(zoom_out_button_);
   zoom_layout->addWidget(zoom_reset_button_);
   zoom_layout->addWidget(zoom_in_button_);
-  layout->addWidget(zoom_group_);
+  layout->addWidget(zoom_group_, 0, Qt::AlignVCenter);
 
   // 导出放最右、最先让位：低频动作，窄窗下交给 File 菜单与命令面板兜底
+  export_separator_ = MakeToolbarSeparator(this);
+  layout->addWidget(export_separator_, 0, Qt::AlignVCenter);
   export_button_ = new QToolButton(this);
   export_button_->setObjectName(QStringLiteral("docExport"));
   export_button_->setAutoRaise(true);
   export_button_->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  export_button_->setFixedSize(24, 24);
+  export_button_->setFixedSize(kToolbarButtonSize, kToolbarButtonSize);
+  export_button_->setIconSize(QSize(kToolbarIconSize, kToolbarIconSize));
   export_button_->setPopupMode(QToolButton::InstantPopup);
   export_button_->setToolTip(tr("Export… (HTML, PDF)"));
   export_menu_ = new QMenu(export_button_);
@@ -170,6 +236,7 @@ void DocumentBar::UpdateChildVisibility() {
   copy_button_->setVisible(width >= 620);
   // 导出频率最低，最先隐藏；入口仍在 File 菜单与命令面板
   export_button_->setVisible(width >= 900);
+  export_separator_->setVisible(width >= 900);
   find_edit_->setVisible(true);
   find_edit_->setFixedWidth(width >= 620 ? 240 : 160);
   UpdatePathElision();
@@ -187,9 +254,9 @@ void DocumentBar::UpdatePathElision() {
 
 WelcomeBar::WelcomeBar(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("welcomeBar"));
-  setFixedHeight(32);
+  setFixedHeight(kToolbarHeight);
   auto* layout = new QHBoxLayout(this);
-  layout->setContentsMargins(8, 0, 8, 0);
+  layout->setContentsMargins(12, 0, 12, 0);
   layout->setSpacing(6);
 
   auto* mark = new QLabel(this);

@@ -221,7 +221,7 @@ TabStripColors TabStripColorsFor(bool dark) {
   if (dark) {
     // 暗色：框架 #2E2F30，选中 #3B3B3B
     colors.background = QColor(0x2e, 0x2f, 0x30);
-    colors.selected = QColor(0x3b, 0x3b, 0x3b);
+    colors.selected = SelectedTabColorFor(true);
     colors.hover = QColor(0x59, 0x59, 0x59, 76);
     colors.separator = QColor(0xd3, 0xd3, 0xd5);
     colors.selected_text = QColor(Qt::white);
@@ -229,7 +229,7 @@ TabStripColors TabStripColorsFor(bool dark) {
   } else {
     // 浅色：框架 #CECECE，选中 #F9F9FB
     colors.background = QColor(0xce, 0xce, 0xce);
-    colors.selected = QColor(0xf9, 0xf9, 0xfb);
+    colors.selected = SelectedTabColorFor(false);
     colors.hover = QColor(255, 255, 255, 76);
     colors.separator = QColor(0x4b, 0x4b, 0x4b);
     colors.selected_text = QColor(Qt::black);
