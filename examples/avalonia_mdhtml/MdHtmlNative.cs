@@ -8,7 +8,7 @@ namespace AvaloniaMdhtml;
 internal static class MdHtmlNative
 {
     internal const string Library = "qlitemd_mdhtml_c";
-    internal const uint AbiVersion = 4;
+    internal const uint AbiVersion = 5;
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct RenderOptions
@@ -127,6 +127,61 @@ internal static class MdHtmlNative
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern IntPtr mdhtml_result_outline_id(IntPtr result,
                                                            UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern UIntPtr mdhtml_result_block_count(IntPtr result);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_kind(IntPtr result,
+                                                        UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_ordinal(IntPtr result,
+                                                           UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_parent(IntPtr result,
+                                                          UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_section(IntPtr result,
+                                                           UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_level(IntPtr result,
+                                                         UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr mdhtml_result_block_language(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_admonition(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_mermaid_kind(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint mdhtml_result_block_inline_flags(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int mdhtml_result_block_children(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern UIntPtr mdhtml_result_front_matter_count(
+        IntPtr result);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr mdhtml_result_front_matter_key(
+        IntPtr result, UIntPtr index);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr mdhtml_result_front_matter_value(
+        IntPtr result, UIntPtr index);
 
     internal static string? Utf8(IntPtr value) =>
         value == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(value);

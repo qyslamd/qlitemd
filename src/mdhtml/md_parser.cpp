@@ -1,8 +1,12 @@
 #include "md_parser.h"
 
 #include <cctype>
+#include <string>
+#include <thread>
 #include <utility>
+#include <vector>
 
+#include "md_block_model.h"
 #include "md_callout.h"
 #include "md_text.h"
 
@@ -369,24 +373,148 @@ std::vector<MdCodeBlock> CollectCodeBlocks(std::string_view html) {
   return blocks;
 }
 
+bool StartsWithFrontMatter(std::string_view markdown) {
+  if (markdown.size() < 4 || markdown.substr(0, 3) != "---") {
+    return false;
+  }
+  return markdown[3] == '\n' ||
+         (markdown[3] == '\r' && markdown.size() > 4 && markdown[4] == '\n');
+}
+
+bool IsFrontMatterClose(std::string_view line) {
+  if (!line.empty() && line.back() == '\r') {
+    line.remove_suffix(1);
+  }
+  const std::string_view trimmed = TrimView(line);
+  return trimmed == "---" || trimmed == "...";
+}
+
+void ParseFrontMatterEntries(std::string_view block,
+                             std::vector<MdFrontMatterEntry>* entries) {
+  std::size_t pos = 0;
+  while (pos <= block.size()) {
+    std::size_t end = block.find('\n', pos);
+    if (end == std::string_view::npos) {
+      end = block.size();
+    }
+    std::string_view line = block.substr(pos, end - pos);
+    if (!line.empty() && line.back() == '\r') {
+      line.remove_suffix(1);
+    }
+    line = TrimView(line);
+    if (!line.empty() && line[0] != '#') {
+      const std::size_t colon = line.find(':');
+      if (colon != std::string_view::npos) {
+        std::string_view key = TrimView(line.substr(0, colon));
+        std::string_view value = TrimView(line.substr(colon + 1));
+        if (value.size() >= 2 &&
+            (value.front() == '"' || value.front() == '\'') &&
+            value.back() == value.front()) {
+          value = value.substr(1, value.size() - 2);
+        }
+        if (!key.empty()) {
+          entries->push_back({std::string(key), std::string(value)});
+        }
+      }
+    }
+    if (end == block.size()) {
+      break;
+    }
+    pos = end + 1;
+  }
+}
+
+// Front matter is only recognized at the very first byte. A rule later in the
+// document stays a thematic break, and an unclosed block falls back to normal
+// Markdown so a document beginning with "---" is never swallowed.
+std::string_view StripFrontMatter(std::string_view markdown,
+                                  std::vector<MdFrontMatterEntry>* entries) {
+  if (!StartsWithFrontMatter(markdown)) {
+    return markdown;
+  }
+  const std::size_t first_end = markdown.find('\n');
+  std::size_t pos = first_end + 1;
+  int lines = 0;
+  while (pos <= markdown.size() && lines < 30) {
+    std::size_t end = markdown.find('\n', pos);
+    if (end == std::string_view::npos) {
+      end = markdown.size();
+    }
+    const std::string_view line = markdown.substr(pos, end - pos);
+    if (IsFrontMatterClose(line)) {
+      ParseFrontMatterEntries(
+          markdown.substr(first_end + 1, pos - first_end - 1), entries);
+      return markdown.substr(end < markdown.size() ? end + 1 : markdown.size());
+    }
+    ++lines;
+    if (end == markdown.size()) {
+      break;
+    }
+    pos = end + 1;
+  }
+  entries->clear();
+  return markdown;
+}
+
 }  // namespace
 
 MdParseResult ParseMarkdown(std::string_view markdown, bool extract_math,
                             MdAdmonitionMode admonition_mode) {
   MdParseResult parsed;
   parsed.math_salt = RandomHexSalt(8);
+  const std::string_view body =
+      StripFrontMatter(markdown, &parsed.front_matter);
   std::string source =
-      extract_math ? ExtractMath(markdown, &parsed.segments, parsed.math_salt)
-                   : std::string(markdown);
-  unsigned flags = MD_DIALECT_GITHUB;
+      extract_math ? ExtractMath(body, &parsed.segments, parsed.math_salt)
+                   : std::string(body);
+
+  // Superscript/subscript stay off: with formula extraction disabled, md4c
+  // pairs the carets around "$x^2$" and eats the literal TeX. Highlight and
+  // insert have no such conflict with the math syntax.
+  unsigned flags = MD_DIALECT_GITHUB | MD_FLAG_HIGHLIGHT | MD_FLAG_INSERT;
   if (admonition_mode == MdAdmonitionMode::kMpe) {
     // MPE callouts are rewritten from blockquotes below; letting md4c
     // consume marker-only admonitions here would split the two paths.
     flags &= ~MD_FLAG_ADMONITIONS;
   }
+
+  MdBlockCollectOptions block_options;
+  block_options.source = source;
+  block_options.flags = flags;
+  block_options.admonition_mode = admonition_mode;
+  block_options.math_segments = &parsed.segments;
+  block_options.math_salt = parsed.math_salt;
+
+  // The block pass re-parses the same source. It is independent of md_html,
+  // so run it concurrently; a thread failure falls back to the same work
+  // sequentially. md4c is reentrant and both passes own their buffers.
+  std::vector<MdBlock> collected;
+  std::thread collector;
+  bool collector_started = false;
+  try {
+    collector = std::thread([&collected, &block_options] {
+      try {
+        collected = CollectDocumentBlocks(block_options);
+      } catch (...) {
+      }
+    });
+    collector_started = true;
+  } catch (...) {
+  }
+
   const int result =
       md_html(source.data(), static_cast<MD_SIZE>(source.size()), AppendHtml,
               &parsed.html, flags, MD_HTML_FLAG_SKIP_UTF8_BOM);
+  if (collector_started) {
+    collector.join();
+  } else {
+    try {
+      collected = CollectDocumentBlocks(block_options);
+    } catch (...) {
+    }
+  }
+  parsed.document_blocks = std::move(collected);
+
   if (result != 0) {
     parsed.html = "<p class=\"error\">Markdown 解析失败</p>";
     parsed.parse_error = true;

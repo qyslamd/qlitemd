@@ -570,6 +570,8 @@ class MdRenderJobImpl : public MdRenderJob,
   void Assemble(const MdParseResult& parsed) {
     MdAssembleOptions assemble_options;
     assemble_options.code_line_numbers = options_.code_line_numbers;
+    result_.document_blocks = parsed.document_blocks;
+    result_.front_matter = parsed.front_matter;
     result_.outline.clear();
     assemble_options.outline = [this](const MdHeading& heading) {
       result_.outline.push_back(heading);
@@ -599,6 +601,7 @@ class MdRenderJobImpl : public MdRenderJob,
     result_.stats.html_chars = static_cast<int>(result_.html.size());
     result_.stats.headings = static_cast<int>(result_.outline.size());
     result_.stats.code_blocks = static_cast<int>(result_.code_blocks.size());
+    result_.stats.blocks = static_cast<int>(result_.document_blocks.size());
 
     // Assets follow task order (first occurrence wins), which is
     // deterministic for a given document.

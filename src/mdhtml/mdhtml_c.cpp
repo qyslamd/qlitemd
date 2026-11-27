@@ -191,6 +191,21 @@ const MdCodeBlock* CodeBlockAt(const mdhtml_result* result, std::size_t index) {
   return &result->result.code_blocks[index];
 }
 
+const MdBlock* BlockAt(const mdhtml_result* result, std::size_t index) {
+  if (result == nullptr || index >= result->result.document_blocks.size()) {
+    return nullptr;
+  }
+  return &result->result.document_blocks[index];
+}
+
+const MdFrontMatterEntry* FrontMatterAt(const mdhtml_result* result,
+                                        std::size_t index) {
+  if (result == nullptr || index >= result->result.front_matter.size()) {
+    return nullptr;
+  }
+  return &result->result.front_matter[index];
+}
+
 }  // namespace
 
 extern "C" {
@@ -448,6 +463,79 @@ const char* mdhtml_result_code_block_code(const mdhtml_result* result,
   return block != nullptr ? block->code.c_str() : nullptr;
 }
 
+size_t mdhtml_result_block_count(const mdhtml_result* result) {
+  return result != nullptr ? result->result.document_blocks.size() : 0;
+}
+
+int mdhtml_result_block_kind(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? static_cast<int>(block->kind) : 0;
+}
+
+int mdhtml_result_block_ordinal(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->ordinal : 0;
+}
+
+int mdhtml_result_block_parent(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->parent : 0;
+}
+
+int mdhtml_result_block_section(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->section : 0;
+}
+
+int mdhtml_result_block_level(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->level : 0;
+}
+
+const char* mdhtml_result_block_language(const mdhtml_result* result,
+                                         size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->language.c_str() : nullptr;
+}
+
+int mdhtml_result_block_admonition(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? static_cast<int>(block->admonition) : 0;
+}
+
+int mdhtml_result_block_mermaid_kind(const mdhtml_result* result,
+                                     size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? static_cast<int>(block->mermaid_kind) : 0;
+}
+
+uint32_t mdhtml_result_block_inline_flags(const mdhtml_result* result,
+                                          size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->inline_flags : 0;
+}
+
+int mdhtml_result_block_children(const mdhtml_result* result, size_t index) {
+  const MdBlock* block = BlockAt(result, index);
+  return block != nullptr ? block->children : 0;
+}
+
+size_t mdhtml_result_front_matter_count(const mdhtml_result* result) {
+  return result != nullptr ? result->result.front_matter.size() : 0;
+}
+
+const char* mdhtml_result_front_matter_key(const mdhtml_result* result,
+                                           size_t index) {
+  const MdFrontMatterEntry* entry = FrontMatterAt(result, index);
+  return entry != nullptr ? entry->key.c_str() : nullptr;
+}
+
+const char* mdhtml_result_front_matter_value(const mdhtml_result* result,
+                                             size_t index) {
+  const MdFrontMatterEntry* entry = FrontMatterAt(result, index);
+  return entry != nullptr ? entry->value.c_str() : nullptr;
+}
+
 int mdhtml_result_stats(const mdhtml_result* result, mdhtml_stats* stats) {
   if (result == nullptr || stats == nullptr || stats->struct_size == 0) {
     return 0;
@@ -474,6 +562,7 @@ int mdhtml_result_stats(const mdhtml_result* result, mdhtml_stats* stats) {
   assign(offsetof(mdhtml_stats, collect_ms), source.collect_ms);
   assign(offsetof(mdhtml_stats, worker_ms), source.worker_ms);
   assign(offsetof(mdhtml_stats, assemble_ms), source.assemble_ms);
+  assign(offsetof(mdhtml_stats, blocks), source.blocks);
   return 1;
 }
 

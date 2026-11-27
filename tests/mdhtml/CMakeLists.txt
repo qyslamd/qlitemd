@@ -23,6 +23,14 @@ add_unit_test(
 )
 
 add_unit_test(
+    NAME test_md_block_model
+    SOURCES md_block_model_test.cpp
+    LIBS qlitemd_mdhtml md4c
+    INCLUDES ${PROJECT_SOURCE_DIR}/src/mdhtml
+    LABELS MARKDOWN
+)
+
+add_unit_test(
     NAME test_mdhtml_font_metrics
     SOURCES md_font_metrics_test.cpp
     LIBS qlitemd_mdhtml md4c

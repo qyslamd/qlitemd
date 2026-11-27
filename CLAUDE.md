@@ -85,6 +85,13 @@ Qt 控件层（src/markdown_view）
 Windows 下先在 Visual Studio 开发者命令行中准备 MSVC 环境。
 本地开发、验证与发布统一使用 `RelWithDebInfo`。
 
+Windows 本地也可直接用根目录 `build.bat`，参数与顺序无关：
+`build.bat [-a x86|x64] [-t relwithdebinfo|debug|release]
+[--tests on|off] [-j N]`。脚本自己初始化 VS 环境；x86 用 Qt 5.15.2，
+x64 用 Qt 6.8.3；省略 `-j` 时并行度交给 `cmake --build` 决定。默认是
+x86 + RelWithDebInfo + Qt 5.15.2，且不跑测试；需要测试时显式传
+`--tests on`。
+
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -210,6 +217,9 @@ clang-format --dry-run --Werror <file>
 - `src/markdown_view/`：Qt Widget 组件，目标名 `qlitemd_markdown_view`
   （别名 `qlitemd::markdown_view`），封装 qlitehtml、光栅化、缓存与主题
 - `resources/`：主题 CSS 与 JS 载荷；JS 由 `qjsc` 在构建期编成字节码
+- `apps/qt_md_observatory/`：内容感知阅读器（工作区、块表仪表、命令面板；
+  不用 FluentUI，只用 QWindowKit；Windows 顶层默认构建，
+  option `QLITEMD_BUILD_QT_MD_OBSERVATORY`）
 - `apps/qt_md_viewer/`：FluentUI + QWindowKit 应用（递归文档树、书签、
   全文搜索、会话恢复；逻辑拆在 `document_index` / `bookmarks` /
   `reading_positions` / `text_search` / `navigation_history` / `side_panel`，

@@ -218,6 +218,9 @@ class MarkdownView : public QWidget {
   // 本次文档的标题大纲（按出现顺序，anchor 可直接传 ScrollToAnchor）；
   // 每次 ApplyDocument 重建并发出 outlineChanged
   const QVector<MarkdownHeading>& outline() const { return outline_; }
+  // 本次文档的结构块（与 HTML 同源）。section 是顶级标题序号，
+  // 标题之前为 -1；每次 ApplyDocument 重建。
+  const QVector<MarkdownBlock>& blocks() const { return blocks_; }
   // 标题的文档 y 坐标（单位与垂直滚动条一致）。0 合法（标题在文档最顶部），
   // 找不到锚点返回 nullopt
   std::optional<int> AnchorY(const QString& anchor) const;
@@ -332,6 +335,8 @@ class MarkdownView : public QWidget {
   QHash<QString, MarkdownImageInfo> image_info_;
   // 本次文档的标题大纲；与 heading_ids_ 同源
   QVector<MarkdownHeading> outline_;
+  // 本次文档的结构块；与应用到控件的 HTML 同一次渲染产出
+  QVector<MarkdownBlock> blocks_;
   // 锚点 → 文档 y。litehtml 的 anchorY 是 DOM 树搜索，滚动处理器按大纲
   // 反查当前章节时不能每帧每个标题各查一次；首次查询一次性填满
   mutable QHash<QString, int> anchor_y_cache_;

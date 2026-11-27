@@ -132,6 +132,64 @@ TEST(MdhtmlCApiTest, CodeBlockAccessorsMatchCopyLinks) {
   mdhtml_pipeline_destroy(pipeline);
 }
 
+TEST(MdhtmlCApiTest, ExposesBlockModelAndFrontMatter) {
+  mdhtml_pipeline* pipeline = mdhtml_pipeline_create();
+  ASSERT_NE(pipeline, nullptr);
+  mdhtml_render_options options;
+  mdhtml_render_options_init(&options);
+  mdhtml_result* result = mdhtml_render(pipeline,
+                                        "---\n"
+                                        "title: 测试\n"
+                                        "---\n"
+                                        "# H\n\n"
+                                        "para **bold**\n\n"
+                                        "```mermaid\n"
+                                        "sequenceDiagram\n"
+                                        "  A->>B: hi\n"
+                                        "```\n",
+                                        &options);
+  ASSERT_NE(result, nullptr);
+  ASSERT_EQ(mdhtml_result_ok(result), 1) << mdhtml_result_error(result);
+
+  const size_t blocks = mdhtml_result_block_count(result);
+  ASSERT_GE(blocks, 3u);
+  bool saw_heading = false;
+  bool saw_mermaid = false;
+  for (size_t i = 0; i < blocks; ++i) {
+    const int kind = mdhtml_result_block_kind(result, i);
+    if (kind == 1) {
+      saw_heading = true;
+      EXPECT_EQ(mdhtml_result_block_level(result, i), 1);
+      EXPECT_EQ(mdhtml_result_block_section(result, i), 0);
+    }
+    if (kind == 8) {
+      saw_mermaid = true;
+      EXPECT_STREQ(mdhtml_result_block_language(result, i), "mermaid");
+      EXPECT_EQ(mdhtml_result_block_mermaid_kind(result, i), 2);
+    }
+  }
+  EXPECT_TRUE(saw_heading);
+  EXPECT_TRUE(saw_mermaid);
+  EXPECT_EQ(mdhtml_result_block_kind(result, blocks), 0);
+  EXPECT_EQ(mdhtml_result_block_language(result, blocks), nullptr);
+
+  ASSERT_EQ(mdhtml_result_front_matter_count(result), 1u);
+  EXPECT_STREQ(mdhtml_result_front_matter_key(result, 0), "title");
+  EXPECT_STREQ(mdhtml_result_front_matter_value(result, 0), "测试");
+  EXPECT_EQ(mdhtml_result_front_matter_key(result, 1), nullptr);
+  EXPECT_EQ(std::string(mdhtml_result_html(result)).find("title: 测试"),
+            std::string::npos);
+
+  mdhtml_stats stats;
+  std::memset(&stats, 0, sizeof(stats));
+  stats.struct_size = sizeof(stats);
+  ASSERT_EQ(mdhtml_result_stats(result, &stats), 1);
+  EXPECT_EQ(stats.blocks, static_cast<int>(blocks));
+
+  mdhtml_result_destroy(result);
+  mdhtml_pipeline_destroy(pipeline);
+}
+
 TEST(MdhtmlCApiTest, AsyncRenderReportsProgress) {
   mdhtml_pipeline* pipeline = mdhtml_pipeline_create();
   ASSERT_NE(pipeline, nullptr);

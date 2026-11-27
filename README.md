@@ -16,7 +16,7 @@ Chromium or Node.js at runtime.
 [![Qt](https://img.shields.io/badge/Qt-5.14%2B-green.svg)](#requirements)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](#requirements)
 
-[中文](README.zh-CN.md) · [Application](apps/qt_md_viewer) · [Docs](docs/)
+[中文](README.zh-CN.md) · [Application](apps/qt_md_viewer) · [Observatory](apps/qt_md_observatory) · [Docs](docs/)
 
 ![qlitemd qt_md_viewer screenshot](docs/images/screenshot.png)
 
@@ -55,7 +55,17 @@ target_link_libraries(myapp PRIVATE qlitemd::mdhtml)
 MdHtmlPipeline pipeline;
 const MdHtmlResult result = pipeline.Render(markdown_utf8);
 // result.html + result.assets (formula/Mermaid SVG) + outline
+// + document_blocks (structural model) + front_matter
 ```
+
+`document_blocks` is a flat, document-order list of headings, paragraphs,
+lists, code, math, Mermaid, tables, admonitions and footnotes. Each entry
+carries its ordinal, parent, section (the index of the enclosing top-level
+heading, -1 before the first one), validated `language`, normalized Mermaid
+diagram kind and an inline-flag mask. The list is produced from the same
+source as the HTML; it is not an HTML re-parse. The shared C ABI exposes the
+same fields through `mdhtml_result_block_*`, and read-only front matter
+through `mdhtml_result_front_matter_*`.
 
 The installed SDK is the zero-Qt `mdhtml` core: parsing and assembly on a
 coordinator thread, highlight/formula/Mermaid on three worker lanes, and
@@ -197,7 +207,14 @@ or Qt 6 to build on Linux.
 
 ## Build
 
-Run these commands from a Visual Studio developer prompt on Windows.
+Run these commands from a Visual Studio developer prompt on Windows. The root
+[`build.bat`](build.bat) wraps the common Windows combinations with
+order-independent flags:
+`build.bat [-a x86|x64] [-t relwithdebinfo|debug|release] [--tests on|off] [-j N]`.
+It initializes the VS environment, selects Qt 5.15.2 for x86 or Qt 6.8.3 for
+x64. Tests run only when asked with `--tests on`; omitting jobs leaves the
+parallelism to CMake. Defaults are `x86`, `RelWithDebInfo`, Qt 5.15.2 and
+tests off.
 
 On Linux, point `CMAKE_PREFIX_PATH` at Qt 5.14+ or Qt 6. The CI Linux job
 disables `qt_md_viewer` and runs the library tests with Qt 6.8.3.

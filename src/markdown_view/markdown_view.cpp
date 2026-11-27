@@ -53,6 +53,66 @@
 
 namespace {
 
+// The public MarkdownBlock mirrors the core MdBlock. Keep the numeric values
+// identical so the conversion stays a static_cast.
+#define QLITEMD_ASSERT_KIND(name)                            \
+  static_assert(static_cast<int>(MarkdownBlockKind::name) == \
+                    static_cast<int>(MdBlockKind::name),     \
+                "MarkdownBlockKind drifted from MdBlockKind: " #name)
+QLITEMD_ASSERT_KIND(kParagraph);
+QLITEMD_ASSERT_KIND(kHeading);
+QLITEMD_ASSERT_KIND(kBlockQuote);
+QLITEMD_ASSERT_KIND(kList);
+QLITEMD_ASSERT_KIND(kListItem);
+QLITEMD_ASSERT_KIND(kTaskItem);
+QLITEMD_ASSERT_KIND(kCodeBlock);
+QLITEMD_ASSERT_KIND(kMathBlock);
+QLITEMD_ASSERT_KIND(kMermaid);
+QLITEMD_ASSERT_KIND(kTable);
+QLITEMD_ASSERT_KIND(kImage);
+QLITEMD_ASSERT_KIND(kHtmlBlock);
+QLITEMD_ASSERT_KIND(kAdmonition);
+QLITEMD_ASSERT_KIND(kFootnoteDef);
+QLITEMD_ASSERT_KIND(kThematicBreak);
+QLITEMD_ASSERT_KIND(kOther);
+#undef QLITEMD_ASSERT_KIND
+
+#define QLITEMD_ASSERT_ADMONITION(name)                 \
+  static_assert(                                        \
+      static_cast<int>(MarkdownAdmonitionKind::name) == \
+          static_cast<int>(MdAdmonitionKind::name),     \
+      "MarkdownAdmonitionKind drifted from MdAdmonitionKind: " #name)
+QLITEMD_ASSERT_ADMONITION(kNone);
+QLITEMD_ASSERT_ADMONITION(kNote);
+QLITEMD_ASSERT_ADMONITION(kInfo);
+QLITEMD_ASSERT_ADMONITION(kTip);
+QLITEMD_ASSERT_ADMONITION(kImportant);
+QLITEMD_ASSERT_ADMONITION(kWarning);
+QLITEMD_ASSERT_ADMONITION(kCaution);
+QLITEMD_ASSERT_ADMONITION(kDanger);
+QLITEMD_ASSERT_ADMONITION(kSuccess);
+QLITEMD_ASSERT_ADMONITION(kQuestion);
+#undef QLITEMD_ASSERT_ADMONITION
+
+#define QLITEMD_ASSERT_DIAGRAM(name)                    \
+  static_assert(                                        \
+      static_cast<int>(MarkdownMermaidDiagram::name) == \
+          static_cast<int>(MdMermaidDiagram::name),     \
+      "MarkdownMermaidDiagram drifted from MdMermaidDiagram: " #name)
+QLITEMD_ASSERT_DIAGRAM(kUnknown);
+QLITEMD_ASSERT_DIAGRAM(kFlowchart);
+QLITEMD_ASSERT_DIAGRAM(kSequence);
+QLITEMD_ASSERT_DIAGRAM(kClass);
+QLITEMD_ASSERT_DIAGRAM(kState);
+QLITEMD_ASSERT_DIAGRAM(kEr);
+QLITEMD_ASSERT_DIAGRAM(kGantt);
+QLITEMD_ASSERT_DIAGRAM(kPie);
+QLITEMD_ASSERT_DIAGRAM(kJourney);
+QLITEMD_ASSERT_DIAGRAM(kGitGraph);
+QLITEMD_ASSERT_DIAGRAM(kMindmap);
+QLITEMD_ASSERT_DIAGRAM(kTimeline);
+#undef QLITEMD_ASSERT_DIAGRAM
+
 struct MdViewPreparedAsset {
   QString token;
   MarkdownImageInfo info;
@@ -1455,6 +1515,24 @@ void MarkdownView::CommitRender(quint64 request_id) {
     outline.append(converted);
     heading_ids.insert(converted.anchor, QString::fromStdString(heading.id));
   }
+  QVector<MarkdownBlock> blocks;
+  blocks.reserve(static_cast<int>(result.document_blocks.size()));
+  for (const MdBlock& block : result.document_blocks) {
+    MarkdownBlock converted;
+    converted.kind = static_cast<MarkdownBlockKind>(block.kind);
+    converted.ordinal = block.ordinal;
+    converted.parent = block.parent;
+    converted.section = block.section;
+    converted.level = block.level;
+    converted.admonition =
+        static_cast<MarkdownAdmonitionKind>(block.admonition);
+    converted.mermaid_kind =
+        static_cast<MarkdownMermaidDiagram>(block.mermaid_kind);
+    converted.inline_flags = block.inline_flags;
+    converted.children = block.children;
+    converted.language = QString::fromStdString(block.language);
+    blocks.append(converted);
+  }
   QHash<QString, PinnedImage> pixmaps;
   QHash<QString, MarkdownImageInfo> image_info;
   for (const MdViewPreparedAsset& asset : pending_core_prepared_->assets) {
@@ -1497,6 +1575,7 @@ void MarkdownView::CommitRender(quint64 request_id) {
   code_blocks_ = std::move(code_blocks);
   heading_ids_ = std::move(heading_ids);
   outline_ = std::move(outline);
+  blocks_ = std::move(blocks);
   document_pixmaps_ = std::move(pixmaps);
   image_info_ = std::move(image_info);
   committed_file_ = current_file_;
@@ -1608,6 +1687,7 @@ void MarkdownView::ShowMessage(const QString& text) {
   code_blocks_.clear();
   heading_ids_.clear();
   outline_.clear();
+  blocks_.clear();
   document_pixmaps_.clear();
   image_info_.clear();
   InvalidateAnchorYCache();

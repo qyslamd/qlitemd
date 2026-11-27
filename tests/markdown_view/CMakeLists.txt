@@ -184,6 +184,16 @@ add_unit_test(
 set_tests_properties(test_render_toggles PROPERTIES TIMEOUT 120)
 
 add_unit_test(
+    NAME test_markdown_blocks
+    SOURCES markdown_blocks_test.cpp
+    LIBS qlitemd::markdown_view
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+set_tests_properties(test_markdown_blocks PROPERTIES TIMEOUT 120)
+
+add_unit_test(
     NAME test_markdown_view
     SOURCES markdown_view_test.cpp
     LIBS qlitemd::markdown_view

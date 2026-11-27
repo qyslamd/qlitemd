@@ -40,6 +40,8 @@ list(APPEND MDHTML_QUICKJS_SOURCES
 add_library(${MDHTML_TARGET} STATIC
     md_assembler.cpp
     md_assembler.h
+    md_block_model.cpp
+    md_block_model.h
     md_callout.cpp
     md_callout.h
     md_font_metrics.cpp

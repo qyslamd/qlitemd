@@ -31,6 +31,7 @@ struct MdRenderStats {
   int formulas = 0;
   int mermaid_blocks = 0;
   int asset_count = 0;
+  int blocks = 0;
   int worker_tasks = 0;
   int worker_failures = 0;
   int64_t parse_ms = 0;
@@ -47,6 +48,8 @@ struct MdHtmlResult {
   std::vector<MdAsset> assets;
   std::vector<MdHeading> outline;
   std::vector<MdCodeBlock> code_blocks;
+  std::vector<MdBlock> document_blocks;
+  std::vector<MdFrontMatterEntry> front_matter;
   MdRenderStats stats;
 };
 

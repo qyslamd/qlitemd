@@ -42,6 +42,68 @@ struct MarkdownHeading {
   QString anchor;
 };
 
+// Mirror of the core MdBlock model. Values match md_types.h and must stay in
+// sync; markdown_view.cpp asserts the mapping at compile time.
+enum class MarkdownBlockKind : quint8 {
+  kParagraph = 0,
+  kHeading = 1,
+  kBlockQuote = 2,
+  kList = 3,
+  kListItem = 4,
+  kTaskItem = 5,
+  kCodeBlock = 6,
+  kMathBlock = 7,
+  kMermaid = 8,
+  kTable = 9,
+  kImage = 10,
+  kHtmlBlock = 11,
+  kAdmonition = 12,
+  kFootnoteDef = 13,
+  kThematicBreak = 14,
+  kOther = 15,
+};
+
+enum class MarkdownAdmonitionKind : quint8 {
+  kNone = 0,
+  kNote = 1,
+  kInfo = 2,
+  kTip = 3,
+  kImportant = 4,
+  kWarning = 5,
+  kCaution = 6,
+  kDanger = 7,
+  kSuccess = 8,
+  kQuestion = 9,
+};
+
+enum class MarkdownMermaidDiagram : quint8 {
+  kUnknown = 0,
+  kFlowchart = 1,
+  kSequence = 2,
+  kClass = 3,
+  kState = 4,
+  kEr = 5,
+  kGantt = 6,
+  kPie = 7,
+  kJourney = 8,
+  kGitGraph = 9,
+  kMindmap = 10,
+  kTimeline = 11,
+};
+
+struct MarkdownBlock {
+  MarkdownBlockKind kind = MarkdownBlockKind::kOther;
+  int ordinal = 0;
+  int parent = -1;
+  int section = -1;
+  int level = 0;
+  MarkdownAdmonitionKind admonition = MarkdownAdmonitionKind::kNone;
+  MarkdownMermaidDiagram mermaid_kind = MarkdownMermaidDiagram::kUnknown;
+  quint32 inline_flags = 0;
+  int children = 0;
+  QString language;
+};
+
 // 会改变 HTML 结构的渲染选项。渲染开关（公式/Mermaid）不在这里：纯函数
 // 通过"传不传 sink"表达，视图层再翻译成这几个字段
 enum class MarkdownAdmonitionMode {

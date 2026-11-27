@@ -70,6 +70,13 @@ option(QLITEMD_BUILD_QT_MD_VIEWER
 if(DEFINED QLITEMD_BUILD_MD_VIEWER)
     set(QLITEMD_BUILD_QT_MD_VIEWER ${QLITEMD_BUILD_MD_VIEWER})
 endif()
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/qt_md_observatory/CMakeLists.txt")
+    set(_qlitemd_observatory_default ${QLITEMD_IS_TOP_LEVEL})
+else()
+    set(_qlitemd_observatory_default OFF)
+endif()
+option(QLITEMD_BUILD_QT_MD_OBSERVATORY
+    "Build the qt_md_observatory application" ${_qlitemd_observatory_default})
 option(QLITEMD_INSTALL
     "Install qlitemd targets" ${QLITEMD_IS_TOP_LEVEL})
 option(QLITEMD_CORE_ONLY "Build only the Qt-free mdhtml core (no Qt)" OFF)
@@ -78,10 +85,14 @@ if(QLITEMD_CORE_ONLY)
         "Build the Qt markdown_view component" FORCE)
     set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL
         "Build the qt_md_viewer application" FORCE)
+    set(QLITEMD_BUILD_QT_MD_OBSERVATORY OFF CACHE BOOL
+        "Build the qt_md_observatory application" FORCE)
 endif()
 if(NOT QLITEMD_BUILD_QT_WIDGET)
     set(QLITEMD_BUILD_QT_MD_VIEWER OFF CACHE BOOL
         "Build the qt_md_viewer application" FORCE)
+    set(QLITEMD_BUILD_QT_MD_OBSERVATORY OFF CACHE BOOL
+        "Build the qt_md_observatory application" FORCE)
 endif()
 
 set(QLITEMD_SVG_BACKEND "resvg" CACHE STRING "SVG rasterizer: resvg or qtsvg")
@@ -295,7 +306,7 @@ qlitemd_skip_subdir_install(3rdparty/quickjs-ng)
 add_subdirectory(src/mdhtml)
 
 # ------------------------------------------------------ viewer UI deps
-if(QLITEMD_BUILD_QT_MD_VIEWER)
+if(QLITEMD_BUILD_QT_MD_VIEWER OR QLITEMD_BUILD_QT_MD_OBSERVATORY)
 set(QWINDOWKIT_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_WIDGETS ON CACHE BOOL "" FORCE)
 set(QWINDOWKIT_BUILD_QUICK OFF CACHE BOOL "" FORCE)
@@ -307,8 +318,10 @@ qlitemd_skip_subdir_install(3rdparty/qwindowkit)
 if(NOT TARGET QWindowKit::Widgets)
     message(FATAL_ERROR "QWindowKit::Widgets target is missing")
 endif()
+endif()
 
 # -------------------------------------------------------- FluentUI
+if(QLITEMD_BUILD_QT_MD_VIEWER)
 set(BUILD_PLUGIN OFF CACHE BOOL "" FORCE)
 set(BUILD_LIBRARY ON CACHE BOOL "" FORCE)
 set(BUILD_FRAMELESS ON CACHE BOOL "" FORCE)
@@ -466,9 +479,17 @@ if(QLITEMD_BUILD_TESTS)
         add_subdirectory(tests/qt_md_viewer)
         qlitemd_skip_subdir_install(tests/qt_md_viewer)
     endif()
+    if(QLITEMD_BUILD_QT_WIDGET
+       AND EXISTS "${PROJECT_SOURCE_DIR}/tests/qt_md_observatory/CMakeLists.txt")
+        add_subdirectory(tests/qt_md_observatory)
+        qlitemd_skip_subdir_install(tests/qt_md_observatory)
+    endif()
 endif()
 
 # ------------------------------------------------------------- viewer
 if(QLITEMD_BUILD_QT_MD_VIEWER)
     add_subdirectory(apps/qt_md_viewer)
+endif()
+if(QLITEMD_BUILD_QT_MD_OBSERVATORY)
+    add_subdirectory(apps/qt_md_observatory)
 endif()

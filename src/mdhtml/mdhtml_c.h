@@ -20,7 +20,7 @@
 // - mdhtml_render is a blocking convenience wrapper; mdhtml_render_async
 //   exposes a job handle for GUI hosts.
 
-#define MDHTML_ABI_VERSION 4u
+#define MDHTML_ABI_VERSION 5u
 
 #if defined(_WIN32)
 #if defined(MDHTML_SHARED)
@@ -116,6 +116,8 @@ typedef struct mdhtml_stats {
   int64_t collect_ms;
   int64_t worker_ms;
   int64_t assemble_ms;
+  // Appended for ABI-compatible struct_size growth.
+  int blocks;
 } mdhtml_stats;
 
 MDHTML_API uint32_t MDHTML_CALL mdhtml_abi_version(void);
@@ -203,6 +205,43 @@ MDHTML_API const char* MDHTML_CALL
 mdhtml_result_code_block_language(const mdhtml_result* result, size_t index);
 MDHTML_API const char* MDHTML_CALL
 mdhtml_result_code_block_code(const mdhtml_result* result, size_t index);
+
+// Structural block model in document order. Table internals are skipped, so
+// ordinals are contiguous. Out-of-range indices return 0 (or NULL for
+// strings); call mdhtml_result_block_count first.
+MDHTML_API size_t MDHTML_CALL
+mdhtml_result_block_count(const mdhtml_result* result);
+MDHTML_API int MDHTML_CALL mdhtml_result_block_kind(const mdhtml_result* result,
+                                                    size_t index);
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_ordinal(const mdhtml_result* result, size_t index);
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_parent(const mdhtml_result* result, size_t index);
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_section(const mdhtml_result* result, size_t index);
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_level(const mdhtml_result* result, size_t index);
+MDHTML_API const char* MDHTML_CALL
+mdhtml_result_block_language(const mdhtml_result* result, size_t index);
+// MdAdmonitionKind: 0 none, 1 note, 2 info, 3 tip, 4 important, 5 warning,
+// 6 caution, 7 danger, 8 success, 9 question.
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_admonition(const mdhtml_result* result, size_t index);
+// Normalized Mermaid diagram kind; 0 = unknown.
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_mermaid_kind(const mdhtml_result* result, size_t index);
+MDHTML_API uint32_t MDHTML_CALL
+mdhtml_result_block_inline_flags(const mdhtml_result* result, size_t index);
+MDHTML_API int MDHTML_CALL
+mdhtml_result_block_children(const mdhtml_result* result, size_t index);
+
+// Read-only front matter at the very start of the document.
+MDHTML_API size_t MDHTML_CALL
+mdhtml_result_front_matter_count(const mdhtml_result* result);
+MDHTML_API const char* MDHTML_CALL
+mdhtml_result_front_matter_key(const mdhtml_result* result, size_t index);
+MDHTML_API const char* MDHTML_CALL
+mdhtml_result_front_matter_value(const mdhtml_result* result, size_t index);
 
 // Copies only the fields covered by stats->struct_size.
 MDHTML_API int MDHTML_CALL mdhtml_result_stats(const mdhtml_result* result,
