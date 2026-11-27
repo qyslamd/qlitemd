@@ -98,6 +98,7 @@ void MdViewerSettings::MigrateLegacyFile() {
 
 void MdViewerSettings::Load() {
   MigrateLegacyFile();
+  first_run_ = !QFileInfo::exists(DefaultPath());
   QSettings settings(DefaultPath(), QSettings::IniFormat);
   SetIniUtf8(settings);
   window_geometry = settings.value(kKeyGeometry).toByteArray();
@@ -160,6 +161,24 @@ void MdViewerSettings::Load() {
   workspace_closed = settings.value(kKeyWorkspaceClosed, false).toBool();
   bookmarks_json = settings.value(kKeyBookmarks).toString();
   positions_json = settings.value(kKeyPositions).toString();
+}
+
+void MdViewerSettings::ResetPreferences() {
+  const MdViewerSettings defaults;
+  dark_theme = defaults.dark_theme;
+  window_material = defaults.window_material;
+  reading_style = defaults.reading_style;
+  transparent_reading = defaults.transparent_reading;
+  reading_font_size = defaults.reading_font_size;
+  reading_line_height_percent = defaults.reading_line_height_percent;
+  reading_measure_px = defaults.reading_measure_px;
+  code_line_numbers = defaults.code_line_numbers;
+  admonition_mode = defaults.admonition_mode;
+  mermaid_backend = defaults.mermaid_backend;
+  formula_backend = defaults.formula_backend;
+  formula_rendering = defaults.formula_rendering;
+  mermaid_rendering = defaults.mermaid_rendering;
+  persistent_cache = defaults.persistent_cache;
 }
 
 void MdViewerSettings::Save() const {

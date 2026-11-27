@@ -153,6 +153,10 @@ class MdViewerWindow : public QMainWindow {
   void ApplySidebarVisible(bool visible);
   // 清掉全部 backdrop 属性后按 key 重新设置；空 key 等于关闭材质
   bool SetWindowBackdrop(const QString& key);
+  // 首次启动/重置布局的窗口默认几何
+  void ResizeToDefaultWindow();
+  void ResetLayout();
+  void ResetPreferences();
   void UpdateOutlineVisibility();
   void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);

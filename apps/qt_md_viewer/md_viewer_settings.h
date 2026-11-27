@@ -25,6 +25,10 @@ struct MdViewerSettings {
   static QString DefaultPath();
 
   void Load();
+  // 首次安装（配置读取前 ini 不存在）；旧版迁移后不算首次
+  bool IsFirstRun() const { return first_run_; }
+  // 只恢复偏好，不碰最近文件/书签/阅读位置/会话和布局
+  void ResetPreferences();
   // 首次启动把旧版 md_viewer.ini 复制成 qt_md_viewer.ini
   static void MigrateLegacyFile();
   // 全量落盘。最近文件单独走 SaveRecent，避免打开文件时用旧快照
@@ -80,6 +84,9 @@ struct MdViewerSettings {
   QString positions_json;
   // 次窗口用的是主窗口设置的只读副本：所有写入口直接返回
   bool read_only = false;
+
+ private:
+  bool first_run_ = false;
 };
 
 #endif  // FILE_APPS_QT_MD_VIEWER_MD_VIEWER_SETTINGS_H_

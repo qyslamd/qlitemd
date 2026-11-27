@@ -16,6 +16,8 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QColor>
@@ -92,6 +94,7 @@
 #include "search_controller.h"
 #include "session_controller.h"
 #include "settings_panel.h"
+#include "shell_layout.h"
 #include "side_panel.h"
 #include "text_search.h"
 #include "theme_icons.h"
@@ -244,6 +247,8 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
   const QByteArray saved_geometry = session_controller_->SavedGeometry();
   if (session_controller_->IsOwner() && !saved_geometry.isEmpty()) {
     restoreGeometry(saved_geometry);
+  } else if (session_controller_->IsOwner() && settings_->IsFirstRun()) {
+    ResizeToDefaultWindow();
   }
   if (top_tool_bar_ != nullptr) {
     top_tool_bar_->ResetInvariants();
@@ -1592,6 +1597,24 @@ void MdViewerWindow::initSignals() {
           [this](const QString& message) {
             statusBar()->showMessage(message, 5000);
           });
+  connect(settings_panel_, &SettingsPanel::resetLayoutRequested, this, [this] {
+    if (QMessageBox::question(
+            this, tr("Reset Layout"),
+            tr("Restore the default window size, sidebar/outline widths and "
+               "visibility?")) == QMessageBox::Yes) {
+      ResetLayout();
+    }
+  });
+  connect(
+      settings_panel_, &SettingsPanel::resetPreferencesRequested, this, [this] {
+        if (QMessageBox::question(
+                this, tr("Reset Preferences"),
+                tr("Restore theme, reading, content and cache settings? "
+                   "Documents, bookmarks and reading positions are kept.")) ==
+            QMessageBox::Yes) {
+          ResetPreferences();
+        }
+      });
   connect(settings_panel_, &SettingsPanel::settingsChanged, this, [this] {
     CaptureGlobalSettings(CurrentTab());
     if (CurrentView() == nullptr) {
@@ -2975,7 +2998,15 @@ void MdViewerWindow::showEvent(QShowEvent* event) {
   // 之后再落一次保存值，侧栏宽度/收起状态才能按会话恢复。
   if (!shell_sizes_applied_) {
     shell_sizes_applied_ = true;
-    ApplySplitterSizes();
+    if (settings_->IsFirstRun()) {
+      const ShellMetrics metrics = DefaultShellMetrics(
+          width(), width() >= 980 && layout_.outline_visible);
+      layout_.sidebar_width = metrics.sidebar_width;
+      layout_.outline_width = metrics.outline_width;
+      ApplySidebarVisible(true);
+    } else {
+      ApplySplitterSizes();
+    }
   }
 }
 
@@ -3078,6 +3109,55 @@ void MdViewerWindow::ApplySidebarVisible(bool visible) {
   // 显隐会改变左外壳最大宽度与 splitter 尺寸，统一在这里落一次布局
   ApplySplitterSizes();
   applying_sidebar_ = false;
+}
+
+void MdViewerWindow::ResizeToDefaultWindow() {
+  QScreen* screen = QGuiApplication::primaryScreen();
+  if (screen == nullptr) {
+    resize(1240, 820);
+    return;
+  }
+  const QRect available = screen->availableGeometry();
+  const int width = qMin(1240, qMax(600, available.width() - 80));
+  const int height = qMin(820, qMax(480, available.height() - 80));
+  resize(width, height);
+  move(available.center() - rect().center());
+}
+
+void MdViewerWindow::ResetLayout() {
+  ResizeToDefaultWindow();
+  layout_ = ShellLayoutState{};
+  const ShellMetrics metrics =
+      DefaultShellMetrics(width(), width() >= 980 && layout_.outline_visible);
+  layout_.sidebar_width = metrics.sidebar_width;
+  layout_.outline_width = metrics.outline_width;
+  layout_.sidebar_visible = true;
+  layout_.outline_visible = true;
+  settings_->window_geometry.clear();
+  ApplySidebarVisible(true);
+  ApplySideView(SideView::kDocuments);
+  ApplySplitterSizes();
+  UpdateOutlineVisibility();
+  if (actions_.outline != nullptr) {
+    const QSignalBlocker blocker(actions_.outline);
+    actions_.outline->setChecked(true);
+  }
+  session_controller_->SaveShellLayout(layout_);
+  statusBar()->showMessage(tr("Layout reset to defaults"), 3000);
+}
+
+void MdViewerWindow::ResetPreferences() {
+  settings_->ResetPreferences();
+  settings_->Save();
+  ApplyTheme(settings_->dark_theme ? MarkdownTheme::Dark
+                                   : MarkdownTheme::Light);
+  ApplyWindowMaterial(settings_->window_material, /*announce=*/false);
+  ApplyGlobalSettings(CurrentTab());
+  ApplyReadingStyle();
+  if (settings_panel_ != nullptr) {
+    settings_panel_->SetPreferences(*settings_);
+  }
+  statusBar()->showMessage(tr("Preferences reset to defaults"), 3000);
 }
 
 bool MdViewerWindow::SetWindowBackdrop(const QString& key) {

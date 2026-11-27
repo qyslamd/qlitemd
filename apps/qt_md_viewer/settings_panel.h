@@ -36,6 +36,8 @@ class SettingsPanel : public QWidget {
   // 启动时按持久化设置同步阅读区选项，不触发重新应用
   void SetReadingStyle(ReadingStyle style);
   void SetTransparentReading(bool enabled);
+  // 重置偏好后同步所有控件，不触发写回
+  void SetPreferences(const MdViewerSettings& settings);
 
  signals:
   void statusMessage(const QString& message);
@@ -48,6 +50,9 @@ class SettingsPanel : public QWidget {
   void transparentReadingChanged(bool enabled);
   // 面板直接写进活动视图的设置变了；宿主据此广播到其它标签
   void settingsChanged();
+  // General 页的恢复入口；确认框和实际重置由宿主负责
+  void resetLayoutRequested();
+  void resetPreferencesRequested();
 
  private:
   void initUi();
@@ -77,6 +82,8 @@ class SettingsPanel : public QWidget {
   QCheckBox* persistent_cache_ = nullptr;
   QLineEdit* cache_directory_ = nullptr;
   QPushButton* choose_cache_ = nullptr;
+  QPushButton* reset_layout_ = nullptr;
+  QPushButton* reset_preferences_ = nullptr;
   QPushButton* reset_cache_ = nullptr;
   QPushButton* clear_memory_cache_ = nullptr;
   QPushButton* clear_cache_ = nullptr;

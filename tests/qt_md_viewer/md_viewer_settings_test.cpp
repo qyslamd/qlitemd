@@ -42,6 +42,55 @@ void ResetConfigFile() { QFile::remove(MdViewerSettings::DefaultPath()); }
 
 }  // namespace
 
+TEST(MdViewerSettingsTest, FirstRunIsDetectedUntilConfigIsWritten) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings first;
+  first.Load();
+  EXPECT_TRUE(first.IsFirstRun());
+
+  first.Save();
+  MdViewerSettings second;
+  second.Load();
+  EXPECT_FALSE(second.IsFirstRun());
+}
+
+TEST(MdViewerSettingsTest, ResetPreferencesPreservesUserData) {
+  AppGuard();
+  ResetConfigFile();
+  MdViewerSettings settings;
+  settings.Load();
+  settings.dark_theme = true;
+  settings.window_material = WindowMaterial::kNone;
+  settings.reading_font_size = 22;
+  settings.code_line_numbers = true;
+  settings.persistent_cache = false;
+  settings.recent_files = QStringList{QStringLiteral("D:/docs/a.md")};
+  settings.recent_roots = QStringList{QStringLiteral("D:/docs")};
+  settings.bookmarks_json = QStringLiteral("bookmarks");
+  settings.positions_json = QStringLiteral("positions");
+  settings.root_dir = QStringLiteral("D:/docs");
+  settings.last_file = QStringLiteral("D:/docs/a.md");
+  settings.open_tabs_json = QByteArrayLiteral("tabs");
+  settings.sidebar_width = 333;
+
+  settings.ResetPreferences();
+
+  EXPECT_FALSE(settings.dark_theme);
+  EXPECT_EQ(settings.window_material, WindowMaterial::kAuto);
+  EXPECT_EQ(settings.reading_font_size, 0);
+  EXPECT_FALSE(settings.code_line_numbers);
+  EXPECT_TRUE(settings.persistent_cache);
+  EXPECT_EQ(settings.recent_files, QStringList{QStringLiteral("D:/docs/a.md")});
+  EXPECT_EQ(settings.recent_roots, QStringList{QStringLiteral("D:/docs")});
+  EXPECT_EQ(settings.bookmarks_json, QStringLiteral("bookmarks"));
+  EXPECT_EQ(settings.positions_json, QStringLiteral("positions"));
+  EXPECT_EQ(settings.root_dir, QStringLiteral("D:/docs"));
+  EXPECT_EQ(settings.last_file, QStringLiteral("D:/docs/a.md"));
+  EXPECT_EQ(settings.open_tabs_json, QByteArrayLiteral("tabs"));
+  EXPECT_EQ(settings.sidebar_width, 333);
+}
+
 TEST(MdViewerSettingsTest, FreshConfigHasOpenWorkspace) {
   AppGuard();
   ResetConfigFile();

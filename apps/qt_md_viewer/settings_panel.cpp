@@ -144,6 +144,36 @@ void SettingsPanel::initUi() {
   root->addWidget(category_list_);
   root->addWidget(page_stack_, 1);
 
+  // 通用：恢复布局/偏好（确认与执行由宿主负责）
+  QWidget* general_page =
+      NewPage(page_stack_, QStringLiteral("settingsPageGeneral"));
+  auto* general_layout = qobject_cast<QVBoxLayout*>(general_page->layout());
+  AddPageHeader(general_layout, general_page, tr("General"),
+                tr("Restore the window layout or preference defaults"));
+  QVBoxLayout* general_card_layout = nullptr;
+  QWidget* general_card =
+      NewCard(general_page, tr("Reset"), &general_card_layout);
+  {
+    QHBoxLayout* right = AddSettingRow(
+        general_card_layout, general_card, tr("Window layout"),
+        tr("Sidebar/outline widths, visibility and window geometry"));
+    reset_layout_ = new QPushButton(tr("Reset Layout"), general_card);
+    reset_layout_->setObjectName(QStringLiteral("resetLayoutButton"));
+    right->addWidget(reset_layout_);
+  }
+  {
+    QHBoxLayout* right = AddSettingRow(
+        general_card_layout, general_card, tr("Preferences"),
+        tr("Theme, reading, content and cache settings; documents, bookmarks "
+           "and reading positions are kept"));
+    reset_preferences_ = new QPushButton(tr("Reset Preferences"), general_card);
+    reset_preferences_->setObjectName(QStringLiteral("resetPreferencesButton"));
+    right->addWidget(reset_preferences_);
+  }
+  general_layout->addWidget(general_card);
+  general_layout->addStretch(1);
+  AddPage(category_list_, page_stack_, tr("General"), general_page);
+
   // 外观
   QWidget* appearance_page =
       NewPage(page_stack_, QStringLiteral("settingsPageAppearance"));
@@ -480,6 +510,37 @@ void SettingsPanel::SetTransparentReading(bool enabled) {
   transparent_reading_->setText(enabled ? tr("On") : tr("Off"));
 }
 
+void SettingsPanel::SetPreferences(const MdViewerSettings& settings) {
+  SetTheme(settings.dark_theme ? MarkdownTheme::Dark : MarkdownTheme::Light);
+  SetWindowMaterial(settings.window_material);
+  SetReadingStyle(settings.reading_style);
+  SetTransparentReading(settings.transparent_reading);
+  auto select_data = [](QComboBox* combo, int value) {
+    if (combo == nullptr) {
+      return;
+    }
+    const int index = combo->findData(value);
+    if (index >= 0) {
+      const QSignalBlocker blocker(combo);
+      combo->setCurrentIndex(index);
+    }
+  };
+  select_data(admonition_mode_, static_cast<int>(settings.admonition_mode));
+  select_data(mermaid_backend_, static_cast<int>(settings.mermaid_backend));
+  select_data(formula_backend_, static_cast<int>(settings.formula_backend));
+  auto set_check = [](QCheckBox* check, bool value) {
+    if (check == nullptr) {
+      return;
+    }
+    const QSignalBlocker blocker(check);
+    check->setChecked(value);
+  };
+  set_check(code_line_numbers_, settings.code_line_numbers);
+  set_check(formula_rendering_, settings.formula_rendering);
+  set_check(mermaid_rendering_, settings.mermaid_rendering);
+  set_check(persistent_cache_, settings.persistent_cache);
+}
+
 void SettingsPanel::UpdateReadingControls() {
   if (reading_style_ == nullptr || transparent_reading_ == nullptr) {
     return;
@@ -489,6 +550,10 @@ void SettingsPanel::UpdateReadingControls() {
 }
 
 void SettingsPanel::initSignals() {
+  connect(reset_layout_, &QPushButton::clicked, this,
+          &SettingsPanel::resetLayoutRequested);
+  connect(reset_preferences_, &QPushButton::clicked, this,
+          &SettingsPanel::resetPreferencesRequested);
   connect(category_list_, &QListWidget::currentRowChanged, page_stack_,
           &QStackedWidget::setCurrentIndex);
 #ifdef Q_OS_WIN
