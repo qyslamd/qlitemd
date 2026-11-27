@@ -174,6 +174,17 @@ add_unit_test(
 set_tests_properties(test_qlitehtml_image PROPERTIES TIMEOUT 30)
 
 add_unit_test(
+    NAME test_qlitehtml_selection
+    SOURCES qlitehtml_selection_test.cpp
+    LIBS qlitehtml
+    INCLUDES ${PROJECT_SOURCE_DIR}/3rdparty/qlitehtml/src
+    QT_MODULES Widgets Test
+    LABELS MARKDOWN
+    NO_GTEST_MAIN
+)
+set_tests_properties(test_qlitehtml_selection PROPERTIES TIMEOUT 30)
+
+add_unit_test(
     NAME test_render_toggles
     SOURCES render_toggles_test.cpp
     LIBS qlitemd::markdown_view

@@ -25,7 +25,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <queue>
+#include <vector>
 
 QT_BEGIN_NAMESPACE
 
@@ -150,32 +152,35 @@ static litehtml::element::ptr firstLeaf(const litehtml::element::ptr &element,
 }
 
 // 1) stops right away if element == stop, otherwise stops whenever stop element is encountered
-// 2) starts at next sibling (up the hierarchy chain) if possible, otherwise root
+// 2) starts at next sibling (up the hierarchy chain) if possible
 // 3) returns first leaf of the element found in 2
+// 4) returns null at the document root instead of wrapping to the beginning: a
+//    wrapped traversal would select the whole document when the end point is
+//    not reachable from the start point.
 static litehtml::element::ptr nextLeaf(const litehtml::element::ptr &element,
                                        const litehtml::element::ptr &stop)
 {
-    if (element == stop)
+    if (!element || element == stop)
         return element;
+    if (element->is_root())
+        return {};
     litehtml::element::ptr current = element;
-    if (!current->is_root()) {
-        // find next sibling
-        const litehtml::element::ptr parent = current->parent();
-        const litehtml::elements_list &children = parent->children();
-        auto childIt = std::find_if(children.cbegin(),
-                                    children.cend(),
-                                    [&current](const litehtml::element::ptr &e) {
-                                        return e == current;
-                                    });
-        if (childIt == children.cend()) {
-            qWarning() << "internal error: filed to find litehtml child element in parent";
-            return stop;
-        }
-        ++childIt;
-        if (childIt == children.cend()) // no sibling, move up
-            return nextLeaf(parent, stop);
-        current = *childIt;
+    // find next sibling
+    const litehtml::element::ptr parent = current->parent();
+    const litehtml::elements_list &children = parent->children();
+    auto childIt = std::find_if(children.cbegin(),
+                                children.cend(),
+                                [&current](const litehtml::element::ptr &e) {
+                                    return e == current;
+                                });
+    if (childIt == children.cend()) {
+        qWarning() << "internal error: filed to find litehtml child element in parent";
+        return {};
     }
+    ++childIt;
+    if (childIt == children.cend()) // no sibling, move up
+        return nextLeaf(parent, stop);
+    current = *childIt;
     return firstLeaf(current, stop);
 }
 
@@ -183,9 +188,10 @@ static Selection::Element selectionDetails(const litehtml::element::ptr &element
                                            const QString &text,
                                            const QPointF &pos)
 {
-    // shortcut, which _might_ not really be correct
-    if (!element->children().empty())
-        return {element, -1, -1}; // everything selected
+    // Only text nodes have a meaningful caret position. Containers aggregate
+    // all their descendants' text and must never be treated as a single leaf.
+    if (!element->is_text())
+        return {};
     const QFont &font = toQFont(element->css().get_font());
     const QFontMetricsF fm(font);
     qreal previous = 0;
@@ -196,6 +202,91 @@ static Selection::Element selectionDetails(const litehtml::element::ptr &element
         previous = width;
     }
     return {element, int(text.size()), previous};
+}
+
+static bool textOf(const litehtml::element::ptr &element, QString *text)
+{
+    if (!element || !element->is_text())
+        return false;
+    std::string raw;
+    element->get_text(raw);
+    if (raw.empty())
+        return false;
+    const QString value = QString::fromStdString(raw);
+    if (value.trimmed().isEmpty())
+        return false;
+    *text = value;
+    return true;
+}
+
+static void collectTextLeaves(const litehtml::element::ptr &element,
+                              std::vector<litehtml::element::ptr> *leaves)
+{
+    if (!element)
+        return;
+    if (element->is_text()) {
+        QString text;
+        if (textOf(element, &text)
+            && !toQRectF(element->get_placement()).size().isEmpty()) {
+            leaves->push_back(element);
+        }
+        return;
+    }
+    for (const litehtml::element::ptr &child : element->children())
+        collectTextLeaves(child, leaves);
+}
+
+// A point in a blank line or a page margin belongs to a container, not to a
+// text node. Map it to the closest text leaf and clamp the caret to that
+// leaf's start/end, instead of selecting the container's full text.
+static Selection::Element nearestTextElement(const litehtml::element::ptr &root,
+                                             const QPoint &pos,
+                                             Selection::Mode mode)
+{
+    std::vector<litehtml::element::ptr> leaves;
+    collectTextLeaves(root, &leaves);
+
+    litehtml::element::ptr best;
+    QRectF bestRect;
+    qreal bestDistance = std::numeric_limits<qreal>::max();
+    for (const litehtml::element::ptr &leaf : leaves) {
+        const QRectF rect = toQRectF(leaf->get_placement());
+        if (rect.width() <= 0 || rect.height() <= 0)
+            continue;
+        qreal dx = 0;
+        qreal dy = 0;
+        if (pos.x() < rect.left())
+            dx = rect.left() - pos.x();
+        else if (pos.x() > rect.right())
+            dx = pos.x() - rect.right();
+        if (pos.y() < rect.top())
+            dy = rect.top() - pos.y();
+        else if (pos.y() > rect.bottom())
+            dy = pos.y() - rect.bottom();
+        const qreal distance = dx * dx + dy * dy;
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            best = leaf;
+            bestRect = rect;
+        }
+    }
+    if (!best)
+        return {};
+
+    if (mode == Selection::Mode::Word)
+        return {best, -1, -1};
+
+    QString text;
+    if (!textOf(best, &text))
+        return {};
+
+    if (pos.y() < bestRect.top())
+        return {best, 0, 0};
+    if (pos.y() > bestRect.bottom()) {
+        const QFontMetricsF fm(toQFont(best->css().get_font()));
+        return {best, int(text.size()), fm.size(0, text).width()};
+    }
+    return selectionDetails(best, text, QPointF(pos.x() - bestRect.left(), 0));
 }
 
 // Returns whether the intended child was found and stop.
@@ -262,19 +353,19 @@ static Selection::Element selection_element_at_point(const litehtml::element::pt
                            pos,
                            viewportPos,
                            [mode, &result, &pos](const litehtml::element::ptr &element) {
+                               QString text;
+                               if (!textOf(element, &text))
+                                   return false; /*continue*/
                                const QRectF placement = toQRectF(element->get_placement());
-                               std::string text;
-                               element->get_text(text);
-                               if (!text.empty()) {
-                                   result = mode == Selection::Mode::Free
-                                                ? selectionDetails(element,
-                                                                   QString::fromStdString(text),
-                                                                   QPointF(pos) - placement.topLeft())
-                                                : Selection::Element({element, -1, -1});
-                                   return true;
-                               }
-                               return false; /*continue*/
+                               result = mode == Selection::Mode::Free
+                                            ? selectionDetails(element,
+                                                               text,
+                                                               QPointF(pos) - placement.topLeft())
+                                            : Selection::Element({element, -1, -1});
+                               return true;
                            });
+    if (!result.element)
+        result = nearestTextElement(element, pos, mode);
     return result;
 }
 
@@ -460,6 +551,8 @@ void Selection::update()
             litehtml::element::ptr current = start.element;
             do {
                 current = nextLeaf(current, end.element);
+                if (!current)
+                    break;
                 if (current == end.element)
                     addElement(end);
                 else
@@ -1280,6 +1373,9 @@ QVector<QRect> DocumentContainer::mousePressEvent(const QPoint &documentPos,
     if (!d->m_document || button != Qt::LeftButton)
         return {};
     QVector<QRect> redrawRects;
+    // A double click switches to Word mode; a new press must return to the
+    // normal free selection mode.
+    d->m_selection.mode = Selection::Mode::Free;
     // selection
     if (d->m_selection.isValid())
         redrawRects.append(d->m_selection.boundingRect().toAlignedRect());
