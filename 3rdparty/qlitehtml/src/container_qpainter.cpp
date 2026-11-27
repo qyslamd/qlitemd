@@ -1526,6 +1526,25 @@ QUrl DocumentContainer::linkAt(const QPoint &documentPos, const QPoint &viewport
     return {};
 }
 
+bool DocumentContainer::isTextAt(const QPoint &documentPos,
+                                 const QPoint &viewportPos) const
+{
+    if (!d->m_document)
+        return false;
+    bool found = false;
+    deepest_child_at_point(d->m_document->root(),
+                           documentPos,
+                           viewportPos,
+                           [&found](const litehtml::element::ptr &element) {
+                               QString text;
+                               if (!textOf(element, &text))
+                                   return false;
+                               found = true;
+                               return true;
+                           });
+    return found;
+}
+
 QUrl DocumentContainer::imageAt(const QPoint &documentPos,
                                 const QPoint &viewportPos) const
 {

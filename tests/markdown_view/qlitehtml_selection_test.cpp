@@ -184,3 +184,14 @@ TEST(QliteHtmlSelectionTest, NestedContainerGapClampsToItsOwnText) {
   EXPECT_TRUE(text.contains(QStringLiteral("RRR"))) << text.toStdString();
   EXPECT_FALSE(text.contains(QStringLiteral("QQQ"))) << text.toStdString();
 }
+
+TEST(QliteHtmlSelectionTest, TextUsesIBeamCursorAndGapUsesArrow) {
+  TestLiteHtmlWidget view;
+  ShowSelectionDocument(&view);
+  SendMouse(&view, QEvent::MouseMove, QPoint(12, 20), Qt::NoButton,
+            Qt::NoButton);
+  EXPECT_EQ(view.viewport()->cursor().shape(), Qt::IBeamCursor);
+  SendMouse(&view, QEvent::MouseMove, QPoint(12, 60), Qt::NoButton,
+            Qt::NoButton);
+  EXPECT_EQ(view.viewport()->cursor().shape(), Qt::ArrowCursor);
+}

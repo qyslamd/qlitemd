@@ -765,7 +765,14 @@ void QLiteHtmlWidget::mouseMoveEvent(QMouseEvent *event)
     for (const QRect &r : areas)
         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
 
-    updateHightlightedLink();
+    const QUrl link = d->documentContainer.linkAt(pos, viewportPos);
+    setHightlightedLink(link);
+    if (!link.isEmpty())
+        viewport()->setCursor(Qt::PointingHandCursor);
+    else if (d->documentContainer.isTextAt(pos, viewportPos))
+        viewport()->setCursor(Qt::IBeamCursor);
+    else
+        viewport()->setCursor(Qt::ArrowCursor);
 }
 
 void QLiteHtmlWidget::mousePressEvent(QMouseEvent *event)
@@ -855,6 +862,7 @@ void QLiteHtmlWidget::leaveEvent(QEvent *event)
     for (const QRect &r : areas)
         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
     setHightlightedLink(QUrl());
+    viewport()->setCursor(Qt::ArrowCursor);
 }
 
 void QLiteHtmlWidget::contextMenuEvent(QContextMenuEvent *event)

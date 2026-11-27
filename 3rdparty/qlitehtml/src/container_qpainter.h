@@ -91,6 +91,7 @@ public: // outside API
     QVector<QRect> leaveEvent();
 
     QUrl linkAt(const QPoint &documentPos, const QPoint &viewportPos);
+    bool isTextAt(const QPoint &documentPos, const QPoint &viewportPos) const;
     QUrl imageAt(const QPoint &documentPos, const QPoint &viewportPos) const;
 
     QString caption() const;

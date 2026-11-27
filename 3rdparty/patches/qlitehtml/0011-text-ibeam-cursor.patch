@@ -1,0 +1,70 @@
+diff --git a/src/container_qpainter.cpp b/src/container_qpainter.cpp
+index 2775c1a..ca4a4a9 100644
+--- a/src/container_qpainter.cpp
++++ b/src/container_qpainter.cpp
+@@ -1526,6 +1526,25 @@ QUrl DocumentContainer::linkAt(const QPoint &documentPos, const QPoint &viewport
+     return {};
+ }
+ 
++bool DocumentContainer::isTextAt(const QPoint &documentPos,
++                                 const QPoint &viewportPos) const
++{
++    if (!d->m_document)
++        return false;
++    bool found = false;
++    deepest_child_at_point(d->m_document->root(),
++                           documentPos,
++                           viewportPos,
++                           [&found](const litehtml::element::ptr &element) {
++                               QString text;
++                               if (!textOf(element, &text))
++                                   return false;
++                               found = true;
++                               return true;
++                           });
++    return found;
++}
++
+ QUrl DocumentContainer::imageAt(const QPoint &documentPos,
+                                 const QPoint &viewportPos) const
+ {
+diff --git a/src/container_qpainter.h b/src/container_qpainter.h
+index a627c85..6b14546 100644
+--- a/src/container_qpainter.h
++++ b/src/container_qpainter.h
+@@ -91,6 +91,7 @@ public: // outside API
+     QVector<QRect> leaveEvent();
+ 
+     QUrl linkAt(const QPoint &documentPos, const QPoint &viewportPos);
++    bool isTextAt(const QPoint &documentPos, const QPoint &viewportPos) const;
+     QUrl imageAt(const QPoint &documentPos, const QPoint &viewportPos) const;
+ 
+     QString caption() const;
+diff --git a/src/qlitehtmlwidget.cpp b/src/qlitehtmlwidget.cpp
+index 0dc4b7f..330cc3c 100644
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -765,7 +765,14 @@ void QLiteHtmlWidget::mouseMoveEvent(QMouseEvent *event)
+     for (const QRect &r : areas)
+         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
+ 
+-    updateHightlightedLink();
++    const QUrl link = d->documentContainer.linkAt(pos, viewportPos);
++    setHightlightedLink(link);
++    if (!link.isEmpty())
++        viewport()->setCursor(Qt::PointingHandCursor);
++    else if (d->documentContainer.isTextAt(pos, viewportPos))
++        viewport()->setCursor(Qt::IBeamCursor);
++    else
++        viewport()->setCursor(Qt::ArrowCursor);
+ }
+ 
+ void QLiteHtmlWidget::mousePressEvent(QMouseEvent *event)
+@@ -855,6 +862,7 @@ void QLiteHtmlWidget::leaveEvent(QEvent *event)
+     for (const QRect &r : areas)
+         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
+     setHightlightedLink(QUrl());
++    viewport()->setCursor(Qt::ArrowCursor);
+ }
+ 
+ void QLiteHtmlWidget::contextMenuEvent(QContextMenuEvent *event)
