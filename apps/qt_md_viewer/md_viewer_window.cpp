@@ -859,6 +859,8 @@ void MdViewerWindow::UpdateTabTitle(DocumentTab* tab) {
 }
 
 void MdViewerWindow::UpdateShellForActiveTab() {
+  // 计数属于上一个文档的查找会话，换标签/换文档后不能留在工具栏上。
+  ClearFindCount();
   DocumentTab* tab = CurrentTab();
   if (actions_.close_tab != nullptr) {
     actions_.close_tab->setEnabled(active_tab_ > 0);
@@ -1571,6 +1573,7 @@ void MdViewerWindow::initSignals() {
   // 当前文档查找：输入即找，回车下一个，Shift+回车上一个
   connect(document_find_edit_, &QLineEdit::textChanged, this,
           [this](const QString& text) {
+            ClearFindCount();
             if (text.isEmpty()) {
               search_controller_->StopDocumentFind();
               if (CurrentView() != nullptr) {
@@ -3017,28 +3020,48 @@ void MdViewerWindow::UpdateOutlineVisibility() {
 void MdViewerWindow::FindInDocument(const QString& query, bool backward) {
   MarkdownView* view = CurrentView();
   if (view == nullptr || query.isEmpty()) {
+    ClearFindCount();
     return;
   }
   if (!view->has_document()) {
+    ClearFindCount();
     statusBar()->showMessage(tr("Open a document first"), 2000);
     return;
   }
   if (view->is_rendering()) {
+    ClearFindCount();
     statusBar()->showMessage(
         tr("Document is still rendering; try find again later"), 2000);
     return;
   }
   bool wrapped = false;
+  int match_index = -1;
+  int match_count = 0;
   const MarkdownView::FindFlags flags =
       backward ? MarkdownView::FindBackward : MarkdownView::FindNoFlag;
-  if (!view->FindText(query, flags, &wrapped, /*incremental=*/false)) {
+  if (!view->FindText(query, flags, &wrapped, /*incremental=*/false,
+                      &match_index, &match_count)) {
+    UpdateFindCount(-1, 0);
     statusBar()->showMessage(tr("Not found"), 2000);
     return;
   }
+  UpdateFindCount(match_index, match_count);
   if (wrapped) {
     statusBar()->showMessage(
         backward ? tr("Wrapped to the end") : tr("Wrapped to the beginning"),
         2000);
+  }
+}
+
+void MdViewerWindow::UpdateFindCount(int match_index, int match_count) {
+  if (document_bar_ != nullptr) {
+    document_bar_->SetFindCount(match_index, match_count);
+  }
+}
+
+void MdViewerWindow::ClearFindCount() {
+  if (document_bar_ != nullptr) {
+    document_bar_->ClearFindCount();
   }
 }
 
@@ -3053,6 +3076,9 @@ void MdViewerWindow::UpdateFindControls() {
       CurrentView() != nullptr && CurrentView()->is_rendering();
   // 查询文字保留，只禁输入：渲染中和欢迎态都不该往正文里找
   document_find_edit_->setEnabled(has_document && !rendering);
+  if (!has_document || rendering) {
+    ClearFindCount();
+  }
 }
 
 void MdViewerWindow::OpenSearchHit(const SearchHit& hit) {

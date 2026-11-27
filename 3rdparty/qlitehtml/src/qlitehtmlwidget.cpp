@@ -6,13 +6,15 @@
 #include "container_qpainter.h"
 
 #include <QApplication>
-#include <QDebug>
+#include <QMouseEvent>
 #include <QHelpEvent>
+#include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QRegularExpression>
 #include <QScrollBar>
 #include <QStyle>
+#include <QStyleOptionSlider>
 #include <QToolTip>
 
 #if QLITEHTML_HAS_QPRINTER
@@ -442,6 +444,149 @@ figcaption {
 
 )##";
 
+class SearchMarkOverlay final : public QWidget
+{
+public:
+    SearchMarkOverlay(QScrollBar *bar, std::function<void(int)> on_click)
+        : QWidget(bar), m_bar(bar), m_onClick(std::move(on_click))
+    {
+        setObjectName(QStringLiteral("searchMarkOverlay"));
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
+        m_bar->installEventFilter(this);
+        syncGeometry();
+    }
+
+    ~SearchMarkOverlay() override
+    {
+        if (m_bar)
+            m_bar->removeEventFilter(this);
+    }
+
+    void setMarks(const QVector<qreal> &fractions, int current, const QColor &color)
+    {
+        m_fractions = fractions;
+        m_current = current;
+        m_color = color;
+        update();
+        setVisible(!fractions.isEmpty() && m_bar && m_bar->isVisible());
+    }
+
+    void clearMarks()
+    {
+        m_fractions.clear();
+        m_current = -1;
+        hide();
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched != m_bar)
+            return false;
+        switch (event->type()) {
+        case QEvent::Resize:
+        case QEvent::Show:
+        case QEvent::StyleChange:
+            syncGeometry();
+            if (!m_fractions.isEmpty())
+                show();
+            break;
+        case QEvent::Hide:
+            hide();
+            break;
+        case QEvent::MouseButtonPress: {
+            const auto *mouse = static_cast<QMouseEvent *>(event);
+            if (mouse->button() != Qt::LeftButton
+                || !grooveRect().contains(mouse->pos()))
+                break;
+            const int index = hitTest(mouse->pos());
+            if (index >= 0) {
+                if (m_onClick)
+                    m_onClick(index);
+                return true;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        return QWidget::eventFilter(watched, event);
+    }
+
+    void paintEvent(QPaintEvent *event) override
+    {
+        Q_UNUSED(event)
+        if (m_fractions.isEmpty())
+            return;
+        const QRect groove = grooveRect();
+        if (groove.isEmpty())
+            return;
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        QColor base = m_color.isValid() ? m_color
+                                        : palette().color(QPalette::Highlight);
+        QColor currentColor = base;
+        currentColor.setAlpha(255);
+        base.setAlpha(180);
+        for (int i = 0; i < m_fractions.size(); ++i) {
+            const int y = groove.top()
+                          + qRound(m_fractions[i] * (groove.height() - 1));
+            const QColor color = i == m_current ? currentColor : base;
+            painter.fillRect(QRect(width() - 6, y - 1, 4, 3), color);
+        }
+    }
+
+private:
+    QRect grooveRect() const
+    {
+        if (!m_bar)
+            return {};
+        QStyleOptionSlider option;
+        option.initFrom(m_bar);
+        option.orientation = m_bar->orientation();
+        QRect groove = m_bar->style()->subControlRect(
+            QStyle::CC_ScrollBar, &option, QStyle::SC_ScrollBarGroove, m_bar);
+        if (!groove.isValid() || groove.height() <= 0)
+            groove = m_bar->rect();
+        return groove;
+    }
+
+    int hitTest(const QPoint &pos) const
+    {
+        if (m_fractions.isEmpty())
+            return -1;
+        const QRect groove = grooveRect();
+        if (groove.isEmpty())
+            return -1;
+        int best = -1;
+        int best_distance = 5;
+        for (int i = 0; i < m_fractions.size(); ++i) {
+            const int y = groove.top()
+                          + qRound(m_fractions[i] * (groove.height() - 1));
+            const int distance = qAbs(pos.y() - y);
+            if (distance < best_distance) {
+                best_distance = distance;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    void syncGeometry()
+    {
+        if (m_bar)
+            setGeometry(m_bar->rect());
+    }
+
+    QScrollBar *m_bar = nullptr;
+    std::function<void(int)> m_onClick;
+    QVector<qreal> m_fractions;
+    int m_current = -1;
+    QColor m_color;
+};
+
 class QLiteHtmlWidgetPrivate
 {
 public:
@@ -458,6 +603,7 @@ public:
     // percentage top/bottom, CSS variables, fixed positioning).
     bool heightAffectsLayout = false;
     int layoutCount = 0;
+    SearchMarkOverlay *searchOverlay = nullptr;
 };
 
 QLiteHtmlWidget::QLiteHtmlWidget(QWidget *parent)
@@ -570,13 +716,24 @@ qreal QLiteHtmlWidget::zoomFactor() const
 bool QLiteHtmlWidget::findText(const QString &text,
                                QTextDocument::FindFlags flags,
                                bool incremental,
-                               bool *wrapped)
+                               bool *wrapped,
+                               int *matchIndex,
+                               int *matchCount)
 {
     bool success = false;
     QVector<QRect> oldSelection;
     QVector<QRect> newSelection;
+    int index = -1;
+    int count = 0;
     d->documentContainer
-        .findText(text, flags, incremental, wrapped, &success, &oldSelection, &newSelection);
+        .findText(text, flags, incremental, wrapped, &success, &oldSelection,
+                  &newSelection, &index, &count);
+    if (matchIndex)
+        *matchIndex = index;
+    if (matchCount)
+        *matchCount = count;
+    emit searchMatchesChanged(count, index);
+    updateSearchMarks();
     // scroll to search result position and/or redraw as necessary
     QRect newSelectionCombined;
     for (const QRect &r : std::as_const(newSelection))
@@ -658,12 +815,14 @@ void QLiteHtmlWidget::clearSelection()
 {
     d->documentContainer.clearSelection();
     viewport()->update();
+    updateSearchMarks();
 }
 
 void QLiteHtmlWidget::setSearchHighlightColor(const QColor &color)
 {
     d->documentContainer.setSearchHighlightColor(color);
     viewport()->update();
+    updateSearchMarks();
 }
 
 QColor QLiteHtmlWidget::searchHighlightColor() const
@@ -674,6 +833,81 @@ QColor QLiteHtmlWidget::searchHighlightColor() const
 bool QLiteHtmlWidget::isSearchSelection() const
 {
     return d->documentContainer.isSearchSelection();
+}
+
+QVector<SearchMatch> QLiteHtmlWidget::searchMatches()
+{
+    return d->documentContainer.searchMatches();
+}
+
+QVector<QRect> QLiteHtmlWidget::searchMatchRects()
+{
+    return d->documentContainer.searchMatchRects();
+}
+
+int QLiteHtmlWidget::currentSearchMatch() const
+{
+    return d->documentContainer.currentSearchMatch();
+}
+
+bool QLiteHtmlWidget::setCurrentSearchMatch(int index)
+{
+    if (!d->documentContainer.setCurrentSearchMatch(index))
+        return false;
+    const QVector<SearchMatch> matches =
+        d->documentContainer.searchMatches();
+    if (index >= 0 && index < matches.size() && !matches[index].rects.isEmpty()) {
+        const QRect match = matches[index].rects.front();
+        QScrollBar *bar = verticalScrollBar();
+        const int target = qBound(bar->minimum(), match.top() - 40,
+                                  bar->maximum());
+        bar->setValue(target);
+    }
+    viewport()->update();
+    emit searchMatchesChanged(matches.size(), index);
+    updateSearchMarks();
+    return true;
+}
+
+void QLiteHtmlWidget::updateSearchMarks()
+{
+    if (d->documentContainer.currentSearchMatch() < 0) {
+        if (d->searchOverlay)
+            d->searchOverlay->clearMarks();
+        return;
+    }
+    QScrollBar *bar = verticalScrollBar();
+    if (!bar->isVisible() || bar->maximum() <= 0) {
+        if (d->searchOverlay)
+            d->searchOverlay->clearMarks();
+        return;
+    }
+    if (!d->searchOverlay || d->searchOverlay->parentWidget() != bar) {
+        delete d->searchOverlay;
+        d->searchOverlay = new SearchMarkOverlay(
+            bar, [this](int index) { setCurrentSearchMatch(index); });
+    }
+    const QVector<QRect> rects = d->documentContainer.searchMatchRects();
+    const int documentHeight = d->documentContainer.documentHeight();
+    if (rects.isEmpty() || documentHeight <= 0) {
+        d->searchOverlay->clearMarks();
+        return;
+    }
+    // Spread marks over the whole document. Mapping through the scroll range
+    // would collapse every match in the last screenful onto one pixel.
+    QVector<qreal> fractions;
+    fractions.reserve(rects.size());
+    for (const QRect &rect : rects) {
+        const qreal fraction =
+            qBound(0.0, qreal(rect.top()) / documentHeight, 1.0);
+        fractions.append(fraction);
+    }
+    QColor color = d->documentContainer.searchHighlightColor();
+    if (!color.isValid())
+        color = palette().color(QPalette::Highlight);
+    d->searchOverlay->setMarks(fractions,
+                               d->documentContainer.currentSearchMatch(),
+                               color);
 }
 
 QUrl QLiteHtmlWidget::imageAt(const QPoint &viewportPos) const
@@ -762,6 +996,7 @@ void QLiteHtmlWidget::resizeEvent(QResizeEvent *event)
         // laid out again.
         QAbstractScrollArea::resizeEvent(event);
         updateScrollBars();
+        updateSearchMarks();
         return;
     }
     // Full path: identical to the original behavior, including position
@@ -803,6 +1038,7 @@ void QLiteHtmlWidget::mousePressEvent(QMouseEvent *event)
                                                                       event->button());
     for (const QRect &r : areas)
         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
+    updateSearchMarks();
 }
 
 void QLiteHtmlWidget::mouseReleaseEvent(QMouseEvent *event)
@@ -849,6 +1085,7 @@ void QLiteHtmlWidget::mouseDoubleClickEvent(QMouseEvent *event)
     for (const QRect &r : areas) {
         viewport()->update(fromVirtual(r.translated(-scrollPosition())));
     }
+    updateSearchMarks();
 }
 
 bool QLiteHtmlWidget::viewportEvent(QEvent *event)
@@ -982,6 +1219,7 @@ void QLiteHtmlWidget::render()
     // trigger a nested resize, and that resize must see the fresh value.
     d->lastLayoutWidth = w;
     updateScrollBars();
+    updateSearchMarks();
 }
 
 QPoint QLiteHtmlWidget::scrollPosition() const

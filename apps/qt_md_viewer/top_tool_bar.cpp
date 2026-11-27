@@ -157,8 +157,15 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   find_edit_->setObjectName(QStringLiteral("docFindEdit"));
   find_edit_->setPlaceholderText(tr("Find in Current Document (Ctrl+F)"));
   find_edit_->setClearButtonEnabled(true);
-  find_edit_->setFixedWidth(240);
+  find_edit_->setFixedWidth(220);
   layout->addWidget(find_edit_);
+  find_count_label_ = new QLabel(this);
+  find_count_label_->setObjectName(QStringLiteral("docFindCount"));
+  find_count_label_->setForegroundRole(QPalette::PlaceholderText);
+  find_count_label_->setAlignment(Qt::AlignCenter);
+  find_count_label_->setMinimumWidth(52);
+  find_count_label_->hide();
+  layout->addWidget(find_count_label_);
   layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
 
   outline_button_ = MakeIconButton(this, QStringLiteral("docOutlineToggle"),
@@ -216,6 +223,27 @@ void DocumentBar::SetPath(const QString& display_path, const QString& tooltip) {
   display_path_ = display_path;
   path_label_->setToolTip(tooltip);
   UpdatePathElision();
+}
+
+void DocumentBar::SetFindCount(int current, int total) {
+  if (find_count_label_ == nullptr) {
+    return;
+  }
+  if (total <= 0) {
+    find_count_label_->setText(QStringLiteral("0 / 0"));
+  } else {
+    find_count_label_->setText(
+        QStringLiteral("%1 / %2").arg(current + 1).arg(total));
+  }
+  find_count_label_->show();
+}
+
+void DocumentBar::ClearFindCount() {
+  if (find_count_label_ == nullptr) {
+    return;
+  }
+  find_count_label_->clear();
+  find_count_label_->hide();
 }
 
 void DocumentBar::SetThemeDark(bool dark) {

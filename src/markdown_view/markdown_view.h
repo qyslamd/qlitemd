@@ -122,7 +122,8 @@ class MarkdownView : public QWidget {
   // incremental=true 从当前选区开头找，供"边打字边找"使用；默认 false 从
   // 选区末尾找下一个，适合 F3/回车
   bool FindText(const QString& text, FindFlags flags, bool* wrapped = nullptr,
-                bool incremental = false);
+                bool incremental = false, int* match_index = nullptr,
+                int* match_count = nullptr);
   // 清掉查找/鼠标选区；搜索框清空时由宿主调用
   void ClearSelection();
   // 卸载当前文档：取消进行中的渲染、停掉 watchdog、current_file 清空，

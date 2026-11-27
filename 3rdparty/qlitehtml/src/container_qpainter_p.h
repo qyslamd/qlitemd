@@ -40,6 +40,8 @@ public:
 
     bool isValid() const;
 
+    // Recompute selection/text without touching the clipboard.
+    void rebuild();
     void update();
     QRectF boundingRect() const;
 
@@ -92,6 +94,23 @@ struct Index
     std::vector<Entry> indexToElement;
 
     Entry findElement(int index) const;
+};
+
+struct SearchRange
+{
+    int start = 0;
+    int length = 0;
+    QVector<QRect> rects;
+};
+
+struct SearchState
+{
+    QString query;
+    QTextDocument::FindFlags flags;
+    QVector<SearchRange> matches;
+    int current = -1;
+    bool textValid = false;
+    bool rectsValid = false;
 };
 
 class DocumentContainerPrivate final : public litehtml::document_container
@@ -170,8 +189,12 @@ public: // document_container API
     QString sansSerifFont() const;
     QString monospaceFont() const;
     QUrl resolveUrl(const QString &url, const QString &baseUrl) const;
+    void drawSearchHighlight(QPainter *painter, const QRect &clip) const;
     void drawSelection(QPainter *painter, const QRect &clip) const;
     void buildIndex();
+    void ensureSearchMatches();
+    void ensureSearchRects();
+    void resetSearch();
     void updateSelection();
     void clearSelection();
 
@@ -179,6 +202,7 @@ public: // document_container API
     litehtml::document::ptr m_document;
     litehtml::media_type mediaType = litehtml::media_type_screen;
     Index m_index;
+    SearchState m_search;
     QString m_baseUrl;
     QRect m_clientRect;
     QPoint m_scrollPosition;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "qlitehtml_global.h"
+#include "container_qpainter.h"
 
 #include <QAbstractScrollArea>
 #include <QColor>
@@ -51,7 +52,9 @@ public:
     bool findText(const QString &text,
                   QTextDocument::FindFlags flags,
                   bool incremental,
-                  bool *wrapped = nullptr);
+                  bool *wrapped = nullptr,
+                  int *matchIndex = nullptr,
+                  int *matchCount = nullptr);
 
     void setDefaultFont(const QFont &font);
     QFont defaultFont() const;
@@ -76,6 +79,10 @@ public:
     void setSearchHighlightColor(const QColor &color);
     QColor searchHighlightColor() const;
     bool isSearchSelection() const;
+    QVector<SearchMatch> searchMatches();
+    QVector<QRect> searchMatchRects();
+    int currentSearchMatch() const;
+    bool setCurrentSearchMatch(int index);
 
     // Hit test in viewport coordinates. Returns an empty QUrl when the point
     // does not land on an image.
@@ -90,6 +97,7 @@ signals:
     void contextMenuRequested(const QPoint &pos, const QUrl &url);
     void imageClicked(const QUrl &url);
     void imageContextMenuRequested(const QPoint &globalPos, const QUrl &url);
+    void searchMatchesChanged(int count, int current);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -110,6 +118,7 @@ private:
     void render();
     int layoutWidth() const;
     void updateScrollBars();
+    void updateSearchMarks();
     QPoint scrollPosition() const;
     void htmlPos(const QPoint &pos, QPoint *viewportPos, QPoint *htmlPos) const;
     QPoint toVirtual(const QPoint &p) const;

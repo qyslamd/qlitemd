@@ -40,6 +40,14 @@ private:
     friend class DocumentContainerPrivate;
 };
 
+struct QLITEHTML_EXPORT SearchMatch
+{
+    int start = 0;
+    int length = 0;
+    // Document coordinates. A match can span several text leaves/lines.
+    QVector<QRect> rects;
+};
+
 class QLITEHTML_EXPORT DocumentContainer
 {
 public:
@@ -101,6 +109,10 @@ public: // outside API
     void setSearchHighlightColor(const QColor &color);
     QColor searchHighlightColor() const;
     bool isSearchSelection() const;
+    QVector<SearchMatch> searchMatches();
+    QVector<QRect> searchMatchRects();
+    int currentSearchMatch() const;
+    bool setCurrentSearchMatch(int index);
 
     void findText(const QString &text,
                   QTextDocument::FindFlags flags,
@@ -108,7 +120,9 @@ public: // outside API
                   bool *wrapped,
                   bool *success,
                   QVector<QRect> *oldSelection,
-                  QVector<QRect> *newSelection);
+                  QVector<QRect> *newSelection,
+                  int *matchIndex = nullptr,
+                  int *matchCount = nullptr);
 
     void setDefaultFont(const QFont &font);
     QFont defaultFont() const;

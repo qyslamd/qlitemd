@@ -148,6 +148,8 @@ class MdViewerWindow : public QMainWindow {
   void UpdateOutlineVisibility();
   void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);
+  void UpdateFindCount(int match_index, int match_count);
+  void ClearFindCount();
   void UpdateFindControls();
   void OpenSearchHit(const SearchHit& hit);
   void JumpToSearchHit(int ordinal, const QString& query);

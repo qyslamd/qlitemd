@@ -888,7 +888,8 @@ void MarkdownView::InvalidateAnchorYCache() {
 }
 
 bool MarkdownView::FindText(const QString& text, FindFlags flags, bool* wrapped,
-                            bool incremental) {
+                            bool incremental, int* match_index,
+                            int* match_count) {
   if (text.isEmpty()) {
     return false;  // 空串不是"找全部"，是误用；选区与滚动都别动
   }
@@ -898,6 +899,12 @@ bool MarkdownView::FindText(const QString& text, FindFlags flags, bool* wrapped,
   // 值。这里先清零，把契约补成"每次调用都有效"
   if (wrapped != nullptr) {
     *wrapped = false;
+  }
+  if (match_index != nullptr) {
+    *match_index = -1;
+  }
+  if (match_count != nullptr) {
+    *match_count = 0;
   }
   QTextDocument::FindFlags qt_flags;
   if (flags & FindFlag::FindBackward) {
@@ -909,7 +916,8 @@ bool MarkdownView::FindText(const QString& text, FindFlags flags, bool* wrapped,
   if (flags & FindFlag::FindWholeWords) {
     qt_flags |= QTextDocument::FindWholeWords;
   }
-  return html_->findText(text, qt_flags, incremental, wrapped);
+  return html_->findText(text, qt_flags, incremental, wrapped, match_index,
+                         match_count);
 }
 
 void MarkdownView::ClearSelection() { html_->clearSelection(); }

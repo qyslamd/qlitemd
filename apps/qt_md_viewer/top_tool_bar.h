@@ -40,11 +40,15 @@ class DocumentBar : public QWidget {
 
   // display_path 是根内相对/根外绝对的展示串；tooltip 给完整路径
   void SetPath(const QString& display_path, const QString& tooltip);
+  // current 为 0 基；total 为 0 时显示 0 / 0
+  void SetFindCount(int current, int total);
+  void ClearFindCount();
   // 换主题时重载动作类图标；星标由窗口按收藏状态单独刷新
   void SetThemeDark(bool dark);
 
   QLabel* path_label() const { return path_label_; }
   QLineEdit* find_edit() const { return find_edit_; }
+  QLabel* find_count_label() const { return find_count_label_; }
   QToolButton* back_button() const { return back_button_; }
   QToolButton* forward_button() const { return forward_button_; }
   QToolButton* star_button() const { return star_button_; }
@@ -74,6 +78,7 @@ class DocumentBar : public QWidget {
   QWidget* export_separator_ = nullptr;
   QLabel* path_label_ = nullptr;
   QLineEdit* find_edit_ = nullptr;
+  QLabel* find_count_label_ = nullptr;
   QToolButton* back_button_ = nullptr;
   QToolButton* forward_button_ = nullptr;
   QToolButton* star_button_ = nullptr;

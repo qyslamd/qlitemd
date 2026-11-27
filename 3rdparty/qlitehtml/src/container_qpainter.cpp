@@ -506,6 +506,16 @@ bool Selection::isValid() const
 
 void Selection::update()
 {
+    rebuild();
+#if QT_CONFIG(clipboard)
+    QClipboard *cb = QGuiApplication::clipboard();
+    if (cb->supportsSelection())
+        cb->setText(text, QClipboard::Selection);
+#endif
+}
+
+void Selection::rebuild()
+{
     const auto addElement = [this](const Selection::Element &element,
                                    const Selection::Element &end = {}) {
         std::string elemText;
@@ -563,11 +573,6 @@ void Selection::update()
         selection = {};
         text.clear();
     }
-#if QT_CONFIG(clipboard)
-    QClipboard *cb = QGuiApplication::clipboard();
-    if (cb->supportsSelection())
-        cb->setText(text, QClipboard::Selection);
-#endif
 }
 
 QRectF Selection::boundingRect() const
@@ -884,10 +889,36 @@ void DocumentContainerPrivate::get_image_size(const char *src,
     sz.height = pm.height();
 }
 
+void DocumentContainerPrivate::drawSearchHighlight(QPainter *painter,
+                                                   const QRect &clip) const
+{
+    if (m_selection.search || m_search.current < 0
+        || m_search.current >= m_search.matches.size())
+        return;
+    const SearchRange &range = m_search.matches[m_search.current];
+    if (range.rects.isEmpty())
+        return;
+    const QPalette palette = m_paletteCallback();
+    const QColor color = m_searchHighlightColor.isValid()
+                             ? m_searchHighlightColor
+                             : palette.color(QPalette::Highlight);
+    painter->save();
+    painter->setClipRect(clip, Qt::IntersectClip);
+    for (const QRect &rect : range.rects) {
+        painter->fillRect(rect.translated(-m_scrollPosition.x(),
+                                          -m_scrollPosition.y()),
+                          color);
+    }
+    painter->restore();
+}
+
 void DocumentContainerPrivate::drawSelection(QPainter *painter, const QRect &clip) const
 {
     painter->save();
     painter->setClipRect(clip, Qt::IntersectClip);
+    // Background layers draw over the document pass, so the current match
+    // must be painted with them, after each layer's own fill.
+    drawSearchHighlight(painter, clip);
     for (const QRectF &r : m_selection.selection) {
         const QRectF clientRect = r.translated(-m_scrollPosition.x(), -m_scrollPosition.y());
         const QPalette palette = m_paletteCallback();
@@ -910,6 +941,7 @@ static bool isInBody(const litehtml::element::ptr &e)
 
 void DocumentContainerPrivate::buildIndex()
 {
+    resetSearch();
     m_index.elementToIndex.clear();
     m_index.indexToElement.clear();
     m_index.text.clear();
@@ -1295,11 +1327,13 @@ void DocumentContainer::render(int width, int height)
     if (!d->m_document)
         return;
     d->m_document->render(width);
+    d->m_search.rectsValid = false;
     d->updateSelection();
 }
 
 void DocumentContainer::draw(QPainter *painter, const QRect &clip)
 {
+    d->ensureSearchRects();
     d->drawSelection(painter, clip);
     const QPoint pos = -d->m_scrollPosition;
     const litehtml::position clipRect(clip.x(), clip.y(), clip.width(), clip.height());
@@ -1582,6 +1616,9 @@ QString DocumentContainer::selectedText() const
 void DocumentContainer::clearSelection()
 {
     d->clearSelection();
+    // The public clear ends the find session, unlike the internal selection
+    // reset performed when the user clicks into the document.
+    d->m_search.current = -1;
 }
 
 void DocumentContainer::setSearchHighlightColor(const QColor &color)
@@ -1599,106 +1636,268 @@ bool DocumentContainer::isSearchSelection() const
     return d->m_selection.search;
 }
 
+static QRegularExpression searchExpression(const QString &text,
+                                          QTextDocument::FindFlags flags)
+{
+    QString term = QRegularExpression::escape(text);
+    if (flags & QTextDocument::FindWholeWords)
+        term = QString("\\b%1\\b").arg(term);
+    const QRegularExpression::PatternOptions options =
+        (flags & QTextDocument::FindCaseSensitively)
+            ? QRegularExpression::NoPatternOption
+            : QRegularExpression::CaseInsensitiveOption;
+    return QRegularExpression(term, options);
+}
+
+static Selection::Element elementAtOffset(const Index &index, int offset)
+{
+    const Index::Entry entry = index.findElement(offset);
+    if (!entry.second)
+        return {};
+    return {entry.second, offset - entry.first, -1};
+}
+
+static Selection::Element fillXPos(Selection::Element element)
+{
+    std::string raw;
+    element.element->get_text(raw);
+    const QString text = QString::fromStdString(raw);
+    const auto fontPtr = element.element->css().get_font();
+    if (!fontPtr)
+        return element;
+    const QFontMetricsF fm(toQFont(fontPtr));
+    element.x = fm.size(0, text.left(element.index)).width();
+    return element;
+}
+
+void DocumentContainerPrivate::resetSearch()
+{
+    m_search = {};
+}
+
+void DocumentContainerPrivate::ensureSearchMatches()
+{
+    if (m_search.textValid)
+        return;
+    m_search.textValid = true;
+    m_search.rectsValid = false;
+    m_search.matches.clear();
+    m_search.current = -1;
+    if (m_search.query.isEmpty() || m_index.text.isEmpty())
+        return;
+    const QRegularExpression expression =
+        searchExpression(m_search.query, m_search.flags);
+    auto it = expression.globalMatch(m_index.text);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch match = it.next();
+        if (match.capturedLength() <= 0)
+            continue;
+        SearchRange range;
+        range.start = match.capturedStart();
+        range.length = match.capturedLength();
+        m_search.matches.push_back(range);
+    }
+}
+
+void DocumentContainerPrivate::ensureSearchRects()
+{
+    if (!m_search.textValid || m_search.rectsValid)
+        return;
+    for (SearchRange &range : m_search.matches) {
+        range.rects.clear();
+        const Selection::Element start = elementAtOffset(m_index, range.start);
+        const Selection::Element end =
+            elementAtOffset(m_index, range.start + range.length);
+        if (!start.element || !end.element)
+            continue;
+        Selection selection;
+        selection.startElem = fillXPos(start);
+        selection.endElem = fillXPos(end);
+        selection.search = true;
+        selection.rebuild();
+        for (const QRectF &rect : std::as_const(selection.selection))
+            range.rects.append(rect.toAlignedRect());
+    }
+    m_search.rectsValid = true;
+}
+
 void DocumentContainer::findText(const QString &text,
                                  QTextDocument::FindFlags flags,
                                  bool incremental,
                                  bool *wrapped,
                                  bool *success,
                                  QVector<QRect> *oldSelection,
-                                 QVector<QRect> *newSelection)
+                                 QVector<QRect> *newSelection,
+                                 int *matchIndex,
+                                 int *matchCount)
 {
     if (success)
         *success = false;
+    if (wrapped)
+        *wrapped = false;
+    if (matchIndex)
+        *matchIndex = -1;
+    if (matchCount)
+        *matchCount = 0;
     if (oldSelection)
         oldSelection->clear();
     if (newSelection)
         newSelection->clear();
     if (!d->m_document)
         return;
-    const bool backward = flags & QTextDocument::FindBackward;
-    int startIndex = backward ? -1 : 0;
-    if (d->m_selection.startElem.element && d->m_selection.endElem.element) { // selection
-        // poor-man's incremental search starts at beginning of selection,
-        // non-incremental at end (forward search) or beginning (backward search)
-        Selection::Element start;
-        Selection::Element end;
-        std::tie(start, end) = getStartAndEnd(d->m_selection.startElem, d->m_selection.endElem);
-        Selection::Element searchStart;
-        if (incremental || backward) {
-            if (start.index < 0) // fully selected
-                searchStart = {firstLeaf(start.element, nullptr), 0, -1};
-            else
-                searchStart = start;
-        } else {
-            if (end.index < 0) // fully selected
-                searchStart = {nextLeaf(end.element, nullptr), 0, -1};
-            else
-                searchStart = end;
-        }
-        const auto findInIndex = d->m_index.elementToIndex.find(searchStart.element);
-        if (findInIndex == std::end(d->m_index.elementToIndex)) {
-            qWarning() << "internal error: cannot find litehmtl element in index";
-            return;
-        }
-        startIndex = findInIndex->second + searchStart.index;
-        if (backward)
-            --startIndex;
+
+    const bool changed = d->m_search.query != text
+                         || d->m_search.flags != flags;
+    if (changed) {
+        d->m_search.query = text;
+        d->m_search.flags = flags;
+        d->m_search.textValid = false;
     }
-
-    const auto fillXPos = [](const Selection::Element &e) {
-        std::string ttext;
-        e.element->get_text(ttext);
-        const QString text = QString::fromStdString(ttext);
-        const auto fontPtr = e.element->css().get_font();
-        if (!fontPtr)
-            return e;
-        const QFont &font = toQFont(fontPtr);
-        const QFontMetricsF fm(font);
-        return Selection::Element{e.element, e.index, fm.size(0, text.left(e.index)).width()};
-    };
-
-    QString term = QRegularExpression::escape(text);
-    if (flags & QTextDocument::FindWholeWords)
-        term = QString("\\b%1\\b").arg(term);
-    const QRegularExpression::PatternOptions patternOptions
-        = (flags & QTextDocument::FindCaseSensitively) ? QRegularExpression::NoPatternOption
-                                                       : QRegularExpression::CaseInsensitiveOption;
-    const QRegularExpression expression(term, patternOptions);
-
-    int foundIndex = backward ? d->m_index.text.lastIndexOf(expression, startIndex)
-                              : d->m_index.text.indexOf(expression, startIndex);
-    if (foundIndex < 0) { // wrap
-        foundIndex = backward ? d->m_index.text.lastIndexOf(expression)
-                              : d->m_index.text.indexOf(expression);
-        if (wrapped && foundIndex >= 0)
-            *wrapped = true;
+    d->ensureSearchMatches();
+    const int count = d->m_search.matches.size();
+    if (matchCount)
+        *matchCount = count;
+    if (oldSelection) {
+        for (const QRectF &r : std::as_const(d->m_selection.selection))
+            oldSelection->append(r.toAlignedRect());
     }
-    if (foundIndex >= 0) {
-        const Index::Entry startEntry = d->m_index.findElement(foundIndex);
-        const Index::Entry endEntry = d->m_index.findElement(foundIndex + text.size());
-        if (!startEntry.second || !endEntry.second) {
-            qWarning() << "internal error: search ended up with nullptr elements";
-            return;
-        }
-        if (oldSelection) {
-            for (const QRectF &r : std::as_const(d->m_selection.selection))
-                oldSelection->append(r.toAlignedRect());
-        }
+    if (count == 0) {
+        d->m_search.current = -1;
         d->clearSelection();
-        d->m_selection.startElem = fillXPos({startEntry.second, foundIndex - startEntry.first, -1});
-        d->m_selection.endElem = fillXPos(
-            {endEntry.second, int(foundIndex + text.size() - endEntry.first), -1});
-        d->m_selection.search = true;
-        d->updateSelection();
-        if (newSelection) {
-            for (const QRectF &r : std::as_const(d->m_selection.selection))
-                newSelection->append(r.toAlignedRect());
-        }
-        if (success)
-            *success = true;
         return;
     }
-    return;
+
+    const bool backward = flags & QTextDocument::FindBackward;
+    // Keep the find session alive after the user clicks into the page: the
+    // click clears the selection, but Enter/F3 should continue from the
+    // current match rather than restarting at the caret.
+    const bool same_search = !changed && d->m_search.current >= 0;
+
+    int target = -1;
+    bool did_wrap = false;
+    if (same_search) {
+        target = d->m_search.current + (backward ? -1 : 1);
+        if (target < 0) {
+            target = count - 1;
+            did_wrap = true;
+        } else if (target >= count) {
+            target = 0;
+            did_wrap = true;
+        }
+    } else {
+        int offset = backward ? d->m_index.text.size() : 0;
+        if (d->m_selection.startElem.element
+            && d->m_selection.endElem.element) {
+            Selection::Element start;
+            Selection::Element end;
+            std::tie(start, end) =
+                getStartAndEnd(d->m_selection.startElem,
+                               d->m_selection.endElem);
+            const Selection::Element anchor =
+                (!incremental && !backward) ? end : start;
+            const auto it = d->m_index.elementToIndex.find(anchor.element);
+            if (it != std::end(d->m_index.elementToIndex))
+                offset = it->second + anchor.index;
+        }
+        if (backward) {
+            for (int i = count - 1; i >= 0; --i) {
+                if (d->m_search.matches[i].start < offset) {
+                    target = i;
+                    break;
+                }
+            }
+            if (target < 0) {
+                target = count - 1;
+                did_wrap = true;
+            }
+        } else {
+            for (int i = 0; i < count; ++i) {
+                if (d->m_search.matches[i].start >= offset) {
+                    target = i;
+                    break;
+                }
+            }
+            if (target < 0) {
+                target = 0;
+                did_wrap = true;
+            }
+        }
+    }
+
+    const SearchRange &range = d->m_search.matches[target];
+    d->clearSelection();
+    d->m_selection.startElem =
+        fillXPos(elementAtOffset(d->m_index, range.start));
+    d->m_selection.endElem =
+        fillXPos(elementAtOffset(d->m_index, range.start + range.length));
+    if (!d->m_selection.startElem.element || !d->m_selection.endElem.element)
+        return;
+    d->m_selection.search = true;
+    d->m_search.current = target;
+    d->updateSelection();
+
+    if (newSelection) {
+        for (const QRectF &r : std::as_const(d->m_selection.selection))
+            newSelection->append(r.toAlignedRect());
+    }
+    if (success)
+        *success = true;
+    if (wrapped)
+        *wrapped = did_wrap;
+    if (matchIndex)
+        *matchIndex = target;
+}
+
+QVector<SearchMatch> DocumentContainer::searchMatches()
+{
+    d->ensureSearchMatches();
+    d->ensureSearchRects();
+    QVector<SearchMatch> result;
+    result.reserve(d->m_search.matches.size());
+    for (const SearchRange &range : std::as_const(d->m_search.matches)) {
+        SearchMatch match;
+        match.start = range.start;
+        match.length = range.length;
+        match.rects = range.rects;
+        result.push_back(match);
+    }
+    return result;
+}
+
+QVector<QRect> DocumentContainer::searchMatchRects()
+{
+    d->ensureSearchMatches();
+    d->ensureSearchRects();
+    QVector<QRect> result;
+    for (const SearchRange &range : std::as_const(d->m_search.matches)) {
+        if (!range.rects.isEmpty())
+            result.append(range.rects.front());
+    }
+    return result;
+}
+
+int DocumentContainer::currentSearchMatch() const
+{
+    return d->m_search.current;
+}
+
+bool DocumentContainer::setCurrentSearchMatch(int index)
+{
+    d->ensureSearchMatches();
+    if (index < 0 || index >= d->m_search.matches.size())
+        return false;
+    const SearchRange &range = d->m_search.matches[index];
+    d->clearSelection();
+    d->m_selection.startElem =
+        fillXPos(elementAtOffset(d->m_index, range.start));
+    d->m_selection.endElem =
+        fillXPos(elementAtOffset(d->m_index, range.start + range.length));
+    if (!d->m_selection.startElem.element || !d->m_selection.endElem.element)
+        return false;
+    d->m_selection.search = true;
+    d->m_search.current = index;
+    d->updateSelection();
+    return true;
 }
 
 void DocumentContainer::setDefaultFont(const QFont &font)

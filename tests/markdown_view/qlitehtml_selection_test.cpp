@@ -5,6 +5,9 @@
 #include <QImage>
 #include <QMouseEvent>
 #include <QPoint>
+#include <QScrollBar>
+#include <QStyle>
+#include <QStyleOptionSlider>
 #include <QTest>
 #include <QTextDocument>
 
@@ -234,4 +237,184 @@ TEST(QliteHtmlSelectionTest, SearchMatchUsesItsOwnHighlightColor) {
   SendMouse(&view, QEvent::MouseButtonRelease, QPoint(12, 20), Qt::LeftButton,
             Qt::NoButton);
   EXPECT_FALSE(view.isSearchSelection());
+  const QImage after_click = view.grab().toImage();
+  int amber_after_click = 0;
+  for (int y = 0; y < after_click.height(); ++y) {
+    for (int x = 0; x < after_click.width(); ++x) {
+      const QColor pixel = after_click.pixelColor(x, y);
+      if (qAbs(pixel.red() - 255) <= 3 && qAbs(pixel.green() - 238) <= 4 &&
+          qAbs(pixel.blue() - 183) <= 4) {
+        ++amber_after_click;
+      }
+    }
+  }
+  EXPECT_GT(amber_after_click, 20)
+      << "search highlight must survive a click into the document";
+}
+
+constexpr char kMultiSearchHtml[] =
+    "<html><head><style>"
+    "html,body{margin:0;padding:0;background:#fff;color:#000}"
+    "#page{padding:10px;width:320px;font-size:20px;line-height:30px}"
+    "p{margin:0 0 10px 0}"
+    "</style></head><body><div id='page'>"
+    "<p>alpha one</p><p>alpha two</p><p>alpha three</p>"
+    "</div></body></html>";
+
+constexpr char kLongSearchHtml[] =
+    "<html><head><style>"
+    "html,body{margin:0;padding:0;background:#fff;color:#000}"
+    "#page{padding:10px;width:320px;font-size:20px;line-height:30px}"
+    "p{margin:0 0 20px 0}"
+    "</style></head><body><div id='page'>"
+    "<p>needle 0</p><p>needle 1</p><p>needle 2</p><p>needle 3</p>"
+    "<p>needle 4</p><p>needle 5</p><p>needle 6</p><p>needle 7</p>"
+    "<p>needle 8</p><p>needle 9</p><p>needle 10</p><p>needle 11</p>"
+    "</div></body></html>";
+
+QWidget* FindSearchOverlay(TestLiteHtmlWidget* view) {
+  return view->verticalScrollBar()->findChild<QWidget*>(
+      QStringLiteral("searchMarkOverlay"));
+}
+
+QRect ScrollBarGroove(QScrollBar* bar) {
+  QStyleOptionSlider option;
+  option.initFrom(bar);
+  option.orientation = bar->orientation();
+  QRect groove = bar->style()->subControlRect(QStyle::CC_ScrollBar, &option,
+                                              QStyle::SC_ScrollBarGroove, bar);
+  if (!groove.isValid() || groove.height() <= 0)
+    groove = bar->rect();
+  return groove;
+}
+
+TEST(QliteHtmlSelectionTest, SearchMarksAppearAndClickJumpsToMatch) {
+  TestLiteHtmlWidget view;
+  ShowHtml(&view, kLongSearchHtml);
+  QScrollBar* bar = view.verticalScrollBar();
+  ASSERT_GT(bar->maximum(), 0) << "test document must be scrollable";
+
+  int index = -1;
+  int count = 0;
+  bool wrapped = false;
+  ASSERT_TRUE(view.findText(QStringLiteral("needle"),
+                            QTextDocument::FindFlags(), false, &wrapped, &index,
+                            &count));
+  ASSERT_EQ(count, 12);
+  ASSERT_EQ(view.searchMatchRects().size(), count);
+
+  QWidget* overlay = FindSearchOverlay(&view);
+  ASSERT_NE(overlay, nullptr);
+  EXPECT_TRUE(overlay->isVisible());
+  EXPECT_EQ(overlay->geometry(), bar->rect());
+  const QImage marks_image = overlay->grab().toImage();
+  int mark_pixels = 0;
+  for (int y = 0; y < marks_image.height(); ++y) {
+    for (int x = 0; x < marks_image.width(); ++x) {
+      if (qAlpha(marks_image.pixel(x, y)) > 0)
+        ++mark_pixels;
+    }
+  }
+  EXPECT_GT(mark_pixels, 0) << "search marks were not painted";
+
+  const int target = 6;
+  const int document_height = view.documentHeight();
+  ASSERT_GT(document_height, 0);
+  const int match_top = view.searchMatchRects()[target].top();
+  const QRect groove = ScrollBarGroove(bar);
+  const int y = groove.top() + qRound(qreal(match_top) / document_height *
+                                      (groove.height() - 1));
+  const QPoint click_pos(bar->width() - 4, y);
+  // The overlay must not steal scrollbar input.
+  EXPECT_EQ(bar->childAt(click_pos), nullptr);
+  QMouseEvent press(QEvent::MouseButtonPress, click_pos,
+                    bar->mapToGlobal(click_pos), Qt::LeftButton, Qt::LeftButton,
+                    Qt::NoModifier);
+  QApplication::sendEvent(bar, &press);
+  EXPECT_EQ(view.currentSearchMatch(), target);
+  EXPECT_EQ(view.selectedText(), QStringLiteral("needle"));
+
+  // Clicking into the document drops the text selection and focus, but the
+  // find session (count, current match and scrollbar marks) must survive.
+  SendMouse(&view, QEvent::MouseButtonPress, QPoint(20, 120), Qt::LeftButton,
+            Qt::LeftButton);
+  SendMouse(&view, QEvent::MouseButtonRelease, QPoint(20, 120), Qt::LeftButton,
+            Qt::NoButton);
+  EXPECT_FALSE(view.isSearchSelection());
+  EXPECT_EQ(view.currentSearchMatch(), target);
+  EXPECT_EQ(view.searchMatches().size(), count);
+  EXPECT_TRUE(overlay->isVisible());
+  ASSERT_TRUE(view.findText(QStringLiteral("needle"),
+                            QTextDocument::FindFlags(), false, &wrapped, &index,
+                            &count));
+  EXPECT_EQ(index, target + 1);
+
+  view.clearSelection();
+  EXPECT_FALSE(view.isSearchSelection());
+  EXPECT_FALSE(overlay->isVisible());
+}
+
+TEST(QliteHtmlSelectionTest, NoMatchClearsPreviousSearchSelectionAndMarks) {
+  TestLiteHtmlWidget view;
+  ShowHtml(&view, kLongSearchHtml);
+  QWidget* overlay = nullptr;
+  int index = -1;
+  int count = 0;
+  bool wrapped = false;
+  ASSERT_TRUE(view.findText(QStringLiteral("needle"),
+                            QTextDocument::FindFlags(), false, &wrapped, &index,
+                            &count));
+  ASSERT_EQ(count, 12);
+  overlay = FindSearchOverlay(&view);
+  ASSERT_NE(overlay, nullptr);
+  ASSERT_TRUE(overlay->isVisible());
+
+  EXPECT_FALSE(view.findText(QStringLiteral("absent-query"),
+                             QTextDocument::FindFlags(), false, &wrapped,
+                             &index, &count));
+  EXPECT_EQ(index, -1);
+  EXPECT_EQ(count, 0);
+  EXPECT_TRUE(view.selectedText().isEmpty());
+  EXPECT_FALSE(view.isSearchSelection());
+  EXPECT_FALSE(overlay->isVisible());
+}
+
+TEST(QliteHtmlSelectionTest, SearchReportsCountAndNavigatesMatches) {
+  TestLiteHtmlWidget view;
+  ShowHtml(&view, kMultiSearchHtml);
+  int index = -1;
+  int count = 0;
+  bool wrapped = false;
+  ASSERT_TRUE(view.findText(QStringLiteral("alpha"), QTextDocument::FindFlags(),
+                            false, &wrapped, &index, &count));
+  EXPECT_EQ(index, 0);
+  EXPECT_EQ(count, 3);
+  EXPECT_EQ(view.currentSearchMatch(), 0);
+  EXPECT_EQ(view.searchMatches().size(), 3);
+  EXPECT_EQ(view.searchMatchRects().size(), 3);
+  for (const QRect& rect : view.searchMatchRects())
+    EXPECT_FALSE(rect.isEmpty());
+  EXPECT_EQ(view.selectedText(), QStringLiteral("alpha"));
+
+  ASSERT_TRUE(view.findText(QStringLiteral("alpha"), QTextDocument::FindFlags(),
+                            false, &wrapped, &index, &count));
+  EXPECT_EQ(index, 1);
+  EXPECT_FALSE(wrapped);
+  ASSERT_TRUE(view.findText(QStringLiteral("alpha"), QTextDocument::FindFlags(),
+                            false, &wrapped, &index, &count));
+  EXPECT_EQ(index, 2);
+  ASSERT_TRUE(view.findText(QStringLiteral("alpha"), QTextDocument::FindFlags(),
+                            false, &wrapped, &index, &count));
+  EXPECT_EQ(index, 0);
+  EXPECT_TRUE(wrapped);
+
+  ASSERT_TRUE(view.findText(QStringLiteral("alpha"),
+                            QTextDocument::FindBackward, false, &wrapped,
+                            &index, &count));
+  EXPECT_EQ(index, 2);
+  EXPECT_TRUE(wrapped);
+
+  EXPECT_TRUE(view.setCurrentSearchMatch(1));
+  EXPECT_EQ(view.currentSearchMatch(), 1);
+  EXPECT_EQ(view.selectedText(), QStringLiteral("alpha"));
 }

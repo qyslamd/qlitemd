@@ -96,6 +96,25 @@ TEST(DocumentBarTest, ShrinksFindBoxInsteadOfHidingIt) {
   delete narrow;
 }
 
+TEST(DocumentBarTest, FindsCountLabelShowsAndClears) {
+  DocumentBar* bar = MakeShownBar(700);
+  QLabel* label = bar->find_count_label();
+  ASSERT_NE(label, nullptr);
+  EXPECT_FALSE(label->isVisible());
+
+  bar->SetFindCount(2, 7);
+  EXPECT_EQ(label->text(), QStringLiteral("3 / 7"));
+  EXPECT_TRUE(label->isVisible());
+
+  bar->SetFindCount(-1, 0);
+  EXPECT_EQ(label->text(), QStringLiteral("0 / 0"));
+
+  bar->ClearFindCount();
+  EXPECT_TRUE(label->text().isEmpty());
+  EXPECT_FALSE(label->isVisible());
+  delete bar;
+}
+
 TEST(DocumentBarTest, HidesGroupsAsWidthShrinks) {
   struct Case {
     int width;
