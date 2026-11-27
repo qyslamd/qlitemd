@@ -2,6 +2,7 @@
 #include <QFontMetrics>
 #include <QLabel>
 #include <QLineEdit>
+#include <QSignalSpy>
 #include <QToolButton>
 
 #include <gtest/gtest.h>
@@ -31,10 +32,10 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
   DocumentBar bar;
   // objectName 是 GUI 工具和测试共用的锚点；行为由后续用例覆盖
   for (const char* name :
-       {"docBack", "docForward", "docStar", "docPathLayer", "docPathLabel",
-        "docCopyPath", "docFindEdit", "docOutlineToggle", "docAppearance",
-        "docZoomOut", "docZoomReset", "docZoomIn", "docExport",
-        "docExportMenu"}) {
+       {"docBack", "docForward", "docStar", "docPathLabel", "docCopyPath",
+        "docFindEdit", "docFindCount", "docFindPrev", "docFindNext",
+        "docOutlineToggle", "docAppearance", "docZoomOut", "docZoomReset",
+        "docZoomIn", "docExport", "docExportMenu"}) {
     EXPECT_NE(bar.findChild<QWidget*>(QString::fromLatin1(name)), nullptr)
         << name;
   }
@@ -42,13 +43,30 @@ TEST(DocumentBarTest, ExposesControlAnchors) {
 
 TEST(DocumentBarTest, KeepsToolbarRhythm) {
   DocumentBar* bar = MakeShownBar(1000);
-  // 40px 的行高给图标和输入框留出呼吸空间；路径层自己就是导航组的分界，
-  // 所以只剩两条分隔线（查找后、导出前）
+  // 40px 的行高给图标和输入框留出呼吸空间；复制后、查找后和导出前各有
+  // 一条分隔线
   EXPECT_EQ(bar->height(), 40);
   EXPECT_NE(bar->findChild<QWidget*>(QStringLiteral("docZoomGroup")), nullptr);
   EXPECT_EQ(
       bar->findChildren<QWidget*>(QStringLiteral("toolbarSeparator")).size(),
-      2);
+      3);
+  delete bar;
+}
+
+TEST(DocumentBarTest, PathIsPlainTextAfterDocumentActions) {
+  DocumentBar* bar = MakeShownBar(1000);
+  bar->SetPath(QStringLiteral("guide/intro.md"),
+               QStringLiteral("D:/docs/guide/intro.md"));
+  QApplication::processEvents();
+
+  // 路径不再套地址栏式的圆角层
+  EXPECT_EQ(bar->findChild<QWidget*>(QStringLiteral("docPathLayer")), nullptr);
+  EXPECT_EQ(bar->star_button()->parentWidget(), bar);
+  EXPECT_EQ(bar->copy_button()->parentWidget(), bar);
+  EXPECT_EQ(bar->path_label()->parentWidget(), bar);
+  EXPECT_LT(bar->star_button()->x(), bar->copy_button()->x());
+  EXPECT_LT(bar->copy_button()->x(), bar->path_label()->x());
+  EXPECT_TRUE(bar->path_label()->text().startsWith(QStringLiteral("guide/")));
   delete bar;
 }
 
@@ -94,6 +112,68 @@ TEST(DocumentBarTest, ShrinksFindBoxInsteadOfHidingIt) {
   EXPECT_TRUE(narrow->find_edit()->isVisible());
   EXPECT_EQ(narrow->find_edit()->width(), 160);
   delete narrow;
+}
+
+TEST(DocumentBarTest, FindControlsUseFlatToolbarLayout) {
+  DocumentBar* bar = MakeShownBar(700);
+  // 查找不再套 ToolbarLayer，否则会把工具栏撑高、输入框显示不全
+  EXPECT_EQ(bar->findChild<QWidget*>(QStringLiteral("docFindLayer")), nullptr);
+  EXPECT_EQ(bar->find_edit()->parentWidget(), bar);
+  EXPECT_EQ(bar->find_count_label()->parentWidget(), bar);
+  EXPECT_EQ(bar->find_prev_button()->parentWidget(), bar);
+  EXPECT_EQ(bar->find_next_button()->parentWidget(), bar);
+  EXPECT_EQ(bar->find_prev_button()->focusPolicy(), Qt::NoFocus);
+  EXPECT_EQ(bar->find_next_button()->focusPolicy(), Qt::NoFocus);
+  EXPECT_TRUE(
+      bar->find_prev_button()->toolTip().contains(QStringLiteral("Previous")));
+  EXPECT_TRUE(
+      bar->find_next_button()->toolTip().contains(QStringLiteral("Next")));
+  delete bar;
+}
+
+TEST(DocumentBarTest, FindNavigationFollowsQueryAndDocumentState) {
+  DocumentBar* bar = MakeShownBar(700);
+  ASSERT_TRUE(bar->find_prev_button()->isEnabled() ||
+              !bar->find_prev_button()->isEnabled());
+  EXPECT_FALSE(bar->find_prev_button()->isEnabled());
+  EXPECT_FALSE(bar->find_next_button()->isEnabled());
+
+  bar->find_edit()->setText(QStringLiteral("alpha"));
+  EXPECT_FALSE(bar->find_prev_button()->isEnabled());
+  bar->SetFindNavigationEnabled(true);
+  EXPECT_TRUE(bar->find_prev_button()->isEnabled());
+  EXPECT_TRUE(bar->find_next_button()->isEnabled());
+
+  QSignalSpy previous(bar, &DocumentBar::FindPreviousRequested);
+  QSignalSpy next(bar, &DocumentBar::FindNextRequested);
+  bar->find_prev_button()->click();
+  bar->find_next_button()->click();
+  EXPECT_EQ(previous.count(), 1);
+  EXPECT_EQ(next.count(), 1);
+
+  bar->find_edit()->clear();
+  EXPECT_FALSE(bar->find_prev_button()->isEnabled());
+  EXPECT_FALSE(bar->find_next_button()->isEnabled());
+
+  bar->find_edit()->setText(QStringLiteral("alpha"));
+  bar->SetFindNavigationEnabled(false);
+  EXPECT_FALSE(bar->find_prev_button()->isEnabled());
+  EXPECT_FALSE(bar->find_next_button()->isEnabled());
+  delete bar;
+}
+
+TEST(DocumentBarTest, FindControlsStayUsableWhenFindBoxShrinks) {
+  // 主窗最小宽度是 600，这里覆盖应用能到达的最窄档
+  DocumentBar* bar = MakeShownBar(600);
+  EXPECT_TRUE(bar->find_edit()->isVisible());
+  EXPECT_EQ(bar->find_edit()->width(), 160);
+  EXPECT_TRUE(bar->find_prev_button()->isVisible());
+  EXPECT_TRUE(bar->find_next_button()->isVisible());
+
+  bar->SetFindCount(2, 7);
+  EXPECT_TRUE(bar->find_count_label()->isVisible());
+  EXPECT_EQ(bar->find_count_label()->text(), QStringLiteral("3 / 7"));
+  delete bar;
 }
 
 TEST(DocumentBarTest, FindsCountLabelShowsAndClears) {

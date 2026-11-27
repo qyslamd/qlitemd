@@ -60,24 +60,6 @@ class ToolbarSeparator : public QWidget {
   }
 };
 
-// 工具栏里的圆角底：缩放组和路径层共用，避免一排控件全是同一层级
-class ToolbarLayer : public QWidget {
- public:
-  explicit ToolbarLayer(QWidget* parent) : QWidget(parent) {
-    setObjectName(QStringLiteral("toolbarPill"));
-  }
-
- protected:
-  void paintEvent(QPaintEvent*) override {
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    const QRectF pill = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-    painter.setPen(QPen(DimLineColor(palette(), 24), 1.0));
-    painter.setBrush(palette().color(QPalette::Base));
-    painter.drawRoundedRect(pill, 6.0, 6.0);
-  }
-};
-
 QWidget* MakeToolbarSeparator(QWidget* parent) {
   return new ToolbarSeparator(parent);
 }
@@ -132,26 +114,20 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   layout->addWidget(forward_button_);
   layout->addWidget(star_button_);
 
-  // 路径和复制合成一层，像地址栏；layer 自己就是和导航组的分界
-  path_layer_ = new ToolbarLayer(this);
-  path_layer_->setObjectName(QStringLiteral("docPathLayer"));
-  auto* path_layout = new QHBoxLayout(path_layer_);
-  path_layout->setContentsMargins(10, 2, 4, 2);
-  path_layout->setSpacing(4);
+  // 复制属于文档动作，紧跟收藏；路径退回普通文本，避免地址栏观感
+  copy_button_ = MakeIconButton(this, QStringLiteral("docCopyPath"),
+                                tr("Copy current document path"));
+  layout->addWidget(copy_button_);
+  layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
 
-  path_label_ = new QLabel(path_layer_);
+  path_label_ = new QLabel(this);
   path_label_->setObjectName(QStringLiteral("docPathLabel"));
   // 路径是上下文信息，低于文档动作一级
   path_label_->setForegroundRole(QPalette::PlaceholderText);
   path_label_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   path_label_->setTextInteractionFlags(Qt::NoTextInteraction);
   path_label_->installEventFilter(this);
-  path_layout->addWidget(path_label_, 1);
-
-  copy_button_ = MakeIconButton(path_layer_, QStringLiteral("docCopyPath"),
-                                tr("Copy current document path"));
-  path_layout->addWidget(copy_button_);
-  layout->addWidget(path_layer_, 1, Qt::AlignVCenter);
+  layout->addWidget(path_label_, 1);
 
   find_edit_ = new QLineEdit(this);
   find_edit_->setObjectName(QStringLiteral("docFindEdit"));
@@ -159,6 +135,7 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   find_edit_->setClearButtonEnabled(true);
   find_edit_->setFixedWidth(220);
   layout->addWidget(find_edit_);
+
   find_count_label_ = new QLabel(this);
   find_count_label_->setObjectName(QStringLiteral("docFindCount"));
   find_count_label_->setForegroundRole(QPalette::PlaceholderText);
@@ -166,7 +143,24 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
   find_count_label_->setMinimumWidth(52);
   find_count_label_->hide();
   layout->addWidget(find_count_label_);
+
+  find_prev_button_ = MakeIconButton(this, QStringLiteral("docFindPrev"),
+                                     tr("Previous Match (Shift+Enter)"));
+  find_prev_button_->setFocusPolicy(Qt::NoFocus);
+  layout->addWidget(find_prev_button_);
+  find_next_button_ = MakeIconButton(this, QStringLiteral("docFindNext"),
+                                     tr("Next Match (Enter)"));
+  find_next_button_->setFocusPolicy(Qt::NoFocus);
+  layout->addWidget(find_next_button_);
   layout->addWidget(MakeToolbarSeparator(this), 0, Qt::AlignVCenter);
+
+  connect(find_edit_, &QLineEdit::textChanged, this,
+          [this] { UpdateFindButtons(); });
+  connect(find_prev_button_, &QToolButton::clicked, this,
+          &DocumentBar::FindPreviousRequested);
+  connect(find_next_button_, &QToolButton::clicked, this,
+          &DocumentBar::FindNextRequested);
+  UpdateFindButtons();
 
   outline_button_ = MakeIconButton(this, QStringLiteral("docOutlineToggle"),
                                    tr("Outline (Ctrl+Shift+O)"));
@@ -178,10 +172,10 @@ DocumentBar::DocumentBar(QWidget* parent) : QWidget(parent) {
       tr("Reading appearance (font size, line height, measure)"));
   layout->addWidget(appearance_button_);
 
-  zoom_group_ = new ToolbarLayer(this);
+  zoom_group_ = new QWidget(this);
   zoom_group_->setObjectName(QStringLiteral("docZoomGroup"));
   auto* zoom_layout = new QHBoxLayout(zoom_group_);
-  zoom_layout->setContentsMargins(2, 2, 2, 2);
+  zoom_layout->setContentsMargins(0, 0, 0, 0);
   zoom_layout->setSpacing(2);
   zoom_out_button_ = MakeIconButton(zoom_group_, QStringLiteral("docZoomOut"),
                                     tr("Zoom Out (Ctrl+-)"));
@@ -235,7 +229,30 @@ void DocumentBar::SetFindCount(int current, int total) {
     find_count_label_->setText(
         QStringLiteral("%1 / %2").arg(current + 1).arg(total));
   }
-  find_count_label_->show();
+  UpdateFindCountVisibility();
+}
+
+void DocumentBar::SetFindNavigationEnabled(bool enabled) {
+  find_navigation_enabled_ = enabled;
+  UpdateFindButtons();
+}
+
+void DocumentBar::UpdateFindButtons() {
+  if (find_prev_button_ == nullptr || find_next_button_ == nullptr) {
+    return;
+  }
+  const bool enabled = find_navigation_enabled_ && find_edit_ != nullptr &&
+                       !find_edit_->text().isEmpty();
+  find_prev_button_->setEnabled(enabled);
+  find_next_button_->setEnabled(enabled);
+}
+
+void DocumentBar::UpdateFindCountVisibility() {
+  if (find_count_label_ == nullptr) {
+    return;
+  }
+  find_count_label_->setVisible(!find_count_label_->text().isEmpty() &&
+                                width() >= 520);
 }
 
 void DocumentBar::ClearFindCount() {
@@ -243,7 +260,7 @@ void DocumentBar::ClearFindCount() {
     return;
   }
   find_count_label_->clear();
-  find_count_label_->hide();
+  UpdateFindCountVisibility();
 }
 
 void DocumentBar::SetThemeDark(bool dark) {
@@ -255,6 +272,8 @@ void DocumentBar::SetThemeDark(bool dark) {
   appearance_button_->setIcon(ThemeIcon(QStringLiteral("appearance"), dark_));
   zoom_out_button_->setIcon(ThemeIcon(QStringLiteral("zoom-out"), dark_));
   zoom_in_button_->setIcon(ThemeIcon(QStringLiteral("zoom-in"), dark_));
+  find_prev_button_->setIcon(ThemeIcon(QStringLiteral("chevron-up"), dark_));
+  find_next_button_->setIcon(ThemeIcon(QStringLiteral("chevron-down"), dark_));
   export_button_->setIcon(ThemeIcon(QStringLiteral("export"), dark_));
 }
 
@@ -282,7 +301,8 @@ void DocumentBar::UpdateChildVisibility() {
   export_button_->setVisible(width >= 900);
   export_separator_->setVisible(width >= 900);
   find_edit_->setVisible(true);
-  find_edit_->setFixedWidth(width >= 620 ? 240 : 160);
+  find_edit_->setFixedWidth(width >= 620 ? 240 : (width >= 520 ? 160 : 140));
+  UpdateFindCountVisibility();
   UpdatePathElision();
 }
 

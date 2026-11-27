@@ -1594,6 +1594,16 @@ void MdViewerWindow::initSignals() {
   connect(document_find_edit_, &QLineEdit::returnPressed, this, [this] {
     search_controller_->FindDocumentNow(document_find_edit_->text(), false);
   });
+  connect(document_bar_, &DocumentBar::FindPreviousRequested, this, [this] {
+    if (document_find_edit_->isEnabled()) {
+      search_controller_->FindDocumentNow(document_find_edit_->text(), true);
+    }
+  });
+  connect(document_bar_, &DocumentBar::FindNextRequested, this, [this] {
+    if (document_find_edit_->isEnabled()) {
+      search_controller_->FindDocumentNow(document_find_edit_->text(), false);
+    }
+  });
   // 工作区搜索：输入即重置并防抖，回车跳过防抖
   connect(side_panel_, &SidePanel::searchTextChanged, this,
           [this](const QString& text) {
@@ -3076,6 +3086,9 @@ void MdViewerWindow::UpdateFindControls() {
       CurrentView() != nullptr && CurrentView()->is_rendering();
   // 查询文字保留，只禁输入：渲染中和欢迎态都不该往正文里找
   document_find_edit_->setEnabled(has_document && !rendering);
+  if (document_bar_ != nullptr) {
+    document_bar_->SetFindNavigationEnabled(has_document && !rendering);
+  }
   if (!has_document || rendering) {
     ClearFindCount();
   }

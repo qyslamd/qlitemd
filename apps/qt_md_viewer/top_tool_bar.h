@@ -43,12 +43,16 @@ class DocumentBar : public QWidget {
   // current 为 0 基；total 为 0 时显示 0 / 0
   void SetFindCount(int current, int total);
   void ClearFindCount();
+  // 文档可查找时由窗口打开；查询为空时按钮仍保持禁用
+  void SetFindNavigationEnabled(bool enabled);
   // 换主题时重载动作类图标；星标由窗口按收藏状态单独刷新
   void SetThemeDark(bool dark);
 
   QLabel* path_label() const { return path_label_; }
   QLineEdit* find_edit() const { return find_edit_; }
   QLabel* find_count_label() const { return find_count_label_; }
+  QToolButton* find_prev_button() const { return find_prev_button_; }
+  QToolButton* find_next_button() const { return find_next_button_; }
   QToolButton* back_button() const { return back_button_; }
   QToolButton* forward_button() const { return forward_button_; }
   QToolButton* star_button() const { return star_button_; }
@@ -63,22 +67,30 @@ class DocumentBar : public QWidget {
   QToolButton* zoom_reset_button() const { return zoom_reset_button_; }
   QToolButton* zoom_in_button() const { return zoom_in_button_; }
 
+ signals:
+  void FindPreviousRequested();
+  void FindNextRequested();
+
  protected:
   void resizeEvent(QResizeEvent* event) override;
   bool eventFilter(QObject* watched, QEvent* event) override;
 
  private:
   void UpdateChildVisibility();
+  void UpdateFindButtons();
+  void UpdateFindCountVisibility();
   void UpdatePathElision();
 
   QString display_path_;
   bool dark_ = false;
-  QWidget* path_layer_ = nullptr;
   QWidget* zoom_group_ = nullptr;
   QWidget* export_separator_ = nullptr;
   QLabel* path_label_ = nullptr;
   QLineEdit* find_edit_ = nullptr;
   QLabel* find_count_label_ = nullptr;
+  QToolButton* find_prev_button_ = nullptr;
+  QToolButton* find_next_button_ = nullptr;
+  bool find_navigation_enabled_ = false;
   QToolButton* back_button_ = nullptr;
   QToolButton* forward_button_ = nullptr;
   QToolButton* star_button_ = nullptr;

@@ -119,8 +119,8 @@ details. [`examples/qt_widget_minimal`](examples/qt_widget_minimal) is the
 - **Outline** — `MarkdownHeading` list with stable slugs, ready for a side
   panel and anchor navigation.
 - **Find** — case-sensitive, whole-word and backward search with wrap
-  detection, an `n / total` counter, and clickable match marks on the
-  vertical scrollbar. The find session survives clicking into the document;
+  detection, an `n / total` counter with previous/next buttons, and clickable
+  match marks on the vertical scrollbar. The find session survives clicking into the document;
   only clearing the query ends it.
 - **Zoom** — Ctrl+wheel or the built-in actions, 0.3x to 5.0x, debounced
   re-layout.
