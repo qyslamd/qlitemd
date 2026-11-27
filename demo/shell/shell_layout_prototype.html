@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qlitemd shell prototype</title>
+<style>
+  :root {
+    --rail: 42px;
+    --sidebar-w: 300px;
+    --title-h: 40px;
+    --status-h: 27px;
+    --accent: #4cc2ff;
+    --accent-soft: rgba(76, 194, 255, .14);
+    --doc-accent: #8bd98b;
+    --rail-bg: #202124;
+    --sidebar-bg: #252629;
+    --chrome-bg: #2a2b2e;
+    --toolbar-bg: #252629;
+    --reader-bg: #1d1e20;
+    --page-bg: #1d1e20;
+    --outline-bg: #222326;
+    --status-bg: #173a5e;
+    --text: #e3e3e3;
+    --text-muted: #9b9ca1;
+    --text-faint: #777981;
+    --border: rgba(255, 255, 255, .075);
+    --border-strong: rgba(255, 255, 255, .12);
+    --hover: rgba(255, 255, 255, .075);
+    --active: rgba(255, 255, 255, .11);
+    --input-bg: rgba(255, 255, 255, .035);
+    --tab-active: #1d1e20;
+    --code-bg: #17181a;
+    --shadow: 0 24px 80px rgba(0, 0, 0, .42);
+    --scroll: rgba(255, 255, 255, .16);
+  }
+
+  html[data-theme="light"] {
+    --accent: #0067c0;
+    --accent-soft: rgba(0, 103, 192, .1);
+    --doc-accent: #2f7d32;
+    --rail-bg: #ececee;
+    --sidebar-bg: #f5f5f7;
+    --chrome-bg: #e7e7e9;
+    --toolbar-bg: #f2f2f4;
+    --reader-bg: #fbfbfc;
+    --page-bg: #fbfbfc;
+    --outline-bg: #f5f5f7;
+    --status-bg: #e9eef6;
+    --text: #1f2328;
+    --text-muted: #65676d;
+    --text-faint: #8a8c92;
+    --border: rgba(0, 0, 0, .08);
+    --border-strong: rgba(0, 0, 0, .14);
+    --hover: rgba(0, 0, 0, .055);
+    --active: rgba(0, 0, 0, .085);
+    --input-bg: rgba(255, 255, 255, .55);
+    --tab-active: #fbfbfc;
+    --code-bg: #f3f4f6;
+    --shadow: 0 24px 80px rgba(23, 30, 42, .2);
+    --scroll: rgba(0, 0, 0, .18);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    overflow: hidden;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(76, 194, 255, .12), transparent 58%),
+      radial-gradient(1000px 700px at 100% 100%, rgba(126, 231, 135, .07), transparent 55%),
+      #111214;
+    font: 13px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font: inherit; color: inherit; }
+  .icon {
+    width: 16px; height: 16px; display: block;
+    fill: none; stroke: currentColor; stroke-width: 1.35;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .icon.fill { fill: currentColor; stroke: none; }
+
+  .window {
+    height: 100%;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) var(--status-h);
+    background: var(--reader-bg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  /* The one structural idea: left shell owns the window top edge. */
+  .workspace {
+    position: relative;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: calc(var(--rail) + var(--sidebar-w)) minmax(0, 1fr);
+    transition: grid-template-columns 180ms cubic-bezier(.2, .7, .2, 1);
+  }
+  body.dragging .workspace { transition: none; }
+
+  .left-shell {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    grid-template-rows: var(--title-h) minmax(0, 1fr);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-strong);
+    overflow: hidden;
+  }
+
+  .rail {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    background: var(--rail-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+  }
+  .rail-top {
+    height: var(--title-h);
+    flex: 0 0 var(--title-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rail-stack {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding-top: 3px;
+  }
+  .rail-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 0 8px;
+  }
+  .rail-button,
+  .icon-button,
+  .window-button,
+  .sidebar-action,
+  .doc-action,
+  .find-nav {
+    border: 0;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 5px;
+    cursor: default;
+    color: var(--text-muted);
+    outline: none;
+  }
+  .rail-button {
+    position: relative;
+    width: 38px; height: 38px;
+    border-radius: 7px;
+  }
+  .rail-button:hover,
+  .icon-button:hover,
+  .sidebar-action:hover,
+  .doc-action:hover,
+  .find-nav:hover { background: var(--hover); color: var(--text); }
+  .rail-button.active { color: var(--text); background: var(--active); }
+  .rail-button.active::before {
+    content: "";
+    position: absolute; left: -2px; top: 9px; bottom: 9px; width: 2px;
+    border-radius: 2px; background: var(--accent);
+  }
+  .rail-toggle {
+    width: 30px; height: 30px; color: var(--text-muted);
+    border-radius: 6px;
+  }
+  .rail-toggle:hover { color: var(--text); background: var(--hover); }
+  .rail-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(145deg, var(--accent), #7a67ff);
+    color: #071019; font-weight: 700; font-size: 11px;
+    display: grid; place-items: center;
+  }
+
+  .sidebar {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: var(--title-h) minmax(0, 1fr) 34px;
+    background: var(--sidebar-bg);
+    overflow: hidden;
+    transition: opacity 140ms ease;
+  }
+  body.sidebar-collapsed .sidebar { opacity: 0; pointer-events: none; }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px 0 12px;
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .sidebar-title {
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-header .grow { flex: 1; }
+  .sidebar-action { width: 26px; height: 26px; border-radius: 5px; }
+  .sidebar-action .icon { width: 15px; height: 15px; }
+
+  .sidebar-body {
+    min-height: 0;
+    overflow: auto;
+    padding: 8px 7px 18px;
+  }
+  .workspace-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 7px;
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .workspace-row:hover { background: var(--hover); }
+  .workspace-badge {
+    width: 17px; height: 17px; border-radius: 4px;
+    display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 10px; font-weight: 700;
+  }
+
+  .tree { margin-top: 3px; }
+  .tree-row {
+    height: 25px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 6px;
+    border-radius: 5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .tree-row:hover { background: var(--hover); color: var(--text); }
+  .tree-row.active {
+    background: var(--accent-soft);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .tree-row .twisty { width: 12px; height: 12px; flex: 0 0 12px; color: var(--text-faint); }
+  .tree-row .twisty .icon { width: 11px; height: 11px; }
+  .tree-row .file-icon { color: var(--text-faint); flex: 0 0 15px; }
+  .tree-row .file-icon .icon { width: 14px; height: 14px; }
+  .tree-row.active .file-icon { color: var(--accent); }
+  .tree-row .label { overflow: hidden; text-overflow: ellipsis; }
+  .tree-row .badge {
+    margin-left: auto; font-size: 10px; color: var(--text-faint);
+    background: var(--hover); padding: 1px 5px; border-radius: 8px;
+  }
+  .indent-1 { padding-left: 22px; }
+  .indent-2 { padding-left: 38px; }
+  .indent-3 { padding-left: 54px; }
+  .tree-gap { height: 8px; }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+    min-width: 0;
+  }
+  .sidebar-footer .root { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-footer .icon { width: 14px; height: 14px; }
+
+  .main-shell {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: var(--title-h) var(--title-h) minmax(0, 1fr);
+    background: var(--page-bg);
+  }
+
+  .titlebar {
+    min-width: 0;
+    height: var(--title-h);
+    display: flex;
+    align-items: stretch;
+    background: var(--chrome-bg);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 0 0 0 3px;
+    min-width: 0;
+  }
+  .title-menu {
+    width: 38px;
+    height: var(--title-h);
+    flex: 0 0 38px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-muted);
+    display: grid;
+    place-items: center;
+  }
+  .title-menu:hover { background: var(--hover); color: var(--text); }
+  .title-menu .icon { width: 17px; height: 17px; }
+  .tab {
+    height: 34px;
+    max-width: 230px;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border-radius: 8px 8px 0 0;
+    color: var(--text-muted);
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    position: relative;
+  }
+  .tab:hover { background: var(--hover); color: var(--text); }
+  .tab.active {
+    background: var(--tab-active);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 10px; right: 10px; bottom: -1px; height: 1px;
+    background: var(--tab-active);
+  }
+  .tab .tab-label { overflow: hidden; text-overflow: ellipsis; }
+  .tab .tab-close {
+    width: 18px; height: 18px; border-radius: 4px;
+    display: grid; place-items: center; margin-left: 2px;
+    color: var(--text-faint); flex: 0 0 18px;
+  }
+  .tab .tab-close:hover { background: var(--hover); color: var(--text); }
+  .tab .tab-close .icon { width: 11px; height: 11px; }
+  .new-tab {
+    width: 28px; height: 28px; margin: 0 0 3px 3px;
+    border-radius: 5px; color: var(--text-faint);
+  }
+  .new-tab:hover { background: var(--hover); color: var(--text); }
+
+  .titlebar-spacer { flex: 1; min-width: 30px; }
+  .window-actions { display: flex; align-items: stretch; flex: 0 0 auto; }
+  .window-button {
+    width: 46px; height: var(--title-h);
+    border-radius: 0; color: var(--text-muted);
+  }
+  .window-button:hover { background: var(--hover); color: var(--text); }
+  .window-button.close:hover { background: #c42b1c; color: #fff; }
+  .window-button .icon { width: 13px; height: 13px; stroke-width: 1.2; }
+  .theme-button { width: 38px; }
+
+  .docbar {
+    min-width: 0;
+    height: var(--title-h);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 7px 0 8px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .doc-action, .find-nav { width: 28px; height: 28px; flex: 0 0 28px; }
+  .doc-action .icon, .find-nav .icon { width: 15px; height: 15px; }
+  .doc-action.starred { color: #f0c674; }
+  .doc-sep {
+    width: 1px; height: 17px; flex: 0 0 1px;
+    background: var(--border-strong); margin: 0 3px;
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--text-muted);
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .breadcrumb .crumb {
+    overflow: hidden; text-overflow: ellipsis;
+    max-width: 220px;
+  }
+  .breadcrumb .slash { color: var(--text-faint); }
+  .breadcrumb .current { color: var(--text); }
+  .docbar .spacer { flex: 1; min-width: 12px; }
+
+  .find-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+  .find {
+    width: 218px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 7px;
+    border-bottom: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .018));
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+  .find .icon { width: 13px; height: 13px; flex: 0 0 13px; }
+  .find .placeholder { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .find-count { width: 44px; text-align: center; font-size: 11px; color: var(--text-muted); }
+  .find-nav .icon { width: 13px; height: 13px; }
+
+  .content-row {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 256px;
+    background: var(--page-bg);
+  }
+
+  .reader {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-color: var(--scroll) transparent;
+    scrollbar-width: thin;
+  }
+  .article {
+    width: min(830px, calc(100% - 72px));
+    margin: 0 auto;
+    padding: 28px 0 90px;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.78;
+  }
+  .article h1 {
+    margin: 0 0 16px;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -.02em;
+    color: var(--doc-accent);
+  }
+  .article h2 {
+    margin: 34px 0 12px;
+    font-size: 21px;
+    line-height: 1.3;
+    letter-spacing: -.01em;
+    color: var(--doc-accent);
+  }
+  .article h3 {
+    margin: 24px 0 8px;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .article p { margin: 0 0 12px; }
+  .muted { color: var(--text-muted); }
+  .frontmatter {
+    margin: 20px 0 28px;
+    padding: 12px 16px;
+    border-left: 2px solid var(--accent);
+    background: var(--input-bg);
+    color: var(--text-muted);
+    font: 13px/1.65 "Cascadia Mono", "Consolas", monospace;
+    white-space: pre-wrap;
+  }
+  .callout {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--input-bg);
+    color: var(--text-muted);
+  }
+  .callout .icon { flex: 0 0 16px; color: var(--accent); margin-top: 2px; }
+  .article ul, .article ol { margin: 8px 0 16px; padding-left: 24px; }
+  .article li { margin: 4px 0; }
+  .article code {
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: .86em;
+    background: var(--input-bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .code-card {
+    margin: 18px 0 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  .code-head {
+    display: flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 11px;
+    background: rgba(255, 255, 255, .035);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-faint);
+    font-size: 11px;
+  }
+  .code-head .lang { margin-left: auto; }
+  .code-body {
+    margin: 0;
+    padding: 12px 14px 16px;
+    overflow: auto;
+    color: #c9d1d9;
+    font: 12.5px/1.62 "Cascadia Mono", "Consolas", monospace;
+    tab-size: 4;
+  }
+  html[data-theme="light"] .code-body { color: #24292f; }
+  html[data-theme="light"] .tok-key { color: #cf222e; }
+  html[data-theme="light"] .tok-str { color: #0a3069; }
+  html[data-theme="light"] .tok-com { color: #6e7781; }
+  html[data-theme="light"] .tok-var { color: #953800; }
+  html[data-theme="light"] .tok-fn { color: #8250df; }
+  .tok-key { color: #ff7b72; }
+  .tok-str { color: #a5d6ff; }
+  .tok-com { color: #8b949e; }
+  .tok-var { color: #ffa657; }
+  .tok-fn { color: #d2a8ff; }
+
+  .outline {
+    min-width: 0;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+    background: var(--outline-bg);
+    overflow: auto;
+    padding: 14px 0 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll) transparent;
+  }
+  .outline-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px 9px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+  .outline-head .icon { width: 13px; height: 13px; }
+  .outline-list { padding: 0 8px; }
+  .outline-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 27px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    color: var(--text-muted);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .outline-item:hover { background: var(--hover); color: var(--text); }
+  .outline-item.current {
+    background: var(--input-bg);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .outline-item span { overflow: hidden; text-overflow: ellipsis; }
+  .outline-twisty { width: 11px; flex: 0 0 11px; color: var(--text-faint); }
+  .outline-twisty .icon { width: 10px; height: 10px; }
+  .ol-1 { padding-left: 8px; }
+  .ol-2 { padding-left: 22px; font-size: 12px; }
+  .ol-3 { padding-left: 36px; font-size: 12px; }
+
+  .statusbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 10px;
+    background: var(--status-bg);
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .statusbar .grow { flex: 1; }
+  .statusbar .status-item { display: flex; align-items: center; gap: 5px; }
+  .statusbar .icon { width: 12px; height: 12px; }
+  .status-ok { color: var(--doc-accent); }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--doc-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--doc-accent) 18%, transparent);
+  }
+  .statusbar .branch { display: flex; align-items: center; gap: 4px; }
+
+  .splitter {
+    position: absolute;
+    top: var(--title-h);
+    bottom: 0;
+    width: 7px;
+    left: calc(var(--rail) + var(--sidebar-w) - 3px);
+    cursor: col-resize;
+    z-index: 20;
+  }
+  .splitter::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 0; bottom: 0; width: 1px;
+    background: transparent;
+    transition: background 120ms ease;
+  }
+  .splitter:hover::after, body.dragging .splitter::after { background: var(--accent); }
+  body.sidebar-collapsed .splitter { display: none; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  @media (max-width: 980px) {
+    :root { --sidebar-w: 260px; }
+    .find { width: 180px; }
+    .content-row { grid-template-columns: minmax(0, 1fr) 216px; }
+    .article { width: calc(100% - 48px); }
+  }
+  @media (max-width: 760px) {
+    .outline { display: none; }
+    .content-row { grid-template-columns: minmax(0, 1fr); }
+    .find { width: 150px; }
+    .breadcrumb .crumb:first-child { display: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-panel" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.2"/><path d="M6 3v10"/><path d="M4 5.5h.01M4 8h.01M4 10.5h.01"/></symbol>
+  <symbol id="i-files" viewBox="0 0 16 16"><path d="M3 2.5h6l3 3v8H3z"/><path d="M9 2.5v3h3"/><path d="M5.5 8h4M5.5 10.5h4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.1 10.1L14 14"/></symbol>
+  <symbol id="i-star" viewBox="0 0 16 16"><path d="M8 2.2l1.75 3.55 3.92.57-2.84 2.77.67 3.9L8 11.15l-3.5 1.84.67-3.9-2.84-2.77 3.92-.57z"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 16 16"><path d="M2 8h2.2l1.2-3.8L7.6 12l1.7-6 1.1 2h3.6"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.1"/><path d="M8 2.2v1.5M8 12.3v1.5M2.2 8h1.5M12.3 8h1.5M3.9 3.9l1.1 1.1M11 11l1.1 1.1M12.1 3.9L11 5M5 11l-1.1 1.1"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 16 16"><path d="M6.2 3.2L11 8l-4.8 4.8"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 16 16"><path d="M3.2 6.2L8 11l4.8-4.8"/></symbol>
+  <symbol id="i-chevron-up" viewBox="0 0 16 16"><path d="M3.2 9.8L8 5l4.8 4.8"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="i-close" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.2" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="12.8" cy="8" r=".9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 16 16"><path d="M3 4.2h10M3 8h10M3 11.8h10"/></symbol>
+  <symbol id="i-open-folder" viewBox="0 0 16 16"><path d="M2.3 4.4h4.1l1.2 1.5h6.1v6.6H2.3z"/><path d="M8 9.7V5.8M6.1 7.7L8 5.8l1.9 1.9"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M12.7 6.3A5 5 0 1 0 13 9"/><path d="M13 3.8v2.8h-2.8"/></symbol>
+  <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 3.3L5.3 8 10 12.7"/></symbol>
+  <symbol id="i-forward" viewBox="0 0 16 16"><path d="M6 3.3L10.7 8 6 12.7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5" y="5" width="8" height="8" rx="1.2"/><path d="M3.5 10.5h-1v-8h8v1"/></symbol>
+  <symbol id="i-outline" viewBox="0 0 16 16"><path d="M3 3.5h10M5.5 8h7.5M8 12.5h5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h10"/><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="5" cy="12" r="1.2"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.1 10.1L14 14M7 5v4M5 7h4"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.1 10.1L14 14M5 7h4"/></symbol>
+  <symbol id="i-export" viewBox="0 0 16 16"><path d="M8 10V2.8M5.3 5.5L8 2.8l2.7 2.7"/><path d="M3 9.5v3h10v-3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M12.4 3.6l-1 1M4.6 11.4l-1 1"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 16 16"><path d="M13 9.3A5.6 5.6 0 0 1 6.7 3a5.6 5.6 0 1 0 6.3 6.3z"/></symbol>
+  <symbol id="i-min" viewBox="0 0 16 16"><path d="M3 8h10"/></symbol>
+  <symbol id="i-max" viewBox="0 0 16 16"><rect x="3.2" y="3.2" width="9.6" height="9.6" rx=".8"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 16 16"><path d="M6 2.5h4M6.5 2.5l.6 4-2.1 1.6v1.4h6v-1.4L8.9 6.5l.6-4M8 9.5v3.7"/></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.7"/><path d="M8 7v4M8 5.1h.01"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 16 16"><path d="M8 13V3.5M4.5 7L8 3.5 11.5 7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 16 16"><path d="M3.5 2.5h5.8l3.2 3.2v7.8h-9z"/><path d="M9 2.5v3.5h3.5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2.2 4.2h4.2l1.2 1.5h6.2v6.8h-11.6z"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4" cy="3.5" r="1.2"/><circle cx="4" cy="12.5" r="1.2"/><circle cx="12" cy="6" r="1.2"/><path d="M4 4.7v6.6M5.2 8.2c2.2 0 3.6-.3 4.7-1.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.3l2.8 2.8 6.2-6.2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.3 9.7l3.4-3.4M6.8 4.5l.8-.8a2.7 2.7 0 0 1 3.8 3.8l-.8.8M9.2 11.5l-.8.8a2.7 2.7 0 0 1-3.8-3.8l.8-.8"/></symbol>
+</svg>
+
+<div class="window">
+  <div class="workspace" id="workspace">
+    <aside class="left-shell" aria-label="Sidebar shell">
+      <div class="rail">
+        <div class="rail-top">
+          <button class="icon-button rail-toggle" id="sidebarToggle" title="收起侧栏 (Ctrl+B)" aria-label="Toggle sidebar" aria-pressed="true">
+            <svg class="icon"><use href="#i-panel"/></svg>
+          </button>
+        </div>
+        <div class="rail-stack">
+          <button class="rail-button active" data-view="Documents" title="文档">
+            <svg class="icon"><use href="#i-files"/></svg>
+          </button>
+          <button class="rail-button" data-view="Search" title="搜索">
+            <svg class="icon"><use href="#i-search"/></svg>
+          </button>
+          <button class="rail-button" data-view="Bookmarks" title="收藏">
+            <svg class="icon"><use href="#i-star"/></svg>
+          </button>
+          <button class="rail-button" data-view="Render status" title="渲染状态">
+            <svg class="icon"><use href="#i-pulse"/></svg>
+          </button>
+        </div>
+        <div class="rail-bottom">
+          <button class="rail-button" title="设置">
+            <svg class="icon"><use href="#i-settings"/></svg>
+          </button>
+          <div class="rail-avatar" title="My_AI">M</div>
+        </div>
+      </div>
+
+      <section class="sidebar" id="sidebar">
+        <header class="sidebar-header">
+          <div class="sidebar-title" id="sidebarTitle">Documents</div>
+          <div class="grow"></div>
+          <button class="sidebar-action" title="打开文件夹"><svg class="icon"><use href="#i-open-folder"/></svg></button>
+          <button class="sidebar-action" title="刷新工作区"><svg class="icon"><use href="#i-refresh"/></svg></button>
+          <button class="sidebar-action" title="更多"><svg class="icon"><use href="#i-more"/></svg></button>
+        </header>
+
+        <div class="sidebar-body">
+          <div class="workspace-row">
+            <div class="workspace-badge">M</div>
+            <span>My_AI</span>
+            <svg class="icon" style="width:11px;height:11px;margin-left:auto;color:var(--text-faint)"><use href="#i-chevron-down"/></svg>
+          </div>
+
+          <nav class="tree" aria-label="Workspace files">
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">个人生活思考记录</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">脚本片段</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">买菜</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-down"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">AI Agent</span></div>
+            <div class="tree-row indent-1"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">skeleton</span></div>
+            <div class="tree-row indent-1"><span class="twisty"></span><span class="file-icon"><svg class="icon"><use href="#i-doc"/></svg></span><span class="label">使用网页版DeepSeek帮你干活的小技巧</span></div>
+            <div class="tree-row indent-1 active"><span class="twisty"></span><span class="file-icon"><svg class="icon"><use href="#i-doc"/></svg></span><span class="label">使用AI弄知识库</span></div>
+            <div class="tree-row indent-1"><span class="twisty"></span><span class="file-icon"><svg class="icon"><use href="#i-doc"/></svg></span><span class="label">提高AI Agent完成准确性</span></div>
+            <div class="tree-row indent-1"><span class="twisty"></span><span class="file-icon"><svg class="icon"><use href="#i-doc"/></svg></span><span class="label">一些大模型使用的记录</span></div>
+            <div class="tree-row indent-1"><span class="twisty"></span><span class="file-icon"><svg class="icon"><use href="#i-doc"/></svg></span><span class="label">C++项目快速基础模板</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">AI</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">CEF</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">Clippings</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">CMake</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">Cpp</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">emhpt</span></div>
+            <div class="tree-row"><svg class="twisty icon"><use href="#i-chevron-right"/></svg><span class="file-icon"><svg class="icon"><use href="#i-folder"/></svg></span><span class="label">Qt</span></div>
+          </nav>
+        </div>
+
+        <footer class="sidebar-footer">
+          <span class="root">My_AI</span>
+          <span style="color:var(--text-faint)">Markdown workspace</span>
+        </footer>
+      </section>
+    </aside>
+
+    <section class="main-shell">
+      <header class="titlebar">
+        <button class="title-menu" title="应用菜单（File / View / Help）" aria-label="Application menu">
+          <svg class="icon"><use href="#i-menu"/></svg>
+        </button>
+        <div class="tabs">
+          <div class="tab active" title="使用AI弄知识库">
+            <svg class="icon" style="width:14px;height:14px;color:var(--accent)"><use href="#i-doc"/></svg>
+            <span class="tab-label">使用AI弄知识库</span>
+            <span class="tab-close"><svg class="icon"><use href="#i-close"/></svg></span>
+          </div>
+          <button class="icon-button new-tab" title="New tab"><svg class="icon"><use href="#i-plus"/></svg></button>
+        </div>
+        <div class="titlebar-spacer"></div>
+        <div class="window-actions">
+          <button class="window-button theme-button" id="themeToggle" title="切换明暗主题">
+            <svg class="icon sun"><use href="#i-sun"/></svg>
+            <svg class="icon moon" style="display:none"><use href="#i-moon"/></svg>
+          </button>
+          <button class="window-button" title="Pin"><svg class="icon"><use href="#i-pin"/></svg></button>
+          <button class="window-button" title="Minimize"><svg class="icon"><use href="#i-min"/></svg></button>
+          <button class="window-button" title="Maximize"><svg class="icon"><use href="#i-max"/></svg></button>
+          <button class="window-button close" title="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+        </div>
+      </header>
+
+      <div class="docbar">
+        <button class="doc-action" title="Back (Ctrl+Alt+←)"><svg class="icon"><use href="#i-back"/></svg></button>
+        <button class="doc-action" title="Forward (Ctrl+Alt+→)"><svg class="icon"><use href="#i-forward"/></svg></button>
+        <button class="doc-action starred" title="Bookmark (Ctrl+D)"><svg class="icon fill"><use href="#i-star"/></svg></button>
+        <button class="doc-action" title="Copy document path"><svg class="icon"><use href="#i-copy"/></svg></button>
+        <span class="doc-sep"></span>
+        <div class="breadcrumb">
+          <span class="crumb">AI Agent</span>
+          <span class="slash">/</span>
+          <span class="crumb current">使用AI弄知识库</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="find-wrap">
+          <div class="find">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <span class="placeholder">在当前文档中查找 (Ctrl+F)</span>
+          </div>
+          <span class="find-count">1 / 2</span>
+          <button class="find-nav" title="Previous match (Shift+Enter)"><svg class="icon"><use href="#i-chevron-up"/></svg></button>
+          <button class="find-nav" title="Next match (Enter)"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
+        </div>
+        <span class="doc-sep"></span>
+        <button class="doc-action" title="Outline"><svg class="icon"><use href="#i-outline"/></svg></button>
+        <button class="doc-action" title="Reading appearance"><svg class="icon"><use href="#i-sliders"/></svg></button>
+        <button class="doc-action" title="Zoom out"><svg class="icon"><use href="#i-zoom-out"/></svg></button>
+        <span style="min-width:34px;text-align:center;color:var(--text-muted);font-size:11px">100%</span>
+        <button class="doc-action" title="Zoom in"><svg class="icon"><use href="#i-zoom-in"/></svg></button>
+        <button class="doc-action" title="Export"><svg class="icon"><use href="#i-export"/></svg></button>
+      </div>
+
+      <div class="content-row">
+        <main class="reader">
+          <article class="article">
+            <h1>使用AI弄知识库</h1>
+            <div class="frontmatter">title: "基于 AI Agent 的知识库 V1"
+date: 2026-11-18
+type: 知识库
+tags: [daily]
+mood: productive
+highlights:
+  - "开始正规知识库的好处了"
+  - "完成了知识库初始化脚本"</div>
+
+            <h2>基于 AI Agent 的知识库 V1</h2>
+            <div class="callout">
+              <svg class="icon"><use href="#i-info"/></svg>
+              <div>写了一个脚本来初始化一个目录。快速做好目录雏形，然后收集资料，提示 AI Agent 分析整理，然后再自己整理。</div>
+            </div>
+
+            <h2>1. 脚本</h2>
+            <p class="muted">新建一个 ps1 文件，贴以下内容：</p>
+            <div class="code-card">
+              <div class="code-head"><span>PowerShell</span><span class="lang">UTF-8</span></div>
+              <pre class="code-body"><span class="tok-com">#Requires -Version 5.1</span>
+<span class="tok-var">$ErrorActionPreference</span> = <span class="tok-str">'Continue'</span>
+
+<span class="tok-fn">Write-Host</span> <span class="tok-str">"================================================"</span>
+<span class="tok-fn">Write-Host</span> <span class="tok-str">"项目初始化脚本"</span>
+<span class="tok-fn">Write-Host</span> <span class="tok-str">"当前目录: $PWD"</span>
+<span class="tok-fn">Write-Host</span> <span class="tok-str">"================================================"</span>
+
+<span class="tok-com"># ===== 用户确认 =====</span>
+<span class="tok-fn">Write-Host</span> <span class="tok-str">""</span>
+<span class="tok-fn">Write-Host</span> <span class="tok-str">"按 Enter 确认在当前目录初始化，按 Esc 退出..."</span>
+<span class="tok-key">do</span> { <span class="tok-var">$k</span> = [<span class="tok-fn">Console</span>]::<span class="tok-fn">ReadKey</span>(<span class="tok-var">$true</span>) } <span class="tok-key">while</span> (<span class="tok-var">$k</span>.Key <span class="tok-key">-ne</span> <span class="tok-str">'Enter'</span> <span class="tok-key">-and</span>
+       <span class="tok-var">$k</span>.Key <span class="tok-key">-ne</span> <span class="tok-str">'Escape'</span>)</pre>
+            </div>
+
+            <h2>2. 操作</h2>
+            <p>脚本只负责把目录骨架建起来，真正的知识沉淀仍然靠后面的日常采集与周期性整理。</p>
+            <ul>
+              <li>新建主题目录，保持一层结构，避免分类过深。</li>
+              <li>把原始资料先放进 inbox，不做即时分类。</li>
+              <li>每周把 inbox 交给 Agent 做一次归并，再人工确认。</li>
+            </ul>
+
+            <h2>3. 怎么用？</h2>
+            <h3>3.1 第一次打开：初始化配置</h3>
+            <p>选择工作区根目录，确认模板、索引文件与采集目录的位置。初始化完成后，侧栏会自动显示文档树。</p>
+            <h3>3.2 日常采集：只做“扔进去”</h3>
+            <p>看到值得留下的内容，先放进 raw/inbox。不要在采集阶段做分类，分类会打断阅读。</p>
+            <h3>3.3 AI 整理：把 Raw 喂给 Agent</h3>
+            <p>把一批 raw 文档连同标签一起交给 Agent，让它输出候选主题和引用关系，再由人做最终取舍。</p>
+            <h3>3.4 产出：从 Wiki 到 Outputs</h3>
+            <p>稳定的主题进入 wiki，面向外部的内容再进入 outputs。两者不混在一起。</p>
+            <h3>3.5 周期性回顾：别让 Raw 变成垃圾场</h3>
+            <p>每周固定一次回顾，把无法归并的条目删掉或退回采集池。</p>
+            <h3>3.6 一句话流程</h3>
+            <p>采集 → 归并 → 确认 → 沉淀 → 输出。</p>
+          </article>
+        </main>
+
+        <aside class="outline">
+          <div class="outline-head">
+            <svg class="icon"><use href="#i-outline"/></svg>
+            <span>Outline</span>
+          </div>
+          <div class="outline-list">
+            <div class="outline-item ol-1"><span class="outline-twisty"></span><span>基于 AI Agent 的知识库 V1</span></div>
+            <div class="outline-item ol-2"><span class="outline-twisty"></span><span>1. 脚本</span></div>
+            <div class="outline-item ol-2"><span class="outline-twisty"></span><span>2. 操作</span></div>
+            <div class="outline-item ol-2 current"><span class="outline-twisty"><svg class="icon"><use href="#i-chevron-down"/></svg></span><span>3. 怎么用？</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.1 第一次打开：Obsidian 配置</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.2 日常采集：只做“扔进去”</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.3 AI 整理：把 Raw 喂给 Agent</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.4 产出：从 Wiki 到 Outputs</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.5 周期性回顾：别让 Raw 变成垃圾场</span></div>
+            <div class="outline-item ol-3"><span class="outline-twisty"></span><span>3.6 一句话流程</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <div class="splitter" id="splitter" title="拖动调整侧栏宽度"></div>
+  </div>
+
+  <footer class="statusbar">
+    <span class="status-item status-ok"><span class="status-dot"></span><span>就绪</span></span>
+    <span class="grow"></span>
+    <span>2 标签页</span>
+    <span>17 篇</span>
+    <span>约 20 分钟</span>
+    <span class="status-item"><span>formula:auto · mermaid:auto · resvg</span></span>
+  </footer>
+</div>
+
+<script>
+  const root = document.documentElement;
+  const body = document.body;
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  const splitter = document.getElementById('splitter');
+  const workspace = document.getElementById('workspace');
+  const sidebarTitle = document.getElementById('sidebarTitle');
+  const railButtons = [...document.querySelectorAll('.rail-button[data-view]')];
+
+  const MIN_SIDEBAR = 220;
+  const MAX_SIDEBAR = 460;
+  let sidebarWidth = 300;
+  let collapsed = false;
+  let dragging = false;
+
+  function applySidebar() {
+    root.style.setProperty('--sidebar-w', collapsed ? '0px' : sidebarWidth + 'px');
+    body.classList.toggle('sidebar-collapsed', collapsed);
+    sidebarToggle.setAttribute('aria-pressed', String(!collapsed));
+    sidebarToggle.title = collapsed ? '展开侧栏 (Ctrl+B)' : '收起侧栏 (Ctrl+B)';
+  }
+
+  function toggleSidebar(force) {
+    collapsed = typeof force === 'boolean' ? force : !collapsed;
+    applySidebar();
+  }
+
+  sidebarToggle.addEventListener('click', () => toggleSidebar());
+
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+      const target = event.target;
+      if (target && target.closest('input, textarea, [contenteditable]')) return;
+      event.preventDefault();
+      toggleSidebar();
+    }
+  });
+
+  railButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const wasActive = button.classList.contains('active');
+      railButtons.forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      sidebarTitle.textContent = button.dataset.view;
+      if (wasActive && !collapsed) {
+        toggleSidebar(true);
+      } else {
+        toggleSidebar(false);
+      }
+    });
+  });
+
+  splitter.addEventListener('pointerdown', (event) => {
+    if (collapsed) return;
+    dragging = true;
+    body.classList.add('dragging');
+    splitter.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  splitter.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const left = workspace.getBoundingClientRect().left;
+    const next = event.clientX - left - 42;
+    sidebarWidth = Math.max(MIN_SIDEBAR, Math.min(MAX_SIDEBAR, next));
+    applySidebar();
+  });
+
+  function endDrag(event) {
+    if (!dragging) return;
+    dragging = false;
+    body.classList.remove('dragging');
+    if (splitter.hasPointerCapture(event.pointerId)) {
+      splitter.releasePointerCapture(event.pointerId);
+    }
+  }
+  splitter.addEventListener('pointerup', endDrag);
+  splitter.addEventListener('pointercancel', endDrag);
+
+  const themeToggle = document.getElementById('themeToggle');
+  const sun = themeToggle.querySelector('.sun');
+  const moon = themeToggle.querySelector('.moon');
+  themeToggle.addEventListener('click', () => {
+    const dark = root.dataset.theme !== 'light';
+    root.dataset.theme = dark ? 'light' : 'dark';
+    sun.style.display = dark ? 'none' : 'block';
+    moon.style.display = dark ? 'block' : 'none';
+  });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('theme') === 'light') {
+    root.dataset.theme = 'light';
+    sun.style.display = 'none';
+    moon.style.display = 'block';
+  }
+  if (params.get('collapsed') === '1') {
+    collapsed = true;
+  }
+  applySidebar();
+</script>
+</body>
+</html>

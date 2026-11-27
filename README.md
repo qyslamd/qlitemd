@@ -363,6 +363,8 @@ integration for host-side policy such as link handling and settings.
 - `tests/markdown_view/` — headless widget GoogleTest suite
 - `tests/qt_md_viewer/` — headless tests for the example's tree/search/bookmark modules
 - `cmake/` — package config template and test helpers
+- `demo/shell/` — optional QWindowKit/FluentTitleBar shell experiments
+  (`QLITEMD_BUILD_SHELL_DEMOS`, off by default)
 - `scripts/` — release packaging helpers (Qt source SDK); the Inno Setup
   script lives in `scripts/installer/`
 - `3rdparty/` — pinned, patched dependency snapshots; `3rdparty/patches/`

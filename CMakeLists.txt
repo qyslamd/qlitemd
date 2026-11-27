@@ -62,6 +62,8 @@ else()
 endif()
 
 option(QLITEMD_BUILD_TESTS "Build qlitemd tests" ${_qlitemd_tests_default})
+option(QLITEMD_BUILD_SHELL_DEMOS
+    "Build QWindowKit shell integration demos" OFF)
 option(QLITEMD_BUILD_QT_WIDGET
     "Build the Qt markdown_view component" ON)
 option(QLITEMD_BUILD_QT_MD_VIEWER
@@ -489,6 +491,9 @@ endif()
 # ------------------------------------------------------------- viewer
 if(QLITEMD_BUILD_QT_MD_VIEWER)
     add_subdirectory(apps/qt_md_viewer)
+    if(QLITEMD_BUILD_SHELL_DEMOS)
+        add_subdirectory(demo/shell)
+    endif()
 endif()
 if(QLITEMD_BUILD_QT_MD_OBSERVATORY)
     add_subdirectory(apps/qt_md_observatory)
