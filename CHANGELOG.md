@@ -6,11 +6,31 @@ Release for details.
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-27
+
 ### Added
 
 - The document bar carries an export menu (HTML, PDF). Both actions stay in
   the File menu and the command palette; the button shares the same
   `QAction`s and yields first on narrow windows (hidden below 900 px).
+- Settings now has a General page with `Reset Layout` and
+  `Reset Preferences`. Resetting preferences keeps documents, bookmarks,
+  recent files and reading positions.
+- First launch without `qt_md_viewer.ini` uses a centered 1240x820 window
+  and proportional three-column defaults; saved layouts always win.
+
+### Changed
+
+- `qt_md_viewer` uses an editor-style shell: the activity bar and sidebar
+  reach the window's top edge, the Fluent title bar covers only the right
+  column, and a top-left button (Ctrl+B) collapses the sidebar. The
+  tab strip and document toolbar start at the sidebar edge.
+
+### Fixed
+
+- Restoring a session before the nested layout was shown could render the
+  placeholder at a degenerate viewport and crash litehtml. The window is
+  shown first, and splitter sizes are re-applied once on first show.
 
 ### Removed
 
