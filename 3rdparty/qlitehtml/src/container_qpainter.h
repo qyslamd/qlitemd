@@ -6,6 +6,7 @@
 #include "qlitehtml_global.h"
 
 #include <QByteArray>
+#include <QColor>
 #include <QPaintDevice>
 #include <QPainter>
 #include <QPixmap>
@@ -97,6 +98,9 @@ public: // outside API
     QString caption() const;
     QString selectedText() const;
     void clearSelection();
+    void setSearchHighlightColor(const QColor &color);
+    QColor searchHighlightColor() const;
+    bool isSearchSelection() const;
 
     void findText(const QString &text,
                   QTextDocument::FindFlags flags,

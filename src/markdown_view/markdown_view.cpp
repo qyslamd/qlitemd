@@ -306,6 +306,13 @@ QString LoadDefaultCss(MarkdownTheme theme) {
   return DefaultCssFromResources(theme);
 }
 
+QColor SearchHighlightColor(MarkdownTheme theme) {
+  // Keep the document mark in the same color family as the side-panel search
+  // results. The alpha keeps the underlying text color readable.
+  return theme == MarkdownTheme::Dark ? QColor(255, 214, 102, 90)
+                                      : QColor(255, 196, 0, 72);
+}
+
 QString WrapDocument(const QString& body, const QString& css) {
   // 正文包一层 .md-page：限宽/居中/内边距都在这一层做。qlitehtml 里 body
   // 的尺寸恒等于视口（container_qpainter.cpp 的 hit-test 注释），body 上写
@@ -577,6 +584,7 @@ void MarkdownView::initUi() {
 
   html_ = new QLiteHtmlWidget(this);
   html_->setObjectName(QStringLiteral("markdownHtml"));
+  html_->setSearchHighlightColor(SearchHighlightColor(theme_));
   // 只换族、保留 QLiteHtmlWidget 默认的 16pt 字号：litehtml 拿默认字号的
   // 点数当像素基准，整份替换成应用字体的 9pt 会把没有显式字号的元素
   // （表格等）压小一档
@@ -1196,6 +1204,7 @@ void MarkdownView::SetTheme(MarkdownTheme theme) {
     WarnThemeCssMismatch();
   }
   theme_ = theme;
+  html_->setSearchHighlightColor(SearchHighlightColor(theme));
   ReapplyDocument();
 }
 

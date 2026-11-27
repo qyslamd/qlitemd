@@ -660,6 +660,22 @@ void QLiteHtmlWidget::clearSelection()
     viewport()->update();
 }
 
+void QLiteHtmlWidget::setSearchHighlightColor(const QColor &color)
+{
+    d->documentContainer.setSearchHighlightColor(color);
+    viewport()->update();
+}
+
+QColor QLiteHtmlWidget::searchHighlightColor() const
+{
+    return d->documentContainer.searchHighlightColor();
+}
+
+bool QLiteHtmlWidget::isSearchSelection() const
+{
+    return d->documentContainer.isSearchSelection();
+}
+
 QUrl QLiteHtmlWidget::imageAt(const QPoint &viewportPos) const
 {
     if (!d->documentContainer.hasDocument())

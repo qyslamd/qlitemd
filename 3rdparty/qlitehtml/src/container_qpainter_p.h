@@ -9,6 +9,7 @@
 
 #include <QBuffer>
 #include <QByteArray>
+#include <QColor>
 #include <QElapsedTimer>
 #include <QMovie>
 #include <QObject>
@@ -50,6 +51,9 @@ public:
     QPoint selectionStartDocumentPos;
     Mode mode = Mode::Free;
     bool isSelecting = false;
+    // True when findText() owns the selection. Search matches use a separate
+    // highlight color and must not be mistaken for a user selection.
+    bool search = false;
 };
 
 // An image that has more than one frame, e.g. an animated GIF or WebP.
@@ -194,6 +198,7 @@ public: // document_container API
     DocumentContainer::PaletteCallback m_paletteCallback;
     DocumentContainer::ClipboardCallback m_clipboardCallback;
     DocumentContainer::RepaintCallback m_repaintCallback;
+    QColor m_searchHighlightColor;
     bool m_blockLinks = false;
     bool m_linkActivated = false;
 };

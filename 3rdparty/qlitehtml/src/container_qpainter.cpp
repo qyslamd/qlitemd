@@ -891,7 +891,11 @@ void DocumentContainerPrivate::drawSelection(QPainter *painter, const QRect &cli
     for (const QRectF &r : m_selection.selection) {
         const QRectF clientRect = r.translated(-m_scrollPosition.x(), -m_scrollPosition.y());
         const QPalette palette = m_paletteCallback();
-        painter->fillRect(clientRect, palette.brush(QPalette::Highlight));
+        const QBrush highlight =
+            m_selection.search && m_searchHighlightColor.isValid()
+                ? QBrush(m_searchHighlightColor)
+                : palette.brush(QPalette::Highlight);
+        painter->fillRect(clientRect, highlight);
     }
     painter->restore();
 }
@@ -1580,6 +1584,21 @@ void DocumentContainer::clearSelection()
     d->clearSelection();
 }
 
+void DocumentContainer::setSearchHighlightColor(const QColor &color)
+{
+    d->m_searchHighlightColor = color;
+}
+
+QColor DocumentContainer::searchHighlightColor() const
+{
+    return d->m_searchHighlightColor;
+}
+
+bool DocumentContainer::isSearchSelection() const
+{
+    return d->m_selection.search;
+}
+
 void DocumentContainer::findText(const QString &text,
                                  QTextDocument::FindFlags flags,
                                  bool incremental,
@@ -1669,6 +1688,7 @@ void DocumentContainer::findText(const QString &text,
         d->m_selection.startElem = fillXPos({startEntry.second, foundIndex - startEntry.first, -1});
         d->m_selection.endElem = fillXPos(
             {endEntry.second, int(foundIndex + text.size() - endEntry.first), -1});
+        d->m_selection.search = true;
         d->updateSelection();
         if (newSelection) {
             for (const QRectF &r : std::as_const(d->m_selection.selection))

@@ -1,9 +1,12 @@
 // 选择边界的回归：空行不是独立元素，而是块之间的 margin。光标落在
 // margin/容器上时，不能把整个 .md-page/body 当成"整个元素已选中"。
 #include <QApplication>
+#include <QColor>
+#include <QImage>
 #include <QMouseEvent>
 #include <QPoint>
 #include <QTest>
+#include <QTextDocument>
 
 #include <gtest/gtest.h>
 
@@ -194,4 +197,41 @@ TEST(QliteHtmlSelectionTest, TextUsesIBeamCursorAndGapUsesArrow) {
   SendMouse(&view, QEvent::MouseMove, QPoint(12, 60), Qt::NoButton,
             Qt::NoButton);
   EXPECT_EQ(view.viewport()->cursor().shape(), Qt::ArrowCursor);
+}
+
+constexpr char kSearchHtml[] =
+    "<html><head><style>"
+    "html,body{margin:0;padding:0;background:#fff;color:#000}"
+    "#page{padding:10px;width:320px;font-size:20px;line-height:40px}"
+    "</style></head><body><div id='page'>alpha beta gamma</div>"
+    "</body></html>";
+
+TEST(QliteHtmlSelectionTest, SearchMatchUsesItsOwnHighlightColor) {
+  TestLiteHtmlWidget view;
+  ShowHtml(&view, kSearchHtml);
+  const QColor amber(255, 196, 0, 72);
+  view.setSearchHighlightColor(amber);
+  ASSERT_TRUE(
+      view.findText(QStringLiteral("beta"), QTextDocument::FindFlags(), false));
+  EXPECT_TRUE(view.isSearchSelection());
+  EXPECT_EQ(view.searchHighlightColor(), amber);
+
+  const QImage image = view.grab().toImage();
+  int amber_pixels = 0;
+  for (int y = 0; y < image.height(); ++y) {
+    for (int x = 0; x < image.width(); ++x) {
+      const QColor pixel = image.pixelColor(x, y);
+      if (qAbs(pixel.red() - 255) <= 3 && qAbs(pixel.green() - 238) <= 4 &&
+          qAbs(pixel.blue() - 183) <= 4) {
+        ++amber_pixels;
+      }
+    }
+  }
+  EXPECT_GT(amber_pixels, 20) << "search highlight is not the configured amber";
+
+  SendMouse(&view, QEvent::MouseButtonPress, QPoint(12, 20), Qt::LeftButton,
+            Qt::LeftButton);
+  SendMouse(&view, QEvent::MouseButtonRelease, QPoint(12, 20), Qt::LeftButton,
+            Qt::NoButton);
+  EXPECT_FALSE(view.isSearchSelection());
 }

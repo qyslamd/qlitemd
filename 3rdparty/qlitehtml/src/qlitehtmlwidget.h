@@ -6,6 +6,7 @@
 #include "qlitehtml_global.h"
 
 #include <QAbstractScrollArea>
+#include <QColor>
 #include <QElapsedTimer>
 #include <QPoint>
 #include <QPixmap>
@@ -70,6 +71,11 @@ public:
     // declaring this Q_INVOKABLE to make it Squish-testable
     Q_INVOKABLE QString selectedText() const;
     void clearSelection();
+    // Configure the search match background. An invalid color falls back to
+    // QPalette::Highlight.
+    void setSearchHighlightColor(const QColor &color);
+    QColor searchHighlightColor() const;
+    bool isSearchSelection() const;
 
     // Hit test in viewport coordinates. Returns an empty QUrl when the point
     // does not land on an image.

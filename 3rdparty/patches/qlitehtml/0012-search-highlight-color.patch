@@ -1,0 +1,150 @@
+diff --git a/src/container_qpainter.cpp b/src/container_qpainter.cpp
+index ca4a4a9..2026c41 100644
+--- a/src/container_qpainter.cpp
++++ b/src/container_qpainter.cpp
+@@ -891,7 +891,11 @@ void DocumentContainerPrivate::drawSelection(QPainter *painter, const QRect &cli
+     for (const QRectF &r : m_selection.selection) {
+         const QRectF clientRect = r.translated(-m_scrollPosition.x(), -m_scrollPosition.y());
+         const QPalette palette = m_paletteCallback();
+-        painter->fillRect(clientRect, palette.brush(QPalette::Highlight));
++        const QBrush highlight =
++            m_selection.search && m_searchHighlightColor.isValid()
++                ? QBrush(m_searchHighlightColor)
++                : palette.brush(QPalette::Highlight);
++        painter->fillRect(clientRect, highlight);
+     }
+     painter->restore();
+ }
+@@ -1580,6 +1584,21 @@ void DocumentContainer::clearSelection()
+     d->clearSelection();
+ }
+ 
++void DocumentContainer::setSearchHighlightColor(const QColor &color)
++{
++    d->m_searchHighlightColor = color;
++}
++
++QColor DocumentContainer::searchHighlightColor() const
++{
++    return d->m_searchHighlightColor;
++}
++
++bool DocumentContainer::isSearchSelection() const
++{
++    return d->m_selection.search;
++}
++
+ void DocumentContainer::findText(const QString &text,
+                                  QTextDocument::FindFlags flags,
+                                  bool incremental,
+@@ -1669,6 +1688,7 @@ void DocumentContainer::findText(const QString &text,
+         d->m_selection.startElem = fillXPos({startEntry.second, foundIndex - startEntry.first, -1});
+         d->m_selection.endElem = fillXPos(
+             {endEntry.second, int(foundIndex + text.size() - endEntry.first), -1});
++        d->m_selection.search = true;
+         d->updateSelection();
+         if (newSelection) {
+             for (const QRectF &r : std::as_const(d->m_selection.selection))
+diff --git a/src/container_qpainter.h b/src/container_qpainter.h
+index 6b14546..b8301e4 100644
+--- a/src/container_qpainter.h
++++ b/src/container_qpainter.h
+@@ -6,6 +6,7 @@
+ #include "qlitehtml_global.h"
+ 
+ #include <QByteArray>
++#include <QColor>
+ #include <QPaintDevice>
+ #include <QPainter>
+ #include <QPixmap>
+@@ -97,6 +98,9 @@ public: // outside API
+     QString caption() const;
+     QString selectedText() const;
+     void clearSelection();
++    void setSearchHighlightColor(const QColor &color);
++    QColor searchHighlightColor() const;
++    bool isSearchSelection() const;
+ 
+     void findText(const QString &text,
+                   QTextDocument::FindFlags flags,
+diff --git a/src/container_qpainter_p.h b/src/container_qpainter_p.h
+index 4f33c99..eaa8220 100644
+--- a/src/container_qpainter_p.h
++++ b/src/container_qpainter_p.h
+@@ -9,6 +9,7 @@
+ 
+ #include <QBuffer>
+ #include <QByteArray>
++#include <QColor>
+ #include <QElapsedTimer>
+ #include <QMovie>
+ #include <QObject>
+@@ -50,6 +51,9 @@ public:
+     QPoint selectionStartDocumentPos;
+     Mode mode = Mode::Free;
+     bool isSelecting = false;
++    // True when findText() owns the selection. Search matches use a separate
++    // highlight color and must not be mistaken for a user selection.
++    bool search = false;
+ };
+ 
+ // An image that has more than one frame, e.g. an animated GIF or WebP.
+@@ -194,6 +198,7 @@ public: // document_container API
+     DocumentContainer::PaletteCallback m_paletteCallback;
+     DocumentContainer::ClipboardCallback m_clipboardCallback;
+     DocumentContainer::RepaintCallback m_repaintCallback;
++    QColor m_searchHighlightColor;
+     bool m_blockLinks = false;
+     bool m_linkActivated = false;
+ };
+diff --git a/src/qlitehtmlwidget.cpp b/src/qlitehtmlwidget.cpp
+index 330cc3c..8caa0fb 100644
+--- a/src/qlitehtmlwidget.cpp
++++ b/src/qlitehtmlwidget.cpp
+@@ -660,6 +660,22 @@ void QLiteHtmlWidget::clearSelection()
+     viewport()->update();
+ }
+ 
++void QLiteHtmlWidget::setSearchHighlightColor(const QColor &color)
++{
++    d->documentContainer.setSearchHighlightColor(color);
++    viewport()->update();
++}
++
++QColor QLiteHtmlWidget::searchHighlightColor() const
++{
++    return d->documentContainer.searchHighlightColor();
++}
++
++bool QLiteHtmlWidget::isSearchSelection() const
++{
++    return d->documentContainer.isSearchSelection();
++}
++
+ QUrl QLiteHtmlWidget::imageAt(const QPoint &viewportPos) const
+ {
+     if (!d->documentContainer.hasDocument())
+diff --git a/src/qlitehtmlwidget.h b/src/qlitehtmlwidget.h
+index ae365a2..da278c8 100644
+--- a/src/qlitehtmlwidget.h
++++ b/src/qlitehtmlwidget.h
+@@ -6,6 +6,7 @@
+ #include "qlitehtml_global.h"
+ 
+ #include <QAbstractScrollArea>
++#include <QColor>
+ #include <QElapsedTimer>
+ #include <QPoint>
+ #include <QPixmap>
+@@ -70,6 +71,11 @@ public:
+     // declaring this Q_INVOKABLE to make it Squish-testable
+     Q_INVOKABLE QString selectedText() const;
+     void clearSelection();
++    // Configure the search match background. An invalid color falls back to
++    // QPalette::Highlight.
++    void setSearchHighlightColor(const QColor &color);
++    QColor searchHighlightColor() const;
++    bool isSearchSelection() const;
+ 
+     // Hit test in viewport coordinates. Returns an empty QUrl when the point
+     // does not land on an image.
