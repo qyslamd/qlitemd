@@ -84,13 +84,14 @@ int main(int argc, char** argv) {
   }
 
   MdViewerWindow window(&settings);
-  // 恢复要在 show 前完成：树、文档、滚动位置一次性就位
+  // 新外壳是嵌套 splitter，show() 之前视口只有最小尺寸；先 show 再恢复，
+  // 避免 litehtml 在退化尺寸下做首次布局
+  window.show();
   const QString path = FirstPathArgument(app.arguments());
   if (!path.isEmpty()) {
     window.OpenPath(path);
   } else {
     window.RestoreSession();
   }
-  window.show();
   return app.exec();
 }

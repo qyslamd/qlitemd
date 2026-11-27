@@ -52,7 +52,10 @@ class DocumentTabBar;
 class ReaderPage;
 class SettingsDialog;
 class WelcomeView;
-class FluentWindowFrame;
+class FluentTitleBar;
+namespace QWK {
+class WidgetWindowAgent;
+}  // namespace QWK
 class MarkdownOutlineWidget;
 class MarkdownView;
 class QuickOpenPopup;
@@ -99,6 +102,7 @@ class MdViewerWindow : public QMainWindow {
   void dragMoveEvent(QDragMoveEvent* event) override;
   void dropEvent(QDropEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
+  void showEvent(QShowEvent* event) override;
   bool eventFilter(QObject* watched, QEvent* event) override;
   QMenu* createPopupMenu() override;
 
@@ -145,6 +149,10 @@ class MdViewerWindow : public QMainWindow {
   void EnsureSideView(SideView view);
   // 只切活动栏状态、标题与侧栏页，不碰可见性和持久化
   void ApplySideView(SideView view);
+  // 侧栏显隐唯一入口：同步收起按钮、动作与布局状态；收起前记下宽度
+  void ApplySidebarVisible(bool visible);
+  // 清掉全部 backdrop 属性后按 key 重新设置；空 key 等于关闭材质
+  bool SetWindowBackdrop(const QString& key);
   void UpdateOutlineVisibility();
   void ApplySplitterSizes();
   void FindInDocument(const QString& query, bool backward);
@@ -259,6 +267,7 @@ class MdViewerWindow : public QMainWindow {
     QAction* settings = nullptr;
     QAction* bookmark = nullptr;
     QAction* refresh = nullptr;
+    QAction* toggle_sidebar = nullptr;
     QAction* material_auto = nullptr;
     QAction* material_acrylic = nullptr;
     QAction* material_none = nullptr;
@@ -312,8 +321,17 @@ class MdViewerWindow : public QMainWindow {
   };
   std::optional<PendingJump> pending_search_hit_;
 
-  // 无边框窗口壳（QWK + Fluent 标题栏）
-  FluentWindowFrame* fluent_frame_ = nullptr;
+  // 无边框窗口壳：窗口直接持有 QWK agent，FluentTitleBar 嵌在右列
+  QWK::WidgetWindowAgent* window_agent_ = nullptr;
+  FluentTitleBar* title_bar_ = nullptr;
+  // 外壳左右分栏：左=活动栏+侧栏（直达窗口顶部），右=标题栏+工具条+内容
+  QSplitter* shell_splitter_ = nullptr;
+  QWidget* left_shell_ = nullptr;
+  QWidget* right_shell_ = nullptr;
+  // ApplySidebarVisible 重入保护：内部 setChecked 会再次触发信号
+  bool applying_sidebar_ = false;
+  // show 之后 splitter 才有真实宽度，首次显示再落一次保存的尺寸
+  bool shell_sizes_applied_ = false;
   SettingsDialog* settings_dialog_ = nullptr;
   ActivityBar* activity_bar_ = nullptr;
   // 侧栏自己持有标题与四页栈；窗口只负责显隐和切视图

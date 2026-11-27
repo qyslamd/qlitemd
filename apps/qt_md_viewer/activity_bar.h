@@ -23,6 +23,8 @@ class ActivityBar : public QFrame {
 
   QToolButton* button(SideView view) const;
   QToolButton* settings_button() const { return settings_button_; }
+  // 顶部常驻的侧栏收起按钮；显隐状态由宿主用 setChecked 同步
+  QToolButton* sidebar_toggle_button() const { return sidebar_toggle_button_; }
 
  signals:
   void viewActivated(SideView view);
@@ -36,6 +38,7 @@ class ActivityBar : public QFrame {
   QButtonGroup* group_ = nullptr;
   QVector<QToolButton*> buttons_;
   QToolButton* settings_button_ = nullptr;
+  QToolButton* sidebar_toggle_button_ = nullptr;
   SideView active_view_ = SideView::kDocuments;
 };
 

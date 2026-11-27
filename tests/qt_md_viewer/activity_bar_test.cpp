@@ -34,6 +34,14 @@ TEST(ActivityBarTest, HasFourViewsWithObjectNames) {
   EXPECT_FALSE(bar.button(SideView::kDocuments)->isChecked());
 }
 
+TEST(ActivityBarTest, SidebarToggleButtonIsAlwaysAtTheTop) {
+  ActivityBar bar;
+  auto* toggle = bar.sidebar_toggle_button();
+  ASSERT_NE(toggle, nullptr);
+  EXPECT_EQ(toggle->objectName(), QStringLiteral("sidebarToggleButton"));
+  EXPECT_TRUE(toggle->isCheckable());
+}
+
 TEST(ActivityBarTest, SettingsButtonSitsAtTheBottom) {
   ActivityBar bar;
   auto* settings = bar.settings_button();

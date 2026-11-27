@@ -26,7 +26,10 @@ void SidePanel::initUi() {
 
   title_ = new QLabel(SideViewTitle(SideView::kDocuments), this);
   title_->setObjectName(QStringLiteral("sidePanelTitle"));
-  title_->setContentsMargins(10, 8, 10, 4);
+  // 与右列标题栏（42px）同行对齐
+  title_->setFixedHeight(42);
+  title_->setContentsMargins(12, 0, 10, 0);
+  title_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
   QFont title_font = title_->font();
   title_font.setBold(true);
   title_->setFont(title_font);

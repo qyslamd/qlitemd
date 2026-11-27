@@ -5,31 +5,36 @@
     <name>ActivityBar</name>
     <message>
         <location filename="../activity_bar.cpp" line="46"/>
+        <source>Toggle Sidebar (Ctrl+B)</source>
+        <translation>收起/展开侧栏（Ctrl+B）</translation>
+    </message>
+    <message>
+        <location filename="../activity_bar.cpp" line="54"/>
         <source>Documents (Ctrl+Shift+E)</source>
         <translation>文档（Ctrl+Shift+E）</translation>
     </message>
     <message>
-        <location filename="../activity_bar.cpp" line="48"/>
+        <location filename="../activity_bar.cpp" line="56"/>
         <source>Search (Ctrl+Shift+F)</source>
         <translation>搜索（Ctrl+Shift+F）</translation>
     </message>
     <message>
-        <location filename="../activity_bar.cpp" line="50"/>
+        <location filename="../activity_bar.cpp" line="58"/>
         <source>Bookmarks (Ctrl+Shift+B)</source>
         <translation>收藏（Ctrl+Shift+B）</translation>
     </message>
     <message>
-        <location filename="../activity_bar.cpp" line="52"/>
+        <location filename="../activity_bar.cpp" line="60"/>
         <source>Render Status (Ctrl+Shift+R)</source>
         <translation>渲染状态（Ctrl+Shift+R）</translation>
     </message>
     <message>
-        <location filename="../activity_bar.cpp" line="72"/>
+        <location filename="../activity_bar.cpp" line="80"/>
         <source>Settings (Ctrl+,)</source>
         <translation>设置（Ctrl+,）</translation>
     </message>
     <message>
-        <location filename="../activity_bar.cpp" line="73"/>
+        <location filename="../activity_bar.cpp" line="81"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -50,17 +55,17 @@
 <context>
     <name>DocumentBar</name>
     <message>
-        <location filename="../top_tool_bar.cpp" line="125"/>
+        <location filename="../top_tool_bar.cpp" line="107"/>
         <source>Back (Ctrl+Alt+←)</source>
         <translation>后退（Ctrl+Alt+←）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="127"/>
+        <location filename="../top_tool_bar.cpp" line="109"/>
         <source>Forward (Ctrl+Alt+→)</source>
         <translation>前进（Ctrl+Alt+→）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="129"/>
+        <location filename="../top_tool_bar.cpp" line="111"/>
         <source>Bookmark Current Document (Ctrl+D)</source>
         <translation>收藏当前文档（Ctrl+D）</translation>
     </message>
@@ -69,52 +74,52 @@
         <translation type="vanished">复制</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="152"/>
+        <location filename="../top_tool_bar.cpp" line="119"/>
         <source>Copy current document path</source>
         <translation>复制当前文档路径</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="165"/>
+        <location filename="../top_tool_bar.cpp" line="134"/>
         <source>Find in Current Document (Ctrl+F)</source>
         <translation>在当前文档中查找（Ctrl+F）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="181"/>
+        <location filename="../top_tool_bar.cpp" line="148"/>
         <source>Previous Match (Shift+Enter)</source>
         <translation>上一个匹配（Shift+Enter）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="185"/>
+        <location filename="../top_tool_bar.cpp" line="152"/>
         <source>Next Match (Enter)</source>
         <translation>下一个匹配（Enter）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="199"/>
+        <location filename="../top_tool_bar.cpp" line="166"/>
         <source>Outline (Ctrl+Shift+O)</source>
         <translation>大纲（Ctrl+Shift+O）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="205"/>
+        <location filename="../top_tool_bar.cpp" line="172"/>
         <source>Reading appearance (font size, line height, measure)</source>
         <translation>阅读外观（字号、行距、栏宽）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="214"/>
+        <location filename="../top_tool_bar.cpp" line="181"/>
         <source>Zoom Out (Ctrl+-)</source>
         <translation>缩小（Ctrl+-）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="220"/>
+        <location filename="../top_tool_bar.cpp" line="187"/>
         <source>Reset Zoom (Ctrl+0)</source>
         <translation>重置缩放（Ctrl+0）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="223"/>
+        <location filename="../top_tool_bar.cpp" line="190"/>
         <source>Zoom In (Ctrl+=)</source>
         <translation>放大（Ctrl+=）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="239"/>
+        <location filename="../top_tool_bar.cpp" line="206"/>
         <source>Export… (HTML, PDF)</source>
         <translation>导出（HTML、PDF）</translation>
     </message>
@@ -210,362 +215,367 @@
 <context>
     <name>MdViewerWindow</name>
     <message>
-        <location filename="../md_viewer_window.cpp" line="394"/>
-        <location filename="../md_viewer_window.cpp" line="399"/>
+        <location filename="../md_viewer_window.cpp" line="395"/>
+        <location filename="../md_viewer_window.cpp" line="400"/>
         <source>New Tab</source>
         <translation>新建标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="475"/>
+        <location filename="../md_viewer_window.cpp" line="476"/>
         <source>File updated, reloaded</source>
         <translation>文件已更新，已重新加载</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="490"/>
-        <location filename="../md_viewer_window.cpp" line="1120"/>
+        <location filename="../md_viewer_window.cpp" line="491"/>
+        <location filename="../md_viewer_window.cpp" line="1159"/>
         <source>Render %v/%m</source>
         <translation>渲染 %v/%m</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="540"/>
+        <location filename="../md_viewer_window.cpp" line="541"/>
         <source>Code block copied</source>
         <translation>已复制代码块</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="563"/>
+        <location filename="../md_viewer_window.cpp" line="564"/>
         <source>Image failed to load: %1</source>
         <translation>图片加载失败：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="593"/>
+        <location filename="../md_viewer_window.cpp" line="594"/>
         <source>Failed to open: %1 (%2)</source>
         <translation>打开失败：%1（%2）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="778"/>
+        <location filename="../md_viewer_window.cpp" line="779"/>
         <source>Re-rendering…</source>
         <translation>正在重新渲染…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="792"/>
+        <location filename="../md_viewer_window.cpp" line="793"/>
         <source>No closed tab to reopen</source>
         <translation>没有可重新打开的标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="851"/>
-        <location filename="../md_viewer_window.cpp" line="1339"/>
+        <location filename="../md_viewer_window.cpp" line="852"/>
+        <location filename="../md_viewer_window.cpp" line="1370"/>
         <source>Welcome</source>
         <translation>欢迎</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="853"/>
-        <location filename="../md_viewer_window.cpp" line="1340"/>
+        <location filename="../md_viewer_window.cpp" line="854"/>
+        <location filename="../md_viewer_window.cpp" line="1371"/>
         <source>Welcome Page</source>
         <translation>欢迎页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="885"/>
-        <location filename="../md_viewer_window.cpp" line="974"/>
+        <location filename="../md_viewer_window.cpp" line="886"/>
+        <location filename="../md_viewer_window.cpp" line="980"/>
         <source>Markdown Viewer</source>
         <translation>Markdown 查看器</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="907"/>
+        <location filename="../md_viewer_window.cpp" line="908"/>
         <source>%1 tabs</source>
         <translation>%1 个标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="918"/>
-        <location filename="../md_viewer_window.cpp" line="2113"/>
+        <location filename="../md_viewer_window.cpp" line="919"/>
+        <location filename="../md_viewer_window.cpp" line="2171"/>
         <source>Open File…</source>
         <translation>打开文件…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="920"/>
-        <location filename="../md_viewer_window.cpp" line="2114"/>
+        <location filename="../md_viewer_window.cpp" line="921"/>
+        <location filename="../md_viewer_window.cpp" line="2172"/>
         <source>Open Folder…</source>
         <translation>打开目录…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="921"/>
+        <location filename="../md_viewer_window.cpp" line="922"/>
         <source>Close Tab</source>
         <translation>关闭标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="924"/>
+        <location filename="../md_viewer_window.cpp" line="925"/>
         <source>Reopen Closed Tab</source>
         <translation>重新打开关闭的标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="928"/>
+        <location filename="../md_viewer_window.cpp" line="929"/>
         <source>New Window</source>
         <translation>新建窗口</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="932"/>
-        <location filename="../md_viewer_window.cpp" line="2116"/>
+        <location filename="../md_viewer_window.cpp" line="933"/>
+        <location filename="../md_viewer_window.cpp" line="2174"/>
         <source>Unload Workspace</source>
         <translation>卸载工作区</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="936"/>
+        <location filename="../md_viewer_window.cpp" line="937"/>
         <source>Quit</source>
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="938"/>
-        <location filename="../md_viewer_window.cpp" line="1489"/>
+        <location filename="../md_viewer_window.cpp" line="939"/>
+        <location filename="../md_viewer_window.cpp" line="1547"/>
         <source>About</source>
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="939"/>
-        <location filename="../md_viewer_window.cpp" line="2130"/>
+        <location filename="../md_viewer_window.cpp" line="940"/>
+        <location filename="../md_viewer_window.cpp" line="2188"/>
         <source>Export HTML…</source>
         <translation>导出 HTML…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="941"/>
-        <location filename="../md_viewer_window.cpp" line="2131"/>
+        <location filename="../md_viewer_window.cpp" line="942"/>
+        <location filename="../md_viewer_window.cpp" line="2189"/>
         <source>Export PDF…</source>
         <translation>导出 PDF…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="945"/>
+        <location filename="../md_viewer_window.cpp" line="946"/>
         <source>Find in Current Document</source>
         <translation>在当前文档中查找</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="947"/>
+        <location filename="../md_viewer_window.cpp" line="948"/>
         <source>Find in Current Document (Ctrl+F)</source>
         <translation>在当前文档中查找（Ctrl+F）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="948"/>
+        <location filename="../md_viewer_window.cpp" line="949"/>
         <source>Search Workspace</source>
         <translation>搜索工作区</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="954"/>
+        <location filename="../md_viewer_window.cpp" line="955"/>
         <source>Search workspace files and content (Ctrl+Shift+F)</source>
         <translation>搜索工作区文件与内容（Ctrl+Shift+F）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="957"/>
+        <location filename="../md_viewer_window.cpp" line="958"/>
         <source>Documents View</source>
         <translation>文档视图</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="960"/>
+        <location filename="../md_viewer_window.cpp" line="961"/>
         <source>Bookmarks View</source>
         <translation>收藏视图</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="963"/>
+        <location filename="../md_viewer_window.cpp" line="964"/>
         <source>Render Status View</source>
         <translation>渲染状态视图</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="966"/>
-        <location filename="../md_viewer_window.cpp" line="1035"/>
+        <location filename="../md_viewer_window.cpp" line="967"/>
+        <location filename="../md_viewer_window.cpp" line="1041"/>
         <source>Outline</source>
         <translation>大纲</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1043"/>
+        <location filename="../md_viewer_window.cpp" line="971"/>
+        <source>Toggle Sidebar</source>
+        <translation>收起/展开侧栏</translation>
+    </message>
+    <message>
+        <location filename="../md_viewer_window.cpp" line="1049"/>
         <source>Hide Outline (Ctrl+Shift+O)</source>
         <translation>隐藏大纲（Ctrl+Shift+O）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1110"/>
+        <location filename="../md_viewer_window.cpp" line="1149"/>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1123"/>
+        <location filename="../md_viewer_window.cpp" line="1162"/>
         <source>Render task progress of the current document</source>
         <translation>当前文档的渲染任务进度</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1125"/>
+        <location filename="../md_viewer_window.cpp" line="1164"/>
         <source>1 tab</source>
         <translation>1 个标签页</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1127"/>
+        <location filename="../md_viewer_window.cpp" line="1166"/>
         <source>Number of open tabs</source>
         <translation>打开的标签页数量</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1128"/>
-        <location filename="../md_viewer_window.cpp" line="2046"/>
+        <location filename="../md_viewer_window.cpp" line="1167"/>
+        <location filename="../md_viewer_window.cpp" line="2104"/>
         <source>0 documents</source>
         <translation>0 篇</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1131"/>
+        <location filename="../md_viewer_window.cpp" line="1170"/>
         <source>Markdown documents in the current folder</source>
         <translation>当前目录中的 Markdown 文档数</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1135"/>
+        <location filename="../md_viewer_window.cpp" line="1174"/>
         <source>Estimated from source characters, about 500 chars/min</source>
         <translation>按源字符数估算，约 500 字/分钟</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1141"/>
+        <location filename="../md_viewer_window.cpp" line="1180"/>
         <source>Render backends of this build</source>
         <translation>当前构建的渲染后端</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1168"/>
+        <location filename="../md_viewer_window.cpp" line="1196"/>
         <source>Quick Open…</source>
         <translation>快速跳转…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1174"/>
+        <location filename="../md_viewer_window.cpp" line="1202"/>
         <source>Jump to file, heading or command (Ctrl+P)</source>
         <translation>跳转到文件、标题或命令（Ctrl+P）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1177"/>
+        <location filename="../md_viewer_window.cpp" line="1205"/>
         <source>Back</source>
         <translation>后退</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1181"/>
+        <location filename="../md_viewer_window.cpp" line="1209"/>
         <source>Back (Ctrl+Alt+←)</source>
         <translation>后退（Ctrl+Alt+←）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1183"/>
+        <location filename="../md_viewer_window.cpp" line="1211"/>
         <source>Forward</source>
         <translation>前进</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1187"/>
+        <location filename="../md_viewer_window.cpp" line="1215"/>
         <source>Forward (Ctrl+Alt+→)</source>
         <translation>前进（Ctrl+Alt+→）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1194"/>
+        <location filename="../md_viewer_window.cpp" line="1222"/>
         <source>Zoom Out (Ctrl+-)</source>
         <translation>缩小（Ctrl+-）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1200"/>
+        <location filename="../md_viewer_window.cpp" line="1228"/>
         <source>Reset Zoom (Ctrl+0)</source>
         <translation>重置缩放（Ctrl+0）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1202"/>
+        <location filename="../md_viewer_window.cpp" line="1230"/>
         <source>Settings…</source>
         <translation>设置…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1205"/>
+        <location filename="../md_viewer_window.cpp" line="1233"/>
         <source>Settings (Ctrl+,)</source>
         <translation>设置（Ctrl+,）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1210"/>
+        <location filename="../md_viewer_window.cpp" line="1238"/>
         <source>Zoom In (Ctrl+=)</source>
         <translation>放大（Ctrl+=）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1212"/>
-        <location filename="../md_viewer_window.cpp" line="2128"/>
+        <location filename="../md_viewer_window.cpp" line="1240"/>
+        <location filename="../md_viewer_window.cpp" line="2186"/>
         <source>Bookmark Current Document</source>
         <translation>收藏当前文档</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1215"/>
-        <location filename="../md_viewer_window.cpp" line="2690"/>
+        <location filename="../md_viewer_window.cpp" line="1243"/>
+        <location filename="../md_viewer_window.cpp" line="2747"/>
         <source>Bookmark Current Document (Ctrl+D)</source>
         <translation>收藏当前文档（Ctrl+D）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1220"/>
+        <location filename="../md_viewer_window.cpp" line="1248"/>
         <source>&amp;File</source>
         <translation>文件(&amp;F)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1228"/>
+        <location filename="../md_viewer_window.cpp" line="1256"/>
         <source>Recent Files</source>
         <translation>最近打开</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1229"/>
+        <location filename="../md_viewer_window.cpp" line="1257"/>
         <source>Recent Workspaces</source>
         <translation>最近打开的工作区</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1236"/>
+        <location filename="../md_viewer_window.cpp" line="1264"/>
         <source>&amp;View</source>
         <translation>视图(&amp;V)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1247"/>
+        <location filename="../md_viewer_window.cpp" line="1275"/>
         <source>Refresh</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1258"/>
+        <location filename="../md_viewer_window.cpp" line="1286"/>
         <source>Window Material</source>
         <translation>窗口材质</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1260"/>
+        <location filename="../md_viewer_window.cpp" line="1288"/>
         <source>Auto (Mica)</source>
         <translation>自动（Mica）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1262"/>
+        <location filename="../md_viewer_window.cpp" line="1290"/>
         <source>Acrylic</source>
         <translation>亚克力</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1265"/>
+        <location filename="../md_viewer_window.cpp" line="1293"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1281"/>
+        <location filename="../md_viewer_window.cpp" line="1309"/>
         <source>&amp;Help</source>
         <translation>帮助(&amp;H)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1315"/>
+        <location filename="../md_viewer_window.cpp" line="1343"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1414"/>
+        <location filename="../md_viewer_window.cpp" line="1472"/>
         <source>Path copied</source>
         <translation>已复制路径</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1448"/>
+        <location filename="../md_viewer_window.cpp" line="1506"/>
         <source>Reading style: prototype</source>
         <translation>阅读样式：原型</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1449"/>
+        <location filename="../md_viewer_window.cpp" line="1507"/>
         <source>Reading style: library default</source>
         <translation>阅读样式：库默认</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1458"/>
+        <location filename="../md_viewer_window.cpp" line="1516"/>
         <source>Reading area: transparent</source>
         <translation>阅读区：透明</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1459"/>
+        <location filename="../md_viewer_window.cpp" line="1517"/>
         <source>Reading area: theme background</source>
         <translation>阅读区：主题底色</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1490"/>
+        <location filename="../md_viewer_window.cpp" line="1548"/>
         <source>qt_md_viewer — the Markdown viewer app of qlitemd.
 
 UI font: MiSans (Xiaomi MiSans font license)
@@ -580,444 +590,444 @@ Email: zhouyohu@163.com</source>
 邮箱：zhouyohu@163.com</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1792"/>
+        <location filename="../md_viewer_window.cpp" line="1850"/>
         <source>Folder does not exist or is not readable</source>
         <translation>目录不存在或不可读</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1797"/>
+        <location filename="../md_viewer_window.cpp" line="1855"/>
         <source>%1 documents</source>
         <translation>%1 篇</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1832"/>
+        <location filename="../md_viewer_window.cpp" line="1890"/>
         <source>No Markdown files in folder: %1</source>
         <translation>目录中没有 Markdown 文件：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1910"/>
-        <location filename="../md_viewer_window.cpp" line="1986"/>
-        <location filename="../md_viewer_window.cpp" line="2022"/>
+        <location filename="../md_viewer_window.cpp" line="1968"/>
+        <location filename="../md_viewer_window.cpp" line="2044"/>
+        <location filename="../md_viewer_window.cpp" line="2080"/>
         <source>Start with &quot;File &gt; Open Folder&quot;</source>
         <translation>从“文件 &gt; 打开目录”开始阅读</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1981"/>
+        <location filename="../md_viewer_window.cpp" line="2039"/>
         <source>Restored last opened: %1</source>
         <translation>已恢复上次打开：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1993"/>
+        <location filename="../md_viewer_window.cpp" line="2051"/>
         <source>Open Markdown</source>
         <translation>打开 Markdown</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="1994"/>
+        <location filename="../md_viewer_window.cpp" line="2052"/>
         <source>Markdown Documents (*.md *.markdown);;All Files (*)</source>
         <translation>Markdown 文档 (*.md *.markdown);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2002"/>
+        <location filename="../md_viewer_window.cpp" line="2060"/>
         <source>Open Folder</source>
         <translation>打开目录</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2050"/>
+        <location filename="../md_viewer_window.cpp" line="2108"/>
         <source>Workspace unloaded: %1</source>
         <translation>已卸载工作区：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2099"/>
+        <location filename="../md_viewer_window.cpp" line="2157"/>
         <source>Recent · %1</source>
         <translation>最近 · %1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2113"/>
-        <location filename="../md_viewer_window.cpp" line="2114"/>
-        <location filename="../md_viewer_window.cpp" line="2116"/>
+        <location filename="../md_viewer_window.cpp" line="2171"/>
+        <location filename="../md_viewer_window.cpp" line="2172"/>
+        <location filename="../md_viewer_window.cpp" line="2174"/>
         <source>File</source>
         <translation>文件</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2120"/>
+        <location filename="../md_viewer_window.cpp" line="2178"/>
         <source>Switch to light theme</source>
         <translation>切换到浅色主题</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2121"/>
+        <location filename="../md_viewer_window.cpp" line="2179"/>
         <source>Switch to dark theme</source>
         <translation>切换到深色主题</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2122"/>
-        <location filename="../md_viewer_window.cpp" line="2123"/>
+        <location filename="../md_viewer_window.cpp" line="2180"/>
+        <location filename="../md_viewer_window.cpp" line="2181"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2123"/>
+        <location filename="../md_viewer_window.cpp" line="2181"/>
         <source>Reading Appearance…</source>
         <translation>阅读外观…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2127"/>
+        <location filename="../md_viewer_window.cpp" line="2185"/>
         <source>Unbookmark Current Document</source>
         <translation>取消收藏当前文档</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2129"/>
-        <location filename="../md_viewer_window.cpp" line="2136"/>
+        <location filename="../md_viewer_window.cpp" line="2187"/>
+        <location filename="../md_viewer_window.cpp" line="2194"/>
         <source>Reading</source>
         <translation>阅读</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2130"/>
-        <location filename="../md_viewer_window.cpp" line="2131"/>
+        <location filename="../md_viewer_window.cpp" line="2188"/>
+        <location filename="../md_viewer_window.cpp" line="2189"/>
         <source>Export</source>
         <translation>导出</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2132"/>
+        <location filename="../md_viewer_window.cpp" line="2190"/>
         <source>Refresh document tree</source>
         <translation>刷新文档树</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2132"/>
-        <location filename="../md_viewer_window.cpp" line="2142"/>
+        <location filename="../md_viewer_window.cpp" line="2190"/>
+        <location filename="../md_viewer_window.cpp" line="2200"/>
         <source>View</source>
         <translation>视图</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2136"/>
+        <location filename="../md_viewer_window.cpp" line="2194"/>
         <source>Preview formula/diagram</source>
         <translation>预览公式/图表</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2139"/>
+        <location filename="../md_viewer_window.cpp" line="2197"/>
         <source>Zoom Out</source>
         <translation>缩小</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2139"/>
-        <location filename="../md_viewer_window.cpp" line="2140"/>
-        <location filename="../md_viewer_window.cpp" line="2141"/>
+        <location filename="../md_viewer_window.cpp" line="2197"/>
+        <location filename="../md_viewer_window.cpp" line="2198"/>
+        <location filename="../md_viewer_window.cpp" line="2199"/>
         <source>Zoom</source>
         <translation>缩放</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2140"/>
+        <location filename="../md_viewer_window.cpp" line="2198"/>
         <source>Reset Zoom</source>
         <translation>重置缩放</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2141"/>
-        <location filename="../md_viewer_window.cpp" line="3216"/>
+        <location filename="../md_viewer_window.cpp" line="2199"/>
+        <location filename="../md_viewer_window.cpp" line="3329"/>
         <source>Zoom In</source>
         <translation>放大</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2142"/>
+        <location filename="../md_viewer_window.cpp" line="2200"/>
         <source>Open render settings</source>
         <translation>打开渲染设置</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2238"/>
-        <location filename="../md_viewer_window.cpp" line="2658"/>
+        <location filename="../md_viewer_window.cpp" line="2296"/>
+        <location filename="../md_viewer_window.cpp" line="2715"/>
         <source>Rendering…</source>
         <translation>正在渲染…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2247"/>
+        <location filename="../md_viewer_window.cpp" line="2305"/>
         <source>Theme switched: dark</source>
         <translation>已切换主题：暗色</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2248"/>
+        <location filename="../md_viewer_window.cpp" line="2306"/>
         <source>Theme switched: light</source>
         <translation>已切换主题：浅色</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2350"/>
+        <location filename="../md_viewer_window.cpp" line="2407"/>
         <source>Window material: acrylic</source>
         <translation>窗口材质：亚克力</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2352"/>
+        <location filename="../md_viewer_window.cpp" line="2409"/>
         <source>Window material: off</source>
         <translation>窗口材质：关闭</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2353"/>
+        <location filename="../md_viewer_window.cpp" line="2410"/>
         <source>Window material: auto (Mica)</source>
         <translation>窗口材质：自动（Mica）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2555"/>
+        <location filename="../md_viewer_window.cpp" line="2612"/>
         <source>about %1 min</source>
         <translation>约 %1 分钟</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2619"/>
+        <location filename="../md_viewer_window.cpp" line="2676"/>
         <source>Large File</source>
         <translation>大文件</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2620"/>
+        <location filename="../md_viewer_window.cpp" line="2677"/>
         <source>This document is about %1; the window may be unresponsive while rendering. Open it anyway?</source>
         <translation>该文档约 %1，渲染期间窗口可能无响应。仍要打开吗？</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2670"/>
+        <location filename="../md_viewer_window.cpp" line="2727"/>
         <source>Restored %1 (%2)</source>
         <translation>已恢复 %1（%2）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2689"/>
+        <location filename="../md_viewer_window.cpp" line="2746"/>
         <source>Unbookmark (Ctrl+D)</source>
         <translation>取消收藏（Ctrl+D）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2701"/>
+        <location filename="../md_viewer_window.cpp" line="2758"/>
         <source>Open a document before bookmarking</source>
         <translation>先打开一篇文档再收藏</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2709"/>
-        <location filename="../md_viewer_window.cpp" line="2721"/>
+        <location filename="../md_viewer_window.cpp" line="2766"/>
+        <location filename="../md_viewer_window.cpp" line="2778"/>
         <source>Bookmarked</source>
         <translation>已收藏</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2709"/>
-        <location filename="../md_viewer_window.cpp" line="2721"/>
+        <location filename="../md_viewer_window.cpp" line="2766"/>
+        <location filename="../md_viewer_window.cpp" line="2778"/>
         <source>Bookmark removed</source>
         <translation>已取消收藏</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2728"/>
+        <location filename="../md_viewer_window.cpp" line="2785"/>
         <source>File no longer exists: %1</source>
         <translation>文件已不存在：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2738"/>
+        <location filename="../md_viewer_window.cpp" line="2795"/>
         <source>The bookmark is outside the current folder</source>
         <translation>该书签不在当前目录内</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2749"/>
-        <location filename="../md_viewer_window.cpp" line="2776"/>
+        <location filename="../md_viewer_window.cpp" line="2806"/>
+        <location filename="../md_viewer_window.cpp" line="2833"/>
         <source>(none)</source>
         <translation>（无）</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2762"/>
+        <location filename="../md_viewer_window.cpp" line="2819"/>
         <source>Clear Recent Files</source>
         <translation>清除最近记录</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2788"/>
+        <location filename="../md_viewer_window.cpp" line="2845"/>
         <source>Clear Recent Workspaces</source>
         <translation>清除最近工作区</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2798"/>
+        <location filename="../md_viewer_window.cpp" line="2855"/>
         <source>Workspace does not exist: %1</source>
         <translation>工作区不存在：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2853"/>
+        <location filename="../md_viewer_window.cpp" line="2910"/>
         <source>Highlighting</source>
         <translation>高亮</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2854"/>
+        <location filename="../md_viewer_window.cpp" line="2911"/>
         <source>Formulas</source>
         <translation>公式</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2873"/>
+        <location filename="../md_viewer_window.cpp" line="2930"/>
         <source>Failed to load render engines: %1</source>
         <translation>渲染引擎加载失败：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2874"/>
-        <location filename="../md_viewer_window.cpp" line="2890"/>
-        <location filename="../md_viewer_window.cpp" line="2895"/>
+        <location filename="../md_viewer_window.cpp" line="2931"/>
+        <location filename="../md_viewer_window.cpp" line="2947"/>
+        <location filename="../md_viewer_window.cpp" line="2952"/>
         <source>, </source>
         <translation>、</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2881"/>
+        <location filename="../md_viewer_window.cpp" line="2938"/>
         <source>Highlighting %1</source>
         <translation>高亮 %1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2884"/>
+        <location filename="../md_viewer_window.cpp" line="2941"/>
         <source>Formulas %1</source>
         <translation>公式 %1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2890"/>
+        <location filename="../md_viewer_window.cpp" line="2947"/>
         <source>Render failures this run: %1</source>
         <translation>本次渲染失败：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2895"/>
+        <location filename="../md_viewer_window.cpp" line="2952"/>
         <source>Render engines loaded: %1</source>
         <translation>渲染引擎已加载：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2941"/>
+        <location filename="../md_viewer_window.cpp" line="3008"/>
         <source>Opened the first dropped item: %1</source>
         <translation>已打开第一个拖入项：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2949"/>
-        <location filename="../md_viewer_window.cpp" line="3038"/>
+        <location filename="../md_viewer_window.cpp" line="3016"/>
+        <location filename="../md_viewer_window.cpp" line="3151"/>
         <source>Open a document first</source>
         <translation>先打开一篇文档</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="2961"/>
+        <location filename="../md_viewer_window.cpp" line="3028"/>
         <source>Open a folder first</source>
         <translation>先打开一个目录</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3044"/>
+        <location filename="../md_viewer_window.cpp" line="3157"/>
         <source>Document is still rendering; try find again later</source>
         <translation>文档还在渲染，稍后再查找</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3055"/>
+        <location filename="../md_viewer_window.cpp" line="3168"/>
         <source>Not found</source>
         <translation>未找到</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3061"/>
+        <location filename="../md_viewer_window.cpp" line="3174"/>
         <source>Wrapped to the end</source>
         <translation>已回到结尾</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3061"/>
+        <location filename="../md_viewer_window.cpp" line="3174"/>
         <source>Wrapped to the beginning</source>
         <translation>已回到开头</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3099"/>
+        <location filename="../md_viewer_window.cpp" line="3212"/>
         <source>File no longer exists</source>
         <translation>文件已不存在</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3160"/>
+        <location filename="../md_viewer_window.cpp" line="3273"/>
         <source>Cannot locate the hit precisely; stopped at the top of the document</source>
         <translation>无法精确定位该命中，已停在文档顶部</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3171"/>
-        <location filename="../md_viewer_window.cpp" line="3317"/>
-        <location filename="../md_viewer_window.cpp" line="3346"/>
+        <location filename="../md_viewer_window.cpp" line="3284"/>
+        <location filename="../md_viewer_window.cpp" line="3430"/>
+        <location filename="../md_viewer_window.cpp" line="3459"/>
         <source>Document is still rendering; try export again later</source>
         <translation>文档还在渲染，稍后再导出</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3175"/>
-        <location filename="../md_viewer_window.cpp" line="3321"/>
+        <location filename="../md_viewer_window.cpp" line="3288"/>
+        <location filename="../md_viewer_window.cpp" line="3434"/>
         <source>Open a Markdown document before exporting</source>
         <translation>先打开一篇 Markdown 再导出</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3189"/>
+        <location filename="../md_viewer_window.cpp" line="3302"/>
         <source>Export HTML</source>
         <translation>导出 HTML</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3189"/>
+        <location filename="../md_viewer_window.cpp" line="3302"/>
         <source>HTML Files (*.html *.htm)</source>
         <translation>HTML 文件 (*.html *.htm)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3201"/>
+        <location filename="../md_viewer_window.cpp" line="3314"/>
         <source>Failed to export HTML</source>
         <translation>导出 HTML 失败</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3204"/>
-        <location filename="../md_viewer_window.cpp" line="3354"/>
+        <location filename="../md_viewer_window.cpp" line="3317"/>
+        <location filename="../md_viewer_window.cpp" line="3467"/>
         <source>Exported: %1</source>
         <translation>已导出：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3219"/>
+        <location filename="../md_viewer_window.cpp" line="3332"/>
         <source>Save Image As…</source>
         <translation>图片另存为…</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3225"/>
+        <location filename="../md_viewer_window.cpp" line="3338"/>
         <source>View Source</source>
         <translation>查看源码</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3242"/>
+        <location filename="../md_viewer_window.cpp" line="3355"/>
         <source>This image cannot be saved</source>
         <translation>这张图片无法保存</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3250"/>
+        <location filename="../md_viewer_window.cpp" line="3363"/>
         <source>Save Image As</source>
         <translation>图片另存为</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3251"/>
+        <location filename="../md_viewer_window.cpp" line="3364"/>
         <source>PNG Images (*.png);;JPEG Images (*.jpg *.jpeg);;All Files (*)</source>
         <translation>PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3260"/>
+        <location filename="../md_viewer_window.cpp" line="3373"/>
         <source>Failed to save image</source>
         <translation>图片保存失败</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3264"/>
+        <location filename="../md_viewer_window.cpp" line="3377"/>
         <source>Image saved: %1</source>
         <translation>已保存图片：%1</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3270"/>
+        <location filename="../md_viewer_window.cpp" line="3383"/>
         <source>This image cannot be previewed</source>
         <translation>这张图片无法预览</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3274"/>
+        <location filename="../md_viewer_window.cpp" line="3387"/>
         <source>Image Preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3276"/>
+        <location filename="../md_viewer_window.cpp" line="3389"/>
         <source>Formula Preview</source>
         <translation>公式预览</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3277"/>
+        <location filename="../md_viewer_window.cpp" line="3390"/>
         <source>Mermaid Diagram</source>
         <translation>Mermaid 图表</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3303"/>
+        <location filename="../md_viewer_window.cpp" line="3416"/>
         <source>Mermaid Source</source>
         <translation>Mermaid 源码</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3305"/>
+        <location filename="../md_viewer_window.cpp" line="3418"/>
         <source>Formula Source</source>
         <translation>公式源码</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3335"/>
+        <location filename="../md_viewer_window.cpp" line="3448"/>
         <source>Export PDF</source>
         <translation>导出 PDF</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="3335"/>
+        <location filename="../md_viewer_window.cpp" line="3448"/>
         <source>PDF Files (*.pdf)</source>
         <translation>PDF 文件 (*.pdf)</translation>
     </message>
@@ -1979,12 +1989,12 @@ memory hits %5 · disk hits %6</source>
 <context>
     <name>SourceDialog</name>
     <message>
-        <location filename="../md_viewer_window.cpp" line="204"/>
+        <location filename="../md_viewer_window.cpp" line="205"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../md_viewer_window.cpp" line="206"/>
+        <location filename="../md_viewer_window.cpp" line="207"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
@@ -1992,17 +2002,17 @@ memory hits %5 · disk hits %6</source>
 <context>
     <name>WelcomeBar</name>
     <message>
-        <location filename="../top_tool_bar.cpp" line="367"/>
+        <location filename="../top_tool_bar.cpp" line="333"/>
         <source>Welcome</source>
         <translation>欢迎</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="380"/>
+        <location filename="../top_tool_bar.cpp" line="346"/>
         <source>Quick open (Ctrl+P)</source>
         <translation>快速跳转（Ctrl+P）</translation>
     </message>
     <message>
-        <location filename="../top_tool_bar.cpp" line="392"/>
+        <location filename="../top_tool_bar.cpp" line="358"/>
         <source>No workspace open</source>
         <translation>未打开工作区</translation>
     </message>

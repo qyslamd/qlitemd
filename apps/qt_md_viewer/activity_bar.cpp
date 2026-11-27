@@ -37,8 +37,16 @@ ActivityBar::ActivityBar(QWidget* parent) : QFrame(parent) {
   setFixedWidth(42);
   setFrameShape(QFrame::StyledPanel);
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(3, 6, 3, 6);
+  layout->setContentsMargins(3, 4, 3, 6);
   layout->setSpacing(4);
+
+  // 顶部常驻侧栏收起按钮；与右侧标题栏第一行水平对齐（宿主对齐到 42px 行）
+  sidebar_toggle_button_ =
+      MakeActivityButton(this, QStringLiteral("sidebarToggleButton"),
+                         tr("Toggle Sidebar (Ctrl+B)"));
+  sidebar_toggle_button_->setFixedSize(kButtonSize, kButtonSize);
+  layout->addWidget(sidebar_toggle_button_);
+  layout->addSpacing(2);
 
   // 顺序必须与 SideView 的数值一致：下标即持久化 id
   buttons_ = {
@@ -88,6 +96,7 @@ void ActivityBar::SetThemeDark(bool dark) {
   button(SideView::kRenderStatus)
       ->setIcon(ThemeIcon(QStringLiteral("render-status"), dark));
   settings_button_->setIcon(ThemeIcon(QStringLiteral("settings"), dark));
+  sidebar_toggle_button_->setIcon(ThemeIcon(QStringLiteral("panel"), dark));
 }
 
 void ActivityBar::SetActiveView(SideView view) {

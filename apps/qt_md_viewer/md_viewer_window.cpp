@@ -8,7 +8,8 @@
 
 #include <fluenttitlebar.h>
 #include <fluentui3style.h>
-#include <fluentwindowframe.h>
+
+#include <QWKWidgets/widgetwindowagent.h>
 
 #include <optional>
 
@@ -254,7 +255,7 @@ MdViewerWindow::MdViewerWindow(MdViewerSettings* settings, bool session_owner,
   }
   if (activity_bar_ != nullptr && side_panel_ != nullptr) {
     ApplySideView(layout_.view);
-    side_panel_->setVisible(layout_.sidebar_visible);
+    ApplySidebarVisible(layout_.sidebar_visible);
     ApplySplitterSizes();
   }
   ShowWelcome();
@@ -967,6 +968,11 @@ void MdViewerWindow::createActions() {
   actions_.outline->setObjectName(QStringLiteral("outlineAction"));
   actions_.outline->setCheckable(true);
   actions_.outline->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+O")));
+  actions_.toggle_sidebar = new QAction(tr("Toggle Sidebar"), this);
+  actions_.toggle_sidebar->setObjectName(QStringLiteral("toggleSidebarAction"));
+  actions_.toggle_sidebar->setCheckable(true);
+  actions_.toggle_sidebar->setChecked(true);
+  actions_.toggle_sidebar->setShortcut(QKeySequence(QStringLiteral("Ctrl+B")));
 }
 
 void MdViewerWindow::initUi() {
@@ -991,9 +997,9 @@ void MdViewerWindow::initUi() {
   bar_stack_->setObjectName(QStringLiteral("barStack"));
   bar_stack_->addWidget(document_bar_);
   bar_stack_->addWidget(welcome_bar_);
+  // 工具条不再是 QMainWindow 的 toolbar 区域，而是右列的第二行
   top_tool_bar_ = new TopToolBar(this);
   top_tool_bar_->addWidget(bar_stack_);
-  addToolBar(Qt::TopToolBarArea, top_tool_bar_);
 
   // 欢迎标签：不是文档，但保留一个空视图给设置/状态面板做初始绑定
   auto welcome_tab = std::make_unique<DocumentTab>();
@@ -1046,27 +1052,60 @@ void MdViewerWindow::initUi() {
   outline_layout->addWidget(outline_header);
   outline_layout->addWidget(outline_, 1);
 
+  // 外壳：左列（活动栏+侧栏）从窗口最上沿直通状态栏，右列承载标题栏与内容
   auto* center = new QWidget(this);
   center->setObjectName(QStringLiteral("mainColumns"));
   auto* columns = new QHBoxLayout(center);
-  columns->setContentsMargins(4, 2, 4, 2);
-  columns->setSpacing(2);
-  columns->addWidget(activity_bar_);
+  columns->setContentsMargins(0, 0, 0, 0);
+  columns->setSpacing(0);
 
-  // 活动栏固定；侧栏、正文、大纲放在 splitter 里，宽度可拖动
-  main_splitter_ = new QSplitter(Qt::Horizontal, center);
+  left_shell_ = new QWidget(center);
+  left_shell_->setObjectName(QStringLiteral("leftShell"));
+  left_shell_->setMinimumWidth(42);
+  auto* shell_left_layout = new QHBoxLayout(left_shell_);
+  shell_left_layout->setContentsMargins(0, 0, 0, 0);
+  shell_left_layout->setSpacing(0);
+  shell_left_layout->addWidget(activity_bar_);
+  shell_left_layout->addWidget(side_panel_, 1);
+
+  right_shell_ = new QWidget(center);
+  right_shell_->setObjectName(QStringLiteral("rightShell"));
+  auto* right_layout = new QVBoxLayout(right_shell_);
+  right_layout->setContentsMargins(0, 0, 0, 0);
+  right_layout->setSpacing(0);
+
+  // 标题栏不再经 FluentWindowFrame 的全宽 menuWidget，直接嵌进右列
+  title_bar_ = new FluentTitleBar(this);
+  // 强调色按钮只在标题栏内部改选中态并发信号，查看器没有消费方，隐藏
+  for (QToolButton* button : title_bar_->accentButtons()) {
+    button->setVisible(false);
+  }
+  // 与文档主题初始一致；标题栏据此选搜索图标等自身角色的配色
+  title_bar_->setThemeDark(CurrentView()->theme() != MarkdownTheme::Light);
+  right_layout->addWidget(title_bar_);
+  right_layout->addWidget(top_tool_bar_);
+
+  // 正文、大纲宽度可拖动；侧栏宽度归外壳 splitter 管
+  main_splitter_ = new QSplitter(Qt::Horizontal, right_shell_);
   main_splitter_->setObjectName(QStringLiteral("mainSplitter"));
   main_splitter_->setChildrenCollapsible(false);
   main_splitter_->setHandleWidth(4);
-  main_splitter_->addWidget(side_panel_);
   main_splitter_->addWidget(pages_);
   main_splitter_->addWidget(outline_column_);
-  main_splitter_->setStretchFactor(0, 0);
-  main_splitter_->setStretchFactor(1, 1);
-  main_splitter_->setStretchFactor(2, 0);
-  columns->addWidget(main_splitter_, 1);
-  setCentralWidget(center);
+  main_splitter_->setStretchFactor(0, 1);
+  main_splitter_->setStretchFactor(1, 0);
+  right_layout->addWidget(main_splitter_, 1);
 
+  shell_splitter_ = new QSplitter(Qt::Horizontal, center);
+  shell_splitter_->setObjectName(QStringLiteral("shellSplitter"));
+  shell_splitter_->setChildrenCollapsible(false);
+  shell_splitter_->setHandleWidth(4);
+  shell_splitter_->addWidget(left_shell_);
+  shell_splitter_->addWidget(right_shell_);
+  shell_splitter_->setStretchFactor(0, 0);
+  shell_splitter_->setStretchFactor(1, 1);
+  columns->addWidget(shell_splitter_, 1);
+  setCentralWidget(center);
   // 阅读外观弹层：改的是全局阅读参数，不做成 dock，也不占正文
   appearance_popup_ = new ReaderAppearancePopup(this);
   connect(appearance_popup_, &ReaderAppearancePopup::preferencesChanged, this,
@@ -1151,17 +1190,6 @@ void MdViewerWindow::initUi() {
   statusBar()->addPermanentWidget(render_progress_);
   statusBar()->addPermanentWidget(stats_widget);
   UpdateZoomLabel(CurrentView()->zoom());
-
-  // 无边框壳 + Fluent 标题栏；菜单栏不再单独占一行
-  fluent_frame_ = new FluentWindowFrame(this, this);
-  fluent_frame_->installChromeHeader(nullptr);
-  // 强调色按钮只在标题栏内部改选中态并发信号，查看器没有消费方，隐藏
-  for (QToolButton* button : fluent_frame_->titleBar()->accentButtons()) {
-    button->setVisible(false);
-  }
-  // 与文档主题初始一致；标题栏据此选搜索图标等自身角色的配色
-  fluent_frame_->titleBar()->setThemeDark(CurrentView()->theme() !=
-                                          MarkdownTheme::Light);
 
   // 快速跳转：统一入口，Ctrl+P 与 VS Code 的快速打开同键
   const bool initial_dark = settings_->dark_theme;
@@ -1300,7 +1328,7 @@ void MdViewerWindow::initUi() {
   addAction(actions_.bookmark);
   addAction(actions_.refresh);
 
-  menu_button_ = new QToolButton(fluent_frame_->titleBar());
+  menu_button_ = new QToolButton(title_bar_);
   menu_button_->setObjectName(QStringLiteral("mainMenuButton"));
   menu_button_->setAutoRaise(true);
   const QIcon menu_icon =
@@ -1315,7 +1343,7 @@ void MdViewerWindow::initUi() {
   menu_button_->setToolTip(tr("Menu"));
 
   // 标题栏左侧：菜单 + 标签条 + 新建；标签条吃掉剩余宽度
-  title_leading_widget_ = new QWidget(fluent_frame_->titleBar());
+  title_leading_widget_ = new QWidget(title_bar_);
   title_leading_widget_->setObjectName(QStringLiteral("titleLeadingWidget"));
   // 背景交给标题栏统一铺，否则半透明 chrome 会多叠一层
   auto* leading_layout = new QHBoxLayout(title_leading_widget_);
@@ -1326,12 +1354,15 @@ void MdViewerWindow::initUi() {
   tab_bar_ = new DocumentTabBar(title_leading_widget_);
   tab_bar_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
   leading_layout->addWidget(tab_bar_);
-  leading_layout->addWidget(new WindowDragArea(title_leading_widget_), 1);
-  fluent_frame_->titleBar()->setLeadingWidget(title_leading_widget_);
+  // 拖拽区保底宽度：标签条吃满 leading 时窗口仍要有可拖动区域
+  auto* title_drag = new WindowDragArea(title_leading_widget_);
+  title_drag->setObjectName(QStringLiteral("titleDragArea"));
+  title_drag->setMinimumWidth(96);
+  leading_layout->addWidget(title_drag, 1);
+  title_bar_->setLeadingWidget(title_leading_widget_);
   // 标题由标签显示，标题栏不再单独占一行文字；把剩余宽度让给标签条
-  fluent_frame_->titleBar()->setTitleVisible(false);
-  if (auto* title_layout =
-          qobject_cast<QHBoxLayout*>(fluent_frame_->titleBar()->layout())) {
+  title_bar_->setTitleVisible(false);
+  if (auto* title_layout = qobject_cast<QHBoxLayout*>(title_bar_->layout())) {
     title_layout->setStretchFactor(title_leading_widget_, 1);
   }
   // 欢迎标签固定第 0 位、不可关闭
@@ -1340,11 +1371,28 @@ void MdViewerWindow::initUi() {
   tab_bar_->setTabToolTip(0, tr("Welcome Page"));
   tab_bar_->RemoveCloseButton(0);
   // 标签 38 + 顶部 4；标题栏高度跟着标签走，否则会被裁掉
-  fluent_frame_->titleBar()->setFixedHeight(4 +
-                                            tab_bar_->tabSizeHint(0).height());
+  title_bar_->setFixedHeight(4 + tab_bar_->tabSizeHint(0).height());
 
   // 标题栏自带的搜索框隐藏；文档条只查当前文档，工作区搜索在侧栏
-  fluent_frame_->titleBar()->searchLineEdit()->setVisible(false);
+  title_bar_->searchLineEdit()->setVisible(false);
+
+  // QWK 接管：标题栏是右列里的普通子控件；可交互子控件逐个登记 hit-test，
+  // 系统按钮交给 agent 才能对上系统菜单/Snap 等原生行为
+  setAttribute(Qt::WA_DontCreateNativeAncestors);
+  window_agent_ = new QWK::WidgetWindowAgent(this);
+  window_agent_->setup(this);
+  window_agent_->setTitleBar(title_bar_);
+  window_agent_->setHitTestVisible(title_leading_widget_, true);
+  window_agent_->setHitTestVisible(menu_button_, true);
+  window_agent_->setHitTestVisible(tab_bar_, true);
+  window_agent_->setHitTestVisible(title_bar_->themeButton(), true);
+  window_agent_->setHitTestVisible(title_bar_->pinButton(), true);
+  window_agent_->setSystemButton(QWK::WindowAgentBase::Minimize,
+                                 title_bar_->minButton());
+  window_agent_->setSystemButton(QWK::WindowAgentBase::Maximize,
+                                 title_bar_->maxButton());
+  window_agent_->setSystemButton(QWK::WindowAgentBase::Close,
+                                 title_bar_->closeButton());
   document_find_edit_ = document_bar_->find_edit();
   document_find_edit_->installEventFilter(this);
   workspace_search_edit_ = side_panel_->search_edit();
@@ -1367,14 +1415,24 @@ void MdViewerWindow::initUi() {
       actions_.quick_open->trigger();
     }
   });
+  if (activity_bar_ != nullptr &&
+      activity_bar_->sidebar_toggle_button() != nullptr) {
+    connect(activity_bar_->sidebar_toggle_button(), &QToolButton::clicked, this,
+            [this] { ApplySidebarVisible(!layout_.sidebar_visible); });
+  }
+  // triggered 只在用户激活时发；setChecked 不会触发它，避免同步状态绕回
+  connect(actions_.toggle_sidebar, &QAction::triggered, this,
+          [this] { ApplySidebarVisible(!layout_.sidebar_visible); });
   connect(activity_bar_, &ActivityBar::settingsRequested, this,
           &MdViewerWindow::ShowSettings);
   connect(activity_bar_, &ActivityBar::viewActivated, this,
           &MdViewerWindow::ShowSideView);
-  connect(main_splitter_, &QSplitter::splitterMoved, this, [this] {
+  connect(shell_splitter_, &QSplitter::splitterMoved, this, [this] {
     if (side_panel_ != nullptr && side_panel_->isVisible()) {
       layout_.sidebar_width = side_panel_->width();
     }
+  });
+  connect(main_splitter_, &QSplitter::splitterMoved, this, [this] {
     if (outline_column_ != nullptr && outline_column_->isVisible()) {
       layout_.outline_width = outline_column_->width();
     }
@@ -1429,9 +1487,9 @@ void MdViewerWindow::initUi() {
 
 void MdViewerWindow::initSignals() {
   // 标题栏自带的主题按钮：Gallery 同款，点了就整窗（壳 + 文档）换肤
-  connect(fluent_frame_->titleBar()->themeButton(), &QToolButton::clicked, this,
+  connect(title_bar_->themeButton(), &QToolButton::clicked, this,
           &MdViewerWindow::ToggleTheme);
-  connect(fluent_frame_->titleBar()->pinButton(), &QToolButton::toggled, this,
+  connect(title_bar_->pinButton(), &QToolButton::toggled, this,
           [this](bool checked) { SetTopMost(this, checked); });
   connect(settings_panel_, &SettingsPanel::themeChanged, this,
           &MdViewerWindow::ApplyTheme);
@@ -2221,7 +2279,7 @@ void MdViewerWindow::ApplyTheme(MarkdownTheme theme) {
   // 停在旧主题；显式把新 style 的 standardPalette 推给 qApp。
   qApp->setStyle(new FluentUI3Style);
   qApp->setPalette(qApp->style()->standardPalette());
-  fluent_frame_->titleBar()->setThemeDark(dark);
+  title_bar_->setThemeDark(dark);
   if (settings_ != nullptr) {
     settings_->dark_theme = dark;
   }
@@ -2286,12 +2344,11 @@ void MdViewerWindow::RefreshThemeIcons() {
     title_leading_widget_->setPalette(strip);
   }
   // Chrome 的标签条与标题栏同一条框架色；整条标题栏一起铺
-  if (fluent_frame_ != nullptr && fluent_frame_->titleBar() != nullptr) {
-    QWidget* title_bar = fluent_frame_->titleBar();
-    title_bar->setAutoFillBackground(true);
-    QPalette chrome = title_bar->palette();
+  if (title_bar_ != nullptr) {
+    title_bar_->setAutoFillBackground(true);
+    QPalette chrome = title_bar_->palette();
     chrome.setColor(QPalette::Window, ChromeColorsFor(dark).background);
-    title_bar->setPalette(chrome);
+    title_bar_->setPalette(chrome);
   }
   UpdateBookmarkUi();
   if (side_panel_ != nullptr) {
@@ -2329,7 +2386,7 @@ void MdViewerWindow::ApplyWindowMaterial(WindowMaterial material,
                     material == WindowMaterial::kNone ? 0 : 2);
   qApp->setStyle(new FluentUI3Style);
   qApp->setPalette(qApp->style()->standardPalette());
-  fluent_frame_->clearWindowBackdrop();
+  SetWindowBackdrop(QString());
   if (material != WindowMaterial::kNone) {
     QString key;
     if (material == WindowMaterial::kAcrylic) {
@@ -2341,8 +2398,8 @@ void MdViewerWindow::ApplyWindowMaterial(WindowMaterial material,
                 ? QStringLiteral("mica")
                 : QStringLiteral("dwm-blur");
     }
-    if (!fluent_frame_->setWindowBackdrop(key)) {
-      fluent_frame_->setWindowBackdrop(QStringLiteral("dwm-blur"));
+    if (!SetWindowBackdrop(key)) {
+      SetWindowBackdrop(QStringLiteral("dwm-blur"));
     }
   }
   if (announce) {
@@ -2912,6 +2969,16 @@ void MdViewerWindow::resizeEvent(QResizeEvent* event) {
   UpdateOutlineVisibility();
 }
 
+void MdViewerWindow::showEvent(QShowEvent* event) {
+  QMainWindow::showEvent(event);
+  // 构造期 splitter 还没有真实宽度，setSizes 会被后续布局覆盖；首次显示
+  // 之后再落一次保存值，侧栏宽度/收起状态才能按会话恢复。
+  if (!shell_sizes_applied_) {
+    shell_sizes_applied_ = true;
+    ApplySplitterSizes();
+  }
+}
+
 void MdViewerWindow::dragEnterEvent(QDragEnterEvent* event) {
   if (DroppablePaths(event->mimeData()).isEmpty()) {
     event->ignore();
@@ -2971,9 +3038,7 @@ void MdViewerWindow::ShowSideView(SideView view) {
   }
   // 点当前已选中的视图 = 收起/展开侧栏
   if (activity_bar_->active_view() == view && side_panel_->isVisible()) {
-    layout_.sidebar_width = side_panel_->width();
-    layout_.sidebar_visible = false;
-    side_panel_->hide();
+    ApplySidebarVisible(false);
     return;
   }
   EnsureSideView(view);
@@ -2983,11 +3048,52 @@ void MdViewerWindow::EnsureSideView(SideView view) {
   if (side_panel_ == nullptr || activity_bar_ == nullptr) {
     return;
   }
-  side_panel_->show();
+  ApplySidebarVisible(true);
   ApplySplitterSizes();
   ApplySideView(view);
   layout_.view = view;
-  layout_.sidebar_visible = true;
+}
+
+void MdViewerWindow::ApplySidebarVisible(bool visible) {
+  if (side_panel_ == nullptr || applying_sidebar_) {
+    return;
+  }
+  applying_sidebar_ = true;
+  // 收起前记宽度；启动恢复路径（面板尚未显示）不能拿默认宽度覆盖存档
+  if (!visible && side_panel_->isVisible()) {
+    layout_.sidebar_width = side_panel_->width();
+  }
+  side_panel_->setVisible(visible);
+  layout_.sidebar_visible = visible;
+  // setChecked 会发 toggled/clicked，必须阻断，否则会绕回本函数
+  if (activity_bar_ != nullptr &&
+      activity_bar_->sidebar_toggle_button() != nullptr) {
+    const QSignalBlocker blocker(activity_bar_->sidebar_toggle_button());
+    activity_bar_->sidebar_toggle_button()->setChecked(visible);
+  }
+  if (actions_.toggle_sidebar != nullptr) {
+    const QSignalBlocker blocker(actions_.toggle_sidebar);
+    actions_.toggle_sidebar->setChecked(visible);
+  }
+  // 显隐会改变左外壳最大宽度与 splitter 尺寸，统一在这里落一次布局
+  ApplySplitterSizes();
+  applying_sidebar_ = false;
+}
+
+bool MdViewerWindow::SetWindowBackdrop(const QString& key) {
+  if (window_agent_ == nullptr) {
+    return false;
+  }
+  static const QStringList kBackdropAttributes = {
+      QStringLiteral("dwm-blur"), QStringLiteral("acrylic-material"),
+      QStringLiteral("mica"), QStringLiteral("mica-alt")};
+  for (const QString& attribute : kBackdropAttributes) {
+    window_agent_->setWindowAttribute(attribute, false);
+  }
+  if (key.isEmpty() || key == QStringLiteral("none")) {
+    return true;
+  }
+  return window_agent_->setWindowAttribute(key, true);
 }
 
 void MdViewerWindow::ApplySideView(SideView view) {
@@ -3004,8 +3110,15 @@ void MdViewerWindow::ApplySplitterSizes() {
   if (main_splitter_ == nullptr) {
     return;
   }
-  // 隐藏的列会被 QSplitter 忽略，中间正文吃掉剩余宽度
-  main_splitter_->setSizes({layout_.sidebar_width, 800, layout_.outline_width});
+  // 隐藏的列会被 QSplitter 忽略，正文吃掉剩余宽度
+  main_splitter_->setSizes({800, layout_.outline_width});
+  if (shell_splitter_ == nullptr || left_shell_ == nullptr) {
+    return;
+  }
+  const bool sidebar = side_panel_ != nullptr && side_panel_->isVisible();
+  // 收起后左外壳收缩到活动栏宽度；展开时恢复会话宽度
+  left_shell_->setMaximumWidth(sidebar ? QWIDGETSIZE_MAX : 42);
+  shell_splitter_->setSizes({42 + (sidebar ? layout_.sidebar_width : 0), 800});
 }
 
 void MdViewerWindow::UpdateOutlineVisibility() {
